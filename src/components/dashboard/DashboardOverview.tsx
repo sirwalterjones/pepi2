@@ -16,7 +16,7 @@ import {
   ArrowDownLeft,
   AlertTriangle,
 } from "lucide-react";
-import { TransactionType, Transaction } from "@/types/schema";
+import { TransactionType, Transaction, TransactionWithAgent } from "@/types/schema";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -28,7 +28,7 @@ type DashboardStats = {
   currentBalance: number;
   cashOnHand: number;
   spendingTotal: number;
-  recentTransactions: Transaction[];
+  recentTransactions: TransactionWithAgent[];
   activePepiBookId: string | null;
   activePepiBookYear: number | null;
 };
@@ -154,8 +154,8 @@ export default function DashboardOverview() {
         // Cash on hand is the initial funding minus what's been spent
         const cashOnHand = initialFunding - spendingTotal;
 
-        // Current balance is the initial funding minus what's been spent
-        const currentBalance = initialFunding - spendingTotal;
+        // Current balance should account for initial funding, spending, and returns
+        const currentBalance = initialFunding - spendingTotal + returnedTotal;
 
         setStats({
           totalAgents: agentsCount || 0,
@@ -337,7 +337,7 @@ export default function DashboardOverview() {
             </div>
           ) : (
             <div className="space-y-4">
-              {stats.recentTransactions.map((transaction: Transaction) => (
+              {stats.recentTransactions.map((transaction: TransactionWithAgent) => (
                 <div
                   key={transaction.id}
                   className="flex flex-col border-b pb-3 pt-2"
