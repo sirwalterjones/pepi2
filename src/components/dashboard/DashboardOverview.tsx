@@ -81,129 +81,132 @@ export default function DashboardOverview() {
   }, []);
 
   useEffect(() => {
-    async function fetchDashboardData() {
-      setLoading(true);
-      setInitialLoadComplete(false);
-      try {
-        // Fetch agents count
-        const { count: agentsCount, error: agentsError } = await supabase
-          .from("agents")
-          .select("*", { count: "exact", head: true })
-          .eq("is_active", true);
-
-        // Fetch active PEPI book details
-        let startingAmount = 0;
-        if (activeBook?.id) {
-          startingAmount = activeBook.starting_amount || 0;
-        }
-
-        // Fetch transactions with agent details filtered by active PEPI book if available
-        let transactionQuery = supabase
-          .from("transactions")
-          .select("*, agent:agents(name, badge_number)")
-          .order("created_at", { ascending: false });
-
-        // Filter by active PEPI book if available
-        if (activeBook?.id) {
-          transactionQuery = transactionQuery.eq("pepi_book_id", activeBook.id);
-        }
-
-        const { data: transactions, error: transactionsError } =
-          await transactionQuery;
-
-        if (agentsError || transactionsError) {
-          console.error(
-            "Error fetching dashboard data:",
-            agentsError || transactionsError,
-          );
-          return;
-        }
-
-        // Calculate stats
-        let issuanceTotal = 0;
-        let returnedTotal = 0;
-        let spendingTotal = 0;
-
-        // Find initial funding transaction
-        const initialFundingTransaction = transactions?.find(
-          (transaction: Transaction) =>
-            transaction.transaction_type === "issuance" &&
-            transaction.description?.toLowerCase().includes("initial funding"),
-        );
-
-        transactions?.forEach((transaction: Transaction) => {
-          if (
-            (transaction.status === "approved" ||
-              transaction.status === "pending") &&
-            // Skip the initial funding transaction when calculating issuance total
-            transaction.id !== initialFundingTransaction?.id
-          ) {
-            if (transaction.transaction_type === "issuance") {
-              issuanceTotal += transaction.amount;
-            } else if (transaction.transaction_type === "return") {
-              returnedTotal += transaction.amount;
-            } else if (transaction.transaction_type === "spending") {
-              spendingTotal += transaction.amount;
-            }
-          }
-        });
-
-        // Initial funding is the starting amount from the PEPI book
-        const initialFunding = startingAmount;
-
-        // Cash on hand is the initial funding minus what's been spent
-        const cashOnHand = initialFunding - spendingTotal;
-
-        // Current balance should account for initial funding, spending, and returns
-        const currentBalance = initialFunding - spendingTotal + returnedTotal;
-
-        // --- Debugging Logs ---
-        console.log("Dashboard Data Fetch Complete:", {
-          initialFunding,
-          spendingTotal,
-          returnedTotal,
-          calculatedCashOnHand: cashOnHand,
-          calculatedCurrentBalance: currentBalance,
-          activeBookId: activeBook?.id,
-          isAdmin,
-          initialLoadComplete: true, // Value *will be* set to true in finally block
-        });
-        // --- End Debugging Logs ---
-
-        setStats({
-          totalAgents: agentsCount || 0,
-          totalTransactions: transactions?.length || 0,
-          totalIssuance: issuanceTotal,
-          totalReturned: returnedTotal,
-          currentBalance: currentBalance,
-          cashOnHand: cashOnHand,
-          spendingTotal: spendingTotal,
-          recentTransactions: transactions?.slice(0, 5) || [],
-          activePepiBookId: activeBook?.id || null,
-          activePepiBookYear: activeBook?.year || null,
-        });
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
-        setInitialLoadComplete(true);
-      }
+    // Only run fetchDashboardData if activeBook is loaded and has an ID
+    if (activeBook && activeBook.id) {
+      fetchDashboardData();
+    } else if (activeBook === null) {
+      // Handle case where no book is selected/available
+      setLoading(false);
+      setInitialLoadComplete(true); // Mark load as complete
+      setStats({ // Reset stats to default
+        totalAgents: 0,
+        totalTransactions: 0,
+        totalIssuance: 0,
+        totalReturned: 0,
+        currentBalance: 0,
+        cashOnHand: 0,
+        spendingTotal: 0,
+        recentTransactions: [],
+        activePepiBookId: null,
+        activePepiBookYear: null,
+      });
     }
+    // If activeBook is undefined (still loading), do nothing yet
+  }, [activeBook]); // Dependency remains activeBook
 
-    fetchDashboardData();
-  }, [activeBook]);
+  // fetchDashboardData function now assumes activeBook is valid when called
+  async function fetchDashboardData() {
+    // Add check to satisfy TypeScript and prevent errors if called unexpectedly
+    if (!activeBook) return;
 
-  // Effect to check balance and show alert
+    // No need for inner activeBook check anymore
+    setLoading(true);
+    setInitialLoadComplete(false);
+    try {
+      // Fetch agents count
+      const { count: agentsCount, error: agentsError } = await supabase
+        .from("agents")
+        .select("*", { count: "exact", head: true })
+        .eq("is_active", true);
+
+      // Fetch active PEPI book details - we know activeBook is valid
+      let startingAmount = activeBook.starting_amount || 0;
+
+      // Fetch transactions with agent details filtered by active PEPI book
+      let transactionQuery = supabase
+        .from("transactions")
+        .select("*, agent:agents(name, badge_number)")
+        .order("created_at", { ascending: false })
+        .eq("pepi_book_id", activeBook.id); // Directly use activeBook.id
+
+      const { data: transactions, error: transactionsError } =
+        await transactionQuery;
+
+      if (agentsError || transactionsError) {
+        console.error(
+          "Error fetching dashboard data:",
+          agentsError || transactionsError,
+        );
+        return;
+      }
+
+      // Calculate stats
+      let issuanceTotal = 0;
+      let returnedTotal = 0;
+      let spendingTotal = 0;
+
+      // Find initial funding transaction
+      const initialFundingTransaction = transactions?.find(
+        (transaction: Transaction) =>
+          transaction.transaction_type === "issuance" &&
+          transaction.description?.toLowerCase().includes("initial funding"),
+      );
+
+      transactions?.forEach((transaction: Transaction) => {
+        if (
+          (transaction.status === "approved" ||
+            transaction.status === "pending") &&
+          // Skip the initial funding transaction when calculating issuance total
+          transaction.id !== initialFundingTransaction?.id
+        ) {
+          if (transaction.transaction_type === "issuance") {
+            issuanceTotal += transaction.amount;
+          } else if (transaction.transaction_type === "return") {
+            returnedTotal += transaction.amount;
+          } else if (transaction.transaction_type === "spending") {
+            spendingTotal += transaction.amount;
+          }
+        }
+      });
+
+      // Initial funding is the starting amount from the PEPI book
+      const initialFunding = startingAmount;
+
+      // Cash on hand is the initial funding minus what's been spent
+      const cashOnHand = initialFunding - spendingTotal;
+
+      // Current balance should account for initial funding, spending, and returns
+      const currentBalance = initialFunding - spendingTotal + returnedTotal;
+
+      // --- Remove Debugging Logs ---
+      // console.log("Dashboard Data Fetch Complete:", { ... });
+      // --- End Remove Debugging Logs ---
+
+      setStats({
+        totalAgents: agentsCount || 0,
+        totalTransactions: transactions?.length || 0,
+        totalIssuance: issuanceTotal,
+        totalReturned: returnedTotal,
+        currentBalance: currentBalance,
+        cashOnHand: cashOnHand,
+        spendingTotal: spendingTotal,
+        recentTransactions: transactions?.slice(0, 5) || [],
+        activePepiBookId: activeBook?.id || null,
+        activePepiBookYear: activeBook?.year || null,
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+      setInitialLoadComplete(true);
+    }
+  }
+
+  // Effect to check balance and show alert (remove debug log)
   useEffect(() => {
-    // --- Debugging Log ---
-    console.log("Alert Check Triggered:", {
-      initialLoadComplete,
-      isAdmin,
-      currentBalance: stats.currentBalance,
-      lowBalanceAlertShown,
-      shouldShowAlert: initialLoadComplete && isAdmin && stats.currentBalance <= 500 && !lowBalanceAlertShown,
-    });
-    // --- End Debugging Log ---
+    // --- Remove Debugging Log ---
+    // console.log("Alert Check Triggered:", { ... });
+    // --- End Remove Debugging Log ---
 
     if (
       initialLoadComplete &&
