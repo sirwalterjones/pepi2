@@ -62,7 +62,7 @@ export default function PendingRequestsList() {
             amount,
             case_number,
             requested_at,
-            agent:agents ( name ),
+            agent:agents!agent_id ( name ),
             pepi_book:pepi_books ( year )
           `)
           .eq("status", "pending")
