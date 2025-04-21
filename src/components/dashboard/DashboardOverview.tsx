@@ -178,9 +178,17 @@ export default function DashboardOverview() {
       // Current balance should account for initial funding, spending, and returns
       const currentBalance = initialFunding - spendingTotal + returnedTotal;
 
-      // --- Remove Debugging Logs ---
-      // console.log("Dashboard Data Fetch Complete:", { ... });
-      // --- End Remove Debugging Logs ---
+      // --- Re-add Debugging Log ---
+      console.log("Dashboard Data Fetch Complete (2025 Check):", {
+        initialFunding,
+        spendingTotal,
+        returnedTotal,
+        calculatedCashOnHand: cashOnHand,
+        calculatedCurrentBalance: currentBalance,
+        activeBookId: activeBook?.id,
+        isAdmin,
+      });
+      // --- End Re-add Debugging Log ---
 
       setStats({
         totalAgents: agentsCount || 0,
