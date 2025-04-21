@@ -56,6 +56,7 @@ export type FundRequest = {
   reviewed_by_user_id: string | null;
   reviewed_at: string | null;
   transaction_id: string | null;
+  rejection_reason?: string | null;
 };
 
 export type AgentWithTransactions = Agent & {

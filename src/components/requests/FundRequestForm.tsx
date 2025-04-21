@@ -16,22 +16,25 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createClient } from "../../../supabase/client";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
-import { Agent } from "@/types/schema"; // Import Agent type
+import { Agent, FundRequest } from "@/types/schema"; // Import Agent type AND FundRequest type
+import { useToast } from "@/components/ui/use-toast"; // Import useToast
 
 // Import server action
-import { requestFundsAction } from "@/app/actions";
+import { requestFundsAction, resubmitFundRequestAction } from "@/app/actions";
 
 interface FundRequestFormProps {
-  onSuccess?: () => void; // Optional callback for success (e.g., close modal)
+  onSuccess?: () => void;
+  initialData?: FundRequest; // Add optional initialData prop
 }
 
-export default function FundRequestForm({ onSuccess }: FundRequestFormProps) {
+export default function FundRequestForm({ onSuccess, initialData }: FundRequestFormProps) { // Destructure initialData
   const [amount, setAmount] = useState<number | string>("");
   const [caseNumber, setCaseNumber] = useState("");
   const [agentSignature, setAgentSignature] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentAgent, setCurrentAgent] = useState<Agent | null>(null);
+  const { toast } = useToast(); // Initialize toast
 
   const supabase = createClient();
   const { activeBook } = usePepiBooks();
@@ -58,6 +61,25 @@ export default function FundRequestForm({ onSuccess }: FundRequestFormProps) {
     fetchAgent();
   }, [supabase]);
 
+  // Pre-fill form if initialData is provided (for editing)
+  useEffect(() => {
+    if (initialData) {
+      console.log("[FundRequestForm] Editing mode. Initial data:", initialData);
+      setAmount(initialData.amount || "");
+      setCaseNumber(initialData.case_number || "");
+      // Don't pre-fill signature, require re-signing
+      setAgentSignature(""); 
+      // Clear any previous errors when opening in edit mode
+      setError(null); 
+    } else {
+      // Reset form if opening for a new request (or if initialData becomes undefined)
+      setAmount("");
+      setCaseNumber("");
+      setAgentSignature("");
+      setError(null);
+    }
+  }, [initialData]); // Rerun when initialData changes
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -81,34 +103,50 @@ export default function FundRequestForm({ onSuccess }: FundRequestFormProps) {
     setIsSubmitting(true);
 
     try {
-      const formData = {
-        amount: numericAmount,
-        caseNumber: caseNumber.trim() || null,
-        agentSignature: agentSignature.trim(),
-        agentId: currentAgent.id,
-        pepiBookId: activeBook.id,
-      };
+      let result: { success?: boolean; error?: string } | undefined;
 
-      // Call the server action
-      const result = await requestFundsAction(formData);
+      if (initialData) {
+        // --- EDIT / RESUBMIT LOGIC --- 
+        console.log("[FundRequestForm] Resubmitting edited request:", initialData.id);
+        
+        // Prepare data for the resubmit action
+        const resubmitData = {
+            requestId: initialData.id,
+            amount: numericAmount,
+            caseNumber: caseNumber.trim() || null,
+            agentSignature: agentSignature.trim(),
+        };
+        
+        // Call the new server action
+        result = await resubmitFundRequestAction(resubmitData);
 
-      // Check result for error
+      } else {
+        // --- NEW REQUEST LOGIC (existing) --- 
+        const formData = {
+          amount: numericAmount,
+          caseNumber: caseNumber.trim() || null,
+          agentSignature: agentSignature.trim(),
+          agentId: currentAgent.id,
+          pepiBookId: activeBook.id,
+        };
+        result = await requestFundsAction(formData);
+      }
+
+      // Common result handling
       if (result?.error) {
         throw new Error(result.error);
       }
 
-      // Use toast for success notification instead of alert
-      // toast({ title: "Success", description: "Fund request submitted successfully." });
-      console.log("Fund request submitted successfully!"); // Keep log for now
-
-      // Reset form
-      setAmount("");
-      setCaseNumber("");
-      setAgentSignature("");
-      onSuccess?.(); // Call success callback if provided
+      toast({ 
+          title: "Success", 
+          description: initialData ? "Fund request updated and resubmitted." : "Fund request submitted successfully.",
+          variant: "default"
+      });
+      
+      onSuccess?.(); // Close dialog / trigger callback
 
     } catch (err: any) {
-      console.error("Error submitting fund request:", err);
+      console.error("Error submitting/resubmitting fund request:", err);
       setError(err.message || "Failed to submit request. Please try again.");
     } finally {
       setIsSubmitting(false);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "../../../supabase/client";
-import { Transaction, TransactionType, TransactionWithAgent } from "@/types/schema";
+import { Transaction, TransactionType, TransactionWithAgent, FundRequest } from "@/types/schema";
 import TransactionDetails from "./TransactionDetails";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
 import { Button } from "../ui/button";
@@ -22,6 +22,10 @@ import {
   ArrowDownLeft,
   Search,
   Plus,
+  Loader2,
+  XCircle,
+  AlertCircle,
+  Edit,
 } from "lucide-react";
 import { Input } from "../ui/input";
 import {
@@ -44,12 +48,22 @@ import {
 import FundRequestForm from "../requests/FundRequestForm";
 import { PlusCircle } from "lucide-react";
 
+// Define a type for the combined list items
+type TransactionListItem = (TransactionWithAgent & { itemType: 'transaction' }) | 
+                         (FundRequest & { 
+                             itemType: 'request'; 
+                             created_at: string; // Ensure created_at exists for sorting 
+                             agent?: { id: string; name: string; badge_number: string | null } | null; // Make agent optional
+                         });
+
 export default function TransactionList() {
   // Function to check if a transaction belongs to the current user
   const isOwnTransaction = (transaction: any) => {
     return currentUserAgentId && transaction.agent_id === currentUserAgentId;
   };
   const [transactions, setTransactions] = useState<TransactionWithAgent[]>([]);
+  const [requests, setRequests] = useState<FundRequest[]>([]);
+  const [combinedList, setCombinedList] = useState<TransactionListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
@@ -67,6 +81,7 @@ export default function TransactionList() {
   const { activeBook } = usePepiBooks();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isRequestFormOpen, setIsRequestFormOpen] = useState(false);
+  const [requestToEdit, setRequestToEdit] = useState<FundRequest | null>(null);
 
   // Fetch current user's agent ID and role
   useEffect(() => {
@@ -106,10 +121,15 @@ export default function TransactionList() {
     fetchCurrentUserAgent();
   }, []);
 
-  const fetchTransactions = async () => {
+  const fetchData = async () => {
+    if ((!isAdmin && !currentUserAgentId) || !activeBook?.id) {
+        setLoading(false);
+        return;
+    }
+    
     setLoading(true);
     try {
-      let query = supabase
+      let transactionQuery = supabase
         .from("transactions")
         .select(`
           *,
@@ -117,85 +137,113 @@ export default function TransactionList() {
         `)
         .order("created_at", { ascending: false });
 
-      // Filter by active PEPI book if available
-      if (activeBook?.id) {
-        query = query.eq("pepi_book_id", activeBook.id);
-      }
+      transactionQuery = transactionQuery.eq("pepi_book_id", activeBook.id);
 
-      // Filter by transaction type if selected
       if (filterType !== "all") {
-        query = query.eq("transaction_type", filterType);
+        transactionQuery = transactionQuery.eq("transaction_type", filterType);
       }
 
-      // If user is not an admin, only show their transactions
       if (!isAdmin && currentUserAgentId) {
-        query = query.eq("agent_id", currentUserAgentId);
+        transactionQuery = transactionQuery.eq("agent_id", currentUserAgentId);
       }
 
-      const { data, error } = await query;
+      const { data: transactionData, error: transactionError } = await transactionQuery;
 
-      if (error) {
-        console.error("Error fetching transactions:", error);
-        toast({
-          title: "Error fetching transactions",
-          description: error.message,
-          variant: "destructive",
-        });
-        return;
+      if (transactionError) {
+        console.error("Error fetching transactions:", transactionError);
+        toast({ title: "Error fetching transactions", description: transactionError.message, variant: "destructive" });
       }
+      const fetchedTransactions = (transactionData as TransactionWithAgent[]) || [];
+      setTransactions(fetchedTransactions);
 
-      setTransactions((data as TransactionWithAgent[]) || []);
+      let fetchedRequests: FundRequest[] = [];
+      if (!isAdmin && currentUserAgentId) {
+          const { data: requestData, error: requestError } = await supabase
+              .from("fund_requests")
+              .select(`*, agent:agents!fund_requests_agent_id_fkey(id, name, badge_number)`)
+              .eq("agent_id", currentUserAgentId)
+              .eq("pepi_book_id", activeBook.id)
+              .in("status", ["pending", "rejected"]);
+          
+          if (requestError) {
+              console.error("Error fetching fund requests:", requestError);
+              toast({ title: "Error fetching fund requests", description: requestError.message, variant: "destructive" });
+          } else {
+              fetchedRequests = (requestData as FundRequest[]) || [];
+              setRequests(fetchedRequests);
+          }
+      }
+      
+      const combined: TransactionListItem[] = [
+          ...fetchedTransactions.map(t => ({ ...t, itemType: 'transaction' as const })),
+          ...fetchedRequests.map(r => ({
+               ...r,
+               itemType: 'request' as const,
+               created_at: r.requested_at,
+               agent: (r as any).agent || null 
+           }))
+      ];
+
+      combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setCombinedList(combined);
+
     } catch (error: any) {
-      console.error("Error fetching transactions:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fetch transactions",
-        variant: "destructive",
-      });
+      console.error("Error fetching data:", error);
+      toast({ title: "Error", description: error.message || "Failed to fetch data", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTransactions();
+    fetchData();
   }, [filterType, activeBook?.id, currentUserAgentId, isAdmin]);
 
-  // Set up real-time subscription for transactions
   useEffect(() => {
-    const subscription = supabase
-      .channel("transactions_changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "transactions" },
-        () => {
-          fetchTransactions();
-        },
-      )
-      .subscribe();
+    if ((!isAdmin && !currentUserAgentId) || !activeBook?.id) return;
+
+    const transactionChannel = supabase
+      .channel('transactions_list_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, 
+        () => { console.log('Transaction change detected, refetching data...'); fetchData(); }
+      ).subscribe();
+      
+    const requestChannel = supabase
+      .channel('requests_list_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fund_requests' }, 
+        () => { console.log('Fund request change detected, refetching data...'); fetchData(); }
+      ).subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      supabase.removeChannel(transactionChannel);
+      supabase.removeChannel(requestChannel);
     };
-  }, []);
+  }, [supabase, activeBook?.id, currentUserAgentId, isAdmin]);
 
-  const filteredTransactions = transactions.filter((transaction: TransactionWithAgent) => {
-    if (!searchTerm) return true;
+  // Filter the combined list now using the specific type
+  const filteredCombinedList = combinedList.filter((item: TransactionListItem) => {
+      if (!searchTerm) return true;
+      const term = searchTerm.toLowerCase();
+      
+      // Base check for agent name/badge
+      const agentMatch = item.agent?.name?.toLowerCase().includes(term) || 
+                         item.agent?.badge_number?.toLowerCase().includes(term);
 
-    return (
-      transaction.description
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      transaction.receipt_number
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      transaction.agent?.name
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      transaction.agent?.badge_number
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase())
-    );
+      if (item.itemType === 'transaction') {
+          return (
+              agentMatch ||
+              item.description?.toLowerCase().includes(term) ||
+              item.receipt_number?.toLowerCase().includes(term)
+          );
+      } else { // item.itemType === 'request' guaranteed by type definition
+          return (
+              agentMatch ||
+              item.case_number?.toLowerCase().includes(term) ||
+              item.status?.toLowerCase().includes(term) ||
+              item.rejection_reason?.toLowerCase().includes(term) ||
+              item.amount?.toString().includes(term) 
+          );
+      }
   });
 
   const getTransactionIcon = (type: TransactionType) => {
@@ -246,21 +294,22 @@ export default function TransactionList() {
     });
   };
 
-  // Calculate agent's running balance
+  // Update balance calculation to only use transactions
   const calculateAgentBalance = () => {
     if (!currentUserAgentId || !transactions.length) return 0;
 
     let balance = 0;
-    transactions.forEach((transaction: TransactionWithAgent) => {
+    transactions.forEach((transaction: TransactionWithAgent) => { // Use original transactions state
       if (
         transaction.agent_id === currentUserAgentId &&
-        (transaction.status === "approved" || transaction.status === "pending")
+        (transaction.status === "approved" || transaction.status === "pending") // Only approved/pending transactions affect balance?
       ) {
         if (transaction.transaction_type === "issuance") {
           balance += transaction.amount;
         } else if (transaction.transaction_type === "spending") {
           balance -= transaction.amount;
         } else if (transaction.transaction_type === "return") {
+          // Assuming return decreases agent balance
           balance -= transaction.amount;
         }
       }
@@ -300,6 +349,20 @@ export default function TransactionList() {
   };
 
   const agentBalance = calculateAgentBalance();
+
+  // Function to handle opening the edit form
+  const handleEditRequest = (request: FundRequest) => {
+      setRequestToEdit(request);
+      setIsRequestFormOpen(true); // Open the same dialog used for new requests
+  };
+  
+  // Reset requestToEdit when dialog closes
+  const handleRequestFormOpenChange = (open: boolean) => {
+      setIsRequestFormOpen(open);
+      if (!open) {
+          setRequestToEdit(null);
+      }
+  }
 
   return (
     <Card className="w-full">
@@ -407,7 +470,7 @@ export default function TransactionList() {
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
-        ) : filteredTransactions.length === 0 ? (
+        ) : filteredCombinedList.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             {searchTerm || filterType !== "all"
               ? "No matching transactions found"
@@ -415,76 +478,103 @@ export default function TransactionList() {
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredTransactions.map((transaction: TransactionWithAgent) => (
+            {filteredCombinedList.map((item: TransactionListItem) => (
               <div
-                key={transaction.id}
-                className={`flex items-center justify-between p-4 border rounded-lg ${transaction.status === "rejected" ? "border-red-300 bg-red-50" : ""}`}
+                key={item.id}
+                className={`flex items-center justify-between p-4 border rounded-lg 
+                  ${item.itemType === 'request' && item.status === 'pending' ? 'border-blue-300 bg-blue-50' : ''}
+                  ${item.itemType === 'request' && item.status === 'rejected' ? 'border-red-300 bg-red-50' : ''}
+                  ${item.itemType === 'transaction' && item.status === 'rejected' ? 'border-red-300 bg-red-50' : ''}
+                `}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-1">
                   <div className="p-2 bg-muted rounded-full">
-                    {getTransactionIcon(transaction.transaction_type)}
+                    {item.itemType === 'transaction' 
+                      ? getTransactionIcon(item.transaction_type) 
+                      : item.status === 'pending' 
+                          ? <Loader2 className="h-4 w-4 text-blue-600 animate-spin" /> 
+                          : item.status === 'rejected'
+                              ? <XCircle className="h-4 w-4 text-red-600" /> 
+                              : <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                    }
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <div className="font-medium">
-                      {transaction.description ||
-                        `Transaction ${transaction.id.substring(0, 8)}`}
+                      {item.itemType === 'transaction' 
+                        ? item.description || `Transaction ${item.id.substring(0, 8)}`
+                        : `Fund Request (Case: ${item.case_number || 'N/A'})`}
                     </div>
-                    <div className="text-sm text-muted-foreground flex items-center gap-2">
-                      <span>{formatDate(transaction.created_at)}</span>
-                      {transaction.receipt_number && (
+                    <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span>{formatDate(item.created_at)}</span>
+                      {item.agent?.name && (
                         <>
                           <span>•</span>
-                          <span>Receipt: {transaction.receipt_number}</span>
+                          <span>Agent: {item.agent.name} {item.agent.badge_number ? `(#${item.agent.badge_number})` : ''}</span>
                         </>
                       )}
-                      {transaction.agent?.name && (
+                      {item.itemType === 'transaction' && item.receipt_number && (
                         <>
                           <span>•</span>
-                          <span>Agent: {transaction.agent.name} {transaction.agent.badge_number ? `(#${transaction.agent.badge_number})` : ''}</span>
+                          <span>Receipt: {item.receipt_number}</span>
                         </>
                       )}
                     </div>
+                    {item.itemType === 'request' && item.status === 'rejected' && item.rejection_reason && (
+                        <div className="mt-1 p-2 text-xs bg-red-100 border border-red-200 text-red-800 rounded">
+                            <strong>Rejection Reason:</strong> {item.rejection_reason}
+                        </div>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 ml-4">
                   <div className="text-right">
                     <div
-                      className={`font-medium ${transaction.transaction_type === "issuance" ? "text-green-600" : transaction.transaction_type === "return" ? "text-green-600" : transaction.transaction_type === "spending" ? "text-red-600" : ""}`}
+                      className={`font-medium 
+                        ${item.itemType === 'transaction' && item.transaction_type === "issuance" ? "text-green-600" : ''}
+                        ${item.itemType === 'transaction' && item.transaction_type === "return" ? "text-green-600" : ''}
+                        ${item.itemType === 'transaction' && item.transaction_type === "spending" ? "text-red-600" : ''}
+                        ${item.itemType === 'request' ? 'text-blue-600' : ''}
+                      `}
                     >
-                      {transaction.transaction_type === "issuance" ||
-                      transaction.transaction_type === "return"
-                        ? "+"
-                        : transaction.transaction_type === "spending"
-                          ? "-"
-                          : ""}
-                      {formatCurrency(Math.abs(transaction.amount))}
+                      {item.itemType === 'transaction' && (item.transaction_type === "issuance" || item.transaction_type === "return") ? "+" : ''}
+                      {item.itemType === 'transaction' && item.transaction_type === "spending" ? "-" : ''}
+                      {formatCurrency(Math.abs(item.amount))}
                     </div>
-                    <div className="flex flex-col gap-1">
-                      {getTransactionBadge(transaction.transaction_type)}
-                      {transaction.status && (
-                        <TransactionStatus status={transaction.status} />
+                    <div className="flex flex-col gap-1 items-end mt-1">
+                      {item.itemType === 'transaction' 
+                          ? getTransactionBadge(item.transaction_type) 
+                          : <Badge variant="outline">Request</Badge>
+                      }
+                      {item.status && <TransactionStatus status={item.status as any} />}
+                      {item.itemType === 'request' && item.status === "rejected" && isOwnTransaction(item) && (
+                        <Badge variant="destructive" className="animate-pulse">
+                          Action Required
+                        </Badge>
                       )}
-                      {transaction.status === "rejected" &&
-                        isOwnTransaction(transaction) && (
-                          <Badge
-                            variant="outline"
-                            className="bg-red-100 text-red-800 border-red-300 animate-pulse"
-                          >
-                            Action Required
-                          </Badge>
-                        )}
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedTransaction(transaction);
-                      setIsDetailsOpen(true);
-                    }}
-                  >
-                    View
-                  </Button>
+                  {item.itemType === 'transaction' ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedTransaction(item);
+                        setIsDetailsOpen(true);
+                      }}
+                    >
+                      View
+                    </Button>
+                  ) : item.itemType === 'request' && item.status === 'rejected' && isOwnTransaction(item) ? (
+                      <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleEditRequest(item)}
+                      >
+                          <Edit className="mr-2 h-4 w-4" /> Edit Request
+                      </Button> 
+                  ) : (
+                      <div className="w-[58px]"></div>
+                  ) }
                 </div>
               </div>
             ))}
@@ -505,7 +595,7 @@ export default function TransactionList() {
       <TransactionForm
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
-        onTransactionCreated={fetchTransactions}
+        onTransactionCreated={fetchData}
       />
 
       {selectedTransaction && (
@@ -513,13 +603,32 @@ export default function TransactionList() {
           transaction={selectedTransaction}
           open={isDetailsOpen}
           onOpenChange={setIsDetailsOpen}
-          onDelete={fetchTransactions}
+          onDelete={fetchData}
           onEdit={() => {
-            fetchTransactions();
+            fetchData();
             setIsDetailsOpen(false);
           }}
         />
       )}
+
+      <Dialog open={isRequestFormOpen} onOpenChange={handleRequestFormOpenChange}>
+          <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                  <DialogTitle>{requestToEdit ? 'Edit Fund Request' : 'Request Additional Funds'}</DialogTitle>
+                  <DialogDescription>
+                      {requestToEdit ? 'Update the details of your rejected request below.' : 'Submit a request for more funds. Enter the amount and reason below.'}
+                  </DialogDescription>
+              </DialogHeader>
+              <FundRequestForm 
+                  initialData={requestToEdit || undefined} 
+                  onSuccess={() => {
+                      setIsRequestFormOpen(false);
+                      setRequestToEdit(null);
+                      fetchData();
+                  }} 
+              />
+          </DialogContent>
+      </Dialog>
     </Card>
   );
 }

@@ -637,13 +637,15 @@ export async function approveFundRequestAction(requestId: string) {
 }
 
 // Action to reject a fund request
-export async function rejectFundRequestAction(requestId: string) {
+export async function rejectFundRequestAction(requestId: string, reason?: string | null) {
   "use server";
+  console.log(`[Server Action] rejectFundRequestAction called for ${requestId} with reason: ${reason}`);
   const supabase = await createClient();
 
   // 1. Verify user is admin
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) {
+    console.error("[Server Action] Authentication error:", userError);
     return { error: "Authentication required." };
   }
   const { data: adminData, error: adminCheckError } = await supabase
@@ -654,7 +656,8 @@ export async function rejectFundRequestAction(requestId: string) {
     .single();
 
   if (adminCheckError || !adminData) {
-    return { error: "Admin privileges required." };
+     console.warn(`[Server Action] User ${user.id} without admin privileges attempted reject action.`);
+     return { error: "Admin privileges required." };
   }
 
   // 2. Fetch the fund request to ensure it's pending
@@ -665,30 +668,115 @@ export async function rejectFundRequestAction(requestId: string) {
     .single();
 
   if (fetchError || !request) {
+    console.error(`[Server Action] Fund request ${requestId} not found for rejection:`, fetchError);
     return { error: "Fund request not found." };
   }
 
   if (request.status !== 'pending') {
+    console.warn(`[Server Action] Fund request ${requestId} already processed (status: ${request.status}). Cannot reject.`);
     return { error: "Request has already been processed." };
   }
 
-  // 3. Update the fund request status
+  // 3. Update the fund request status and add rejection reason
+  console.log(`[Server Action] Updating request ${requestId} to rejected with reason: ${reason}`);
   const { error: updateError } = await supabase
     .from("fund_requests")
     .update({
       status: "rejected",
       reviewed_by_user_id: user.id,
       reviewed_at: new Date().toISOString(),
+      rejection_reason: reason || null,
     })
     .eq("id", requestId);
 
   if (updateError) {
-    console.error("Error rejecting fund request:", updateError);
+    console.error(`[Server Action] Error rejecting fund request ${requestId}:`, updateError);
     return { error: "Failed to update request status." };
   }
+  console.log(`[Server Action] Successfully rejected request ${requestId}.`);
 
   // 4. Revalidate paths
-  revalidatePath("/dashboard"); // Revalidate agent and admin dashboards
+  revalidatePath("/dashboard");
 
   return { success: true };
+}
+
+// Action to resubmit an edited fund request
+export async function resubmitFundRequestAction(formData: {
+    requestId: string; // ID of the request being edited
+    amount: number;
+    caseNumber: string | null;
+    agentSignature: string; 
+}) {
+    "use server";
+    console.log("[Server Action] resubmitFundRequestAction called for:", formData.requestId);
+    const supabase = await createClient();
+
+    // 1. Get current user and verify they are the agent who owns the request
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+        console.error("[Server Action] Authentication error during resubmit:", userError);
+        return { error: "Authentication required." };
+    }
+
+    const { data: agentData, error: agentCheckError } = await supabase
+        .from("agents")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+    if (agentCheckError || !agentData) {
+        console.error(`[Server Action] Failed to find agent record for user ${user.id} during resubmit:`, agentCheckError);
+        return { error: "Agent verification failed." };
+    }
+
+    // 2. Fetch the existing request to verify ownership and status ('rejected')
+    const { data: existingRequest, error: fetchError } = await supabase
+        .from("fund_requests")
+        .select("id, agent_id, status")
+        .eq("id", formData.requestId)
+        .single();
+
+    if (fetchError || !existingRequest) {
+        console.error(`[Server Action] Failed to find rejected request ${formData.requestId} for resubmit:`, fetchError);
+        return { error: "Original rejected request not found." };
+    }
+
+    if (existingRequest.agent_id !== agentData.id) {
+        console.warn(`[Server Action] Agent ${agentData.id} attempted to resubmit request ${formData.requestId} owned by ${existingRequest.agent_id}.`);
+        return { error: "You can only resubmit your own rejected requests." };
+    }
+
+    if (existingRequest.status !== 'rejected') {
+        console.warn(`[Server Action] Attempted to resubmit request ${formData.requestId} which is not rejected (status: ${existingRequest.status}).`);
+        return { error: "Only rejected requests can be resubmitted." };
+    }
+
+    // 3. Update the request
+    const { error: updateError } = await supabase
+        .from("fund_requests")
+        .update({
+            amount: formData.amount,
+            case_number: formData.caseNumber,
+            agent_signature: formData.agentSignature,
+            status: 'pending', // Set status back to pending
+            rejection_reason: null, // Clear rejection reason
+            reviewed_by_user_id: null, // Clear reviewer fields
+            reviewed_at: null,
+            transaction_id: null, // Clear linked transaction (shouldn't exist anyway)
+            requested_at: new Date().toISOString(), // Update timestamp to reflect resubmission time
+        })
+        .eq("id", formData.requestId);
+
+    if (updateError) {
+        console.error(`[Server Action] Error updating fund request ${formData.requestId} on resubmit:`, updateError);
+        return { error: "Failed to resubmit fund request." };
+    }
+    
+    console.log(`[Server Action] Successfully resubmitted request ${formData.requestId}`);
+
+    // 4. Revalidate paths
+    revalidatePath("/dashboard");
+
+    return { success: true };
 }
