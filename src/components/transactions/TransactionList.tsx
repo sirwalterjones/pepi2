@@ -177,6 +177,11 @@ export default function TransactionList() {
           }
       }
       
+      // Log the fetched requests specifically for agent view
+      if (!isAdmin && currentUserAgentId) {
+          console.log(`[TransactionList - Agent View] Fetched Requests Data:`, fetchedRequests);
+      }
+
       const combined: TransactionListItem[] = [
           ...fetchedTransactions.map(t => ({ ...t, itemType: 'transaction' as const })),
           ...fetchedRequests.map(r => ({
