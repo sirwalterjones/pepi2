@@ -468,6 +468,12 @@ export async function requestFundsAction(formData: {
 
   const { amount, caseNumber, agentSignature, agentId, pepiBookId } = validatedFields.data;
 
+  // Log the IDs just before inserting to compare with RLS check
+  console.log(`[Server Action] Attempting insert for requestFundsAction.
+    Logged-in User ID (auth.uid): ${user.id}
+    Agent ID being inserted (agent_id): ${agentId}`
+  );
+
   // 4. Insert into fund_requests table
   try {
     const { error: insertError } = await supabase
