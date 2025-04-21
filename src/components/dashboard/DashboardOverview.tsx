@@ -101,6 +101,43 @@ export default function DashboardOverview() {
     // If activeBook is undefined (still loading), do nothing yet
   }, [activeBook]); // Dependency remains activeBook
 
+  // ADDED: Real-time subscription for transaction changes
+  useEffect(() => {
+    // Only subscribe if we have an active book
+    if (!activeBook?.id) return;
+
+    console.log(`[DashboardOverview] Setting up subscription for transactions in book: ${activeBook.id}`);
+    const transactionChannel = supabase
+      .channel(`overview-transactions-changes-${activeBook.id}`) // Unique channel name per book
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'transactions', 
+          filter: `pepi_book_id=eq.${activeBook.id}` // Filter for relevant book
+        },
+        (payload) => {
+          console.log('[DashboardOverview] Transaction change detected, refetching stats...', payload);
+          fetchDashboardData(); // Refetch stats on any change
+        }
+      )
+      .subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('[DashboardOverview] Real-time subscription active.');
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error('[DashboardOverview] Real-time subscription error:', status, err);
+          }
+      });
+
+    // Cleanup
+    return () => {
+      console.log("[DashboardOverview] Removing real-time subscription.");
+      supabase.removeChannel(transactionChannel);
+    };
+
+  }, [supabase, activeBook?.id]); // Depend on supabase client and active book ID
+
   // fetchDashboardData function now assumes activeBook is valid when called
   async function fetchDashboardData() {
     // Add check to satisfy TypeScript and prevent errors if called unexpectedly
