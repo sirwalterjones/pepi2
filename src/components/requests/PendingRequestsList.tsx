@@ -107,9 +107,11 @@ export default function PendingRequestsList() {
         { event: '*', schema: 'public', table: 'fund_requests' },
         (payload) => {
           console.log('[PendingRequestsList] Change received!', payload);
-          console.log("[PendingRequestsList] Refetching data due to change...");
-          // Refetch data on any change to the table
-          fetchRequests();
+          console.log("[PendingRequestsList] Refetching data due to change (with delay)...");
+          setTimeout(() => {
+            console.log("[PendingRequestsList] Executing delayed fetch...");
+            fetchRequests();
+          }, 500);
         }
       )
       .subscribe();
