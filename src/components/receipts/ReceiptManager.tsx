@@ -209,12 +209,43 @@ export default function ReceiptManager() {
     });
   };
 
-  const handlePrintReceipt = () => {
+  const handlePrintReceipt = async () => {
     if (!selectedReceipt) return;
 
-    console.log("[ReceiptManager] Data for printing:", JSON.stringify(selectedReceipt, null, 2)); // Log the data being used
+    console.log("[ReceiptManager] Data for printing:", JSON.stringify(selectedReceipt, null, 2));
 
-    // Directly use the inline HTML generation (removed import attempt)
+    // Fetch creator name asynchronously
+    let creatorName = "System"; // Default value
+    if (selectedReceipt.created_by) {
+      try {
+        const { data: agentCreatorData } = await supabase
+          .from("agents")
+          .select("name")
+          .eq("user_id", selectedReceipt.created_by)
+          .single();
+        
+        if (agentCreatorData?.name) {
+          creatorName = agentCreatorData.name;
+        } else {
+          // Fallback: Try fetching auth user email (requires admin privileges for supabase client)
+          // Note: This might fail if the client doesn't have admin rights.
+          // Consider if fetching email is necessary or if "Unknown User" is acceptable.
+          // For simplicity, let's just use "Unknown User" if agent name isn't found.
+           // const { data: userAuthData, error: userError } = await supabase.auth.admin.getUserById(selectedReceipt.created_by);
+           // if (!userError && userAuthData?.user) {
+           //   creatorName = userAuthData.user.email || "Unknown User";
+           // } else {
+               creatorName = "Unknown User";
+           // }
+        }
+      } catch (error) {
+          console.error("[ReceiptManager] Error fetching creator name:", error);
+          creatorName = "Error Fetching Name"; // Indicate error
+      }
+    }
+    console.log(`[ReceiptManager] Fetched creatorName: ${creatorName}`);
+
+    // Directly use the inline HTML generation
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(`
@@ -259,6 +290,16 @@ export default function ReceiptManager() {
                   <div class="info-row">
                     <span class="label">Agent:</span>
                     <span>${selectedReceipt.agent.name} ${selectedReceipt.agent.badge_number ? `(${selectedReceipt.agent.badge_number})` : ""}</span>
+                  </div>`
+                      : ""
+                  }
+                  ${
+                    // Use the fetched creatorName variable
+                    creatorName
+                      ? `
+                  <div class="info-row">
+                    <span class="label">Created/Approved By:</span>
+                    <span>${creatorName}</span>
                   </div>`
                       : ""
                   }
