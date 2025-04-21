@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "../../../supabase/client";
-import { Transaction, TransactionType } from "@/types/schema";
+import { Transaction, TransactionType, TransactionWithAgent } from "@/types/schema";
 import TransactionDetails from "./TransactionDetails";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
 import { Button } from "../ui/button";
@@ -33,17 +33,26 @@ import {
 } from "../ui/select";
 import { useToast } from "../ui/use-toast";
 import TransactionStatus from "./TransactionStatus";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import FundRequestForm from "../requests/FundRequestForm";
+import { PlusCircle } from "lucide-react";
 
 export default function TransactionList() {
   // Function to check if a transaction belongs to the current user
   const isOwnTransaction = (transaction: any) => {
     return currentUserAgentId && transaction.agent_id === currentUserAgentId;
   };
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<TransactionWithAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
-  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithAgent | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [currentUserAgentId, setCurrentUserAgentId] = useState<string | null>(
     null,
@@ -55,6 +64,8 @@ export default function TransactionList() {
   const { toast } = useToast();
   const supabase = createClient();
   const { activeBook } = usePepiBooks();
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isRequestFormOpen, setIsRequestFormOpen] = useState(false);
 
   // Fetch current user's agent ID and role
   useEffect(() => {
@@ -80,8 +91,8 @@ export default function TransactionList() {
             setCurrentUserAgentId(agentData.id);
             setIsAdmin(agentData.role === "admin");
 
-            // Create a map for quick lookup of user's transactions
-            const newUserAgentMap = {};
+            // Create a map for quick lookup
+            const newUserAgentMap: { [key: string]: boolean } = {};
             newUserAgentMap[agentData.id] = true;
             setUserAgentMap(newUserAgentMap);
           }
@@ -99,12 +110,10 @@ export default function TransactionList() {
     try {
       let query = supabase
         .from("transactions")
-        .select(
-          `
+        .select(`
           *,
-          agents:agent_id (id, name, badge_number)
-        `,
-        )
+          agent:agents!transactions_agent_id_fkey ( id, name, badge_number )
+        `)
         .order("created_at", { ascending: false });
 
       // Filter by active PEPI book if available
@@ -134,7 +143,7 @@ export default function TransactionList() {
         return;
       }
 
-      setTransactions(data || []);
+      setTransactions((data as TransactionWithAgent[]) || []);
     } catch (error: any) {
       console.error("Error fetching transactions:", error);
       toast({
@@ -169,7 +178,7 @@ export default function TransactionList() {
     };
   }, []);
 
-  const filteredTransactions = transactions.filter((transaction) => {
+  const filteredTransactions = transactions.filter((transaction: TransactionWithAgent) => {
     if (!searchTerm) return true;
 
     return (
@@ -179,10 +188,10 @@ export default function TransactionList() {
       transaction.receipt_number
         ?.toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      transaction.agents?.name
+      transaction.agent?.name
         ?.toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      transaction.agents?.badge_number
+      transaction.agent?.badge_number
         ?.toLowerCase()
         .includes(searchTerm.toLowerCase())
     );
@@ -210,8 +219,8 @@ export default function TransactionList() {
       case "return":
         return (
           <Badge
-            variant="success"
-            className="bg-green-100 text-green-800 hover:bg-green-100"
+            variant="outline"
+            className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200"
           >
             Returned
           </Badge>
@@ -236,24 +245,22 @@ export default function TransactionList() {
     });
   };
 
-  const [isFormOpen, setIsFormOpen] = useState(false);
-
   // Calculate agent's running balance
   const calculateAgentBalance = () => {
     if (!currentUserAgentId || !transactions.length) return 0;
 
     let balance = 0;
-    transactions.forEach((transaction) => {
+    transactions.forEach((transaction: TransactionWithAgent) => {
       if (
         transaction.agent_id === currentUserAgentId &&
         (transaction.status === "approved" || transaction.status === "pending")
       ) {
         if (transaction.transaction_type === "issuance") {
-          balance += parseFloat(transaction.amount);
+          balance += transaction.amount;
         } else if (transaction.transaction_type === "spending") {
-          balance -= parseFloat(transaction.amount);
+          balance -= transaction.amount;
         } else if (transaction.transaction_type === "return") {
-          balance -= parseFloat(transaction.amount);
+          balance -= transaction.amount;
         }
       }
     });
@@ -274,14 +281,14 @@ export default function TransactionList() {
     // Only process if we have transactions
     if (transactions.length) {
       // Calculate based on approved and pending transactions
-      transactions.forEach((transaction) => {
+      transactions.forEach((transaction: TransactionWithAgent) => {
         if (
           (transaction.status === "approved" ||
             transaction.status === "pending") &&
           transaction.pepi_book_id === activeBook.id
         ) {
           if (transaction.transaction_type === "spending") {
-            spendingTotal += parseFloat(transaction.amount);
+            spendingTotal += transaction.amount;
           }
         }
       });
@@ -307,10 +314,24 @@ export default function TransactionList() {
                   : "View and manage your transactions"}
             </CardDescription>
           </div>
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Transaction
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={() => setIsFormOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Transaction
+            </Button>
+            {!isAdmin && (
+               <Dialog open={isRequestFormOpen} onOpenChange={setIsRequestFormOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                     <PlusCircle className="mr-2 h-4 w-4" /> Request Funds
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <FundRequestForm onSuccess={() => setIsRequestFormOpen(false)} />
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </div>
 
         {isAdmin && activeBook && (
@@ -387,7 +408,7 @@ export default function TransactionList() {
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredTransactions.map((transaction) => (
+            {filteredTransactions.map((transaction: TransactionWithAgent) => (
               <div
                 key={transaction.id}
                 className={`flex items-center justify-between p-4 border rounded-lg ${transaction.status === "rejected" ? "border-red-300 bg-red-50" : ""}`}
@@ -409,15 +430,10 @@ export default function TransactionList() {
                           <span>Receipt: {transaction.receipt_number}</span>
                         </>
                       )}
-                      {transaction.agents && (
+                      {transaction.agent?.name && (
                         <>
                           <span>•</span>
-                          <span>
-                            Agent: {transaction.agents.name}{" "}
-                            {transaction.agents.badge_number
-                              ? `(${transaction.agents.badge_number})`
-                              : ""}
-                          </span>
+                          <span>Agent: {transaction.agent.name} {transaction.agent.badge_number ? `(#${transaction.agent.badge_number})` : ''}</span>
                         </>
                       )}
                     </div>
@@ -491,19 +507,9 @@ export default function TransactionList() {
           open={isDetailsOpen}
           onOpenChange={setIsDetailsOpen}
           onDelete={fetchTransactions}
-          onEdit={(updatedTransaction) => {
-            // Update the transaction in the list
-            if (updatedTransaction) {
-              setTransactions((prevTransactions) =>
-                prevTransactions.map((t) =>
-                  t.id === updatedTransaction.id
-                    ? { ...t, ...updatedTransaction }
-                    : t,
-                ),
-              );
-            }
-            // Also refresh from the database
+          onEdit={() => {
             fetchTransactions();
+            setIsDetailsOpen(false);
           }}
         />
       )}
