@@ -153,9 +153,6 @@ export default function DashboardOverview() {
         .select("*", { count: "exact", head: true })
         .eq("is_active", true);
 
-      // Fetch active PEPI book details - we know activeBook is valid
-      let startingAmount = activeBook.starting_amount || 0;
-
       // Fetch transactions with agent details filtered by active PEPI book
       let transactionQuery = supabase
         .from("transactions")
@@ -174,52 +171,40 @@ export default function DashboardOverview() {
         return;
       }
 
-      // Calculate stats
-      let issuanceTotal = 0;
-      let returnedTotal = 0;
-      let spendingTotal = 0;
-
-      // Find initial funding transaction
-      const initialFundingTransaction = transactions?.find(
-        (transaction: Transaction) =>
-          transaction.transaction_type === "issuance" &&
-          transaction.description?.toLowerCase().includes("initial funding"),
-      );
+      // Calculate stats based on APPROVED transactions only
+      let currentBalance = 0;
+      let totalIssuance = 0;  // For display card
+      let totalSpending = 0;  // For display card
+      let totalReturned = 0;  // For display card
 
       transactions?.forEach((transaction: Transaction) => {
-        if (
-          (transaction.status === "approved" ||
-            transaction.status === "pending") &&
-          // Skip the initial funding transaction when calculating issuance total
-          transaction.id !== initialFundingTransaction?.id
-        ) {
-          if (transaction.transaction_type === "issuance") {
-            issuanceTotal += transaction.amount;
-          } else if (transaction.transaction_type === "return") {
-            returnedTotal += transaction.amount;
-          } else if (transaction.transaction_type === "spending") {
-            spendingTotal += transaction.amount;
-          }
+        if (transaction.status === "approved") { // <-- Only check approved
+            if (transaction.transaction_type === "issuance") {
+                currentBalance += transaction.amount;
+                totalIssuance += transaction.amount; // Sum for the card
+            } else if (transaction.transaction_type === "spending") {
+                currentBalance -= transaction.amount;
+                totalSpending += transaction.amount; // Sum for the card
+            } else if (transaction.transaction_type === "return") {
+                currentBalance += transaction.amount;
+                totalReturned += transaction.amount; // Sum for the card
+            }
         }
       });
 
-      // Initial funding is the starting amount from the PEPI book
-      const initialFunding = startingAmount;
-
-      // Cash on hand is the initial funding minus what's been spent
-      const cashOnHand = initialFunding - spendingTotal;
-
-      // Current balance should account for initial funding, spending, and returns
-      const currentBalance = initialFunding - spendingTotal + returnedTotal;
+      // Cash on hand calculation might need review - what does it represent?
+      // If it's meant to be "unspent funds issued to agents", it needs different logic.
+      // For now, let's make it match currentBalance as the most representative value.
+      const cashOnHand = currentBalance; 
 
       setStats({
         totalAgents: agentsCount || 0,
-        totalTransactions: transactions?.length || 0,
-        totalIssuance: issuanceTotal,
-        totalReturned: returnedTotal,
-        currentBalance: currentBalance,
-        cashOnHand: cashOnHand,
-        spendingTotal: spendingTotal,
+        totalTransactions: transactions?.filter(t => t.status === 'approved').length || 0, // Count only approved Tx
+        totalIssuance: totalIssuance,     // Use summed approved value
+        totalReturned: totalReturned,     // Use summed approved value
+        currentBalance: currentBalance,   // Use the directly calculated balance
+        cashOnHand: cashOnHand,           // Set to currentBalance for now
+        spendingTotal: totalSpending,     // Use summed approved value
         activePepiBookId: activeBook?.id || null,
         activePepiBookYear: activeBook?.year || null,
       });
