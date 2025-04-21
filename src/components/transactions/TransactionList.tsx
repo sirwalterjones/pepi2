@@ -538,7 +538,9 @@ export default function TransactionList() {
                   <div className="flex-1">
                     <div className="font-medium">
                       {item.itemType === 'transaction' 
-                        ? item.description || `Transaction ${item.id.substring(0, 8)}`
+                        ? (item.description?.startsWith("Approved fund request for") 
+                            ? `Issuance (Approved Request)` 
+                            : (item.description || `Transaction ${item.id.substring(0, 8)}`))
                         : `Fund Request (Case: ${item.case_number || 'N/A'})`}
                     </div>
                     <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
