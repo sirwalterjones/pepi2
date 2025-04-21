@@ -8,6 +8,7 @@ import { createClient } from "../../../supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Agent, PepiBook } from "@/types/schema";
 import PendingRequestsList from "@/components/requests/PendingRequestsList";
+import TransactionList from "@/components/transactions/TransactionList";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 export const revalidate = 0; // Prevent caching for dynamic data
@@ -61,11 +62,12 @@ export default async function Dashboard() {
     console.log("Dashboard Page: Rendering AgentDashboard");
     dashboardContent = <AgentDashboard />;
   } else if (isAdmin) {
-    console.log("Dashboard Page: Rendering Admin View (Overview + Pending Requests)");
+    console.log("Dashboard Page: Rendering Admin View (Pending Requests + Overview + Transactions)");
     dashboardContent = (
       <div className="space-y-8">
-        <DashboardOverview />
         <PendingRequestsList />
+        <DashboardOverview />
+        <TransactionList />
       </div>
     );
   } else {

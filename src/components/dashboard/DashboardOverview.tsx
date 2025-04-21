@@ -28,7 +28,6 @@ type DashboardStats = {
   currentBalance: number;
   cashOnHand: number;
   spendingTotal: number;
-  recentTransactions: TransactionWithAgent[];
   activePepiBookId: string | null;
   activePepiBookYear: number | null;
 };
@@ -42,7 +41,6 @@ export default function DashboardOverview() {
     currentBalance: 0,
     cashOnHand: 0,
     spendingTotal: 0,
-    recentTransactions: [],
     activePepiBookId: null,
     activePepiBookYear: null,
   });
@@ -96,7 +94,6 @@ export default function DashboardOverview() {
         currentBalance: 0,
         cashOnHand: 0,
         spendingTotal: 0,
-        recentTransactions: [],
         activePepiBookId: null,
         activePepiBookYear: null,
       });
@@ -178,10 +175,6 @@ export default function DashboardOverview() {
       // Current balance should account for initial funding, spending, and returns
       const currentBalance = initialFunding - spendingTotal + returnedTotal;
 
-      // --- Remove Debugging Log ---
-      // console.log("Dashboard Data Fetch Complete (2025 Check):", { ... });
-      // --- End Remove Debugging Log ---
-
       setStats({
         totalAgents: agentsCount || 0,
         totalTransactions: transactions?.length || 0,
@@ -190,7 +183,6 @@ export default function DashboardOverview() {
         currentBalance: currentBalance,
         cashOnHand: cashOnHand,
         spendingTotal: spendingTotal,
-        recentTransactions: transactions?.slice(0, 5) || [],
         activePepiBookId: activeBook?.id || null,
         activePepiBookYear: activeBook?.year || null,
       });
@@ -204,10 +196,6 @@ export default function DashboardOverview() {
 
   // Effect to check balance and show alert (remove debug log)
   useEffect(() => {
-    // --- Remove Debugging Log ---
-    // console.log("Alert Check Triggered:", { ... });
-    // --- End Remove Debugging Log ---
-
     if (
       initialLoadComplete &&
       isAdmin &&
@@ -341,91 +329,6 @@ export default function DashboardOverview() {
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Transactions</CardTitle>
-          <CardDescription>
-            Latest fund movements{" "}
-            {stats.activePepiBookYear
-              ? `for PEPI Book ${stats.activePepiBookYear}`
-              : ""}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : stats.recentTransactions.length === 0 ? (
-            <div className="text-center py-4 text-muted-foreground">
-              No transactions yet
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {stats.recentTransactions.map((transaction: TransactionWithAgent) => (
-                <div
-                  key={transaction.id}
-                  className="flex flex-col border-b pb-3 pt-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-full bg-muted">
-                        {transaction.transaction_type === "issuance" ? (
-                          <ArrowUpRight className="h-4 w-4 text-red-500" />
-                        ) : transaction.transaction_type === "return" ? (
-                          <ArrowDownLeft className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <DollarSign className="h-4 w-4 text-amber-500" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium">
-                          {transaction.description ||
-                            `Transaction ${transaction.id.substring(0, 8)}`}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(transaction.created_at).toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-sm font-medium">
-                      {formatCurrency(transaction.amount)}
-                    </div>
-                  </div>
-                  <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                    <div className="bg-muted/50 rounded px-2 py-1">
-                      <span className="font-semibold">Type:</span>{" "}
-                      <span className="capitalize">
-                        {transaction.transaction_type}
-                      </span>
-                    </div>
-                    <div className="bg-muted/50 rounded px-2 py-1">
-                      <span className="font-semibold">Status:</span>{" "}
-                      <span className="capitalize">{transaction.status}</span>
-                    </div>
-                    {transaction.receipt_number && (
-                      <div className="bg-muted/50 rounded px-2 py-1">
-                        <span className="font-semibold">Receipt:</span>{" "}
-                        {transaction.receipt_number}
-                      </div>
-                    )}
-                    {transaction.agent_id && (
-                      <div className="bg-muted/50 rounded px-2 py-1 col-span-2">
-                        <span className="font-semibold">Agent:</span>{" "}
-                        {transaction.agent?.name ||
-                          transaction.agent_id.substring(0, 8) + "..."}
-                        {transaction.agent?.badge_number &&
-                          ` (#${transaction.agent.badge_number})`}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
