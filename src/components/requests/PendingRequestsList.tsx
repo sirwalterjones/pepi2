@@ -130,6 +130,7 @@ export default function PendingRequestsList() {
 
   const handleApprove = async (requestId: string) => {
     setProcessingRequestId(requestId);
+    console.log(`[Client] Attempting to approve request with ID: ${requestId}`);
     try {
       const result = await approveFundRequestAction(requestId);
       if (result?.error) {

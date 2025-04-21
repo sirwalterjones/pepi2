@@ -502,25 +502,37 @@ export async function requestFundsAction(formData: {
 // Action to approve a fund request
 export async function approveFundRequestAction(requestId: string) {
   "use server";
+  console.log(`[Server Action] approveFundRequestAction called with requestId: ${requestId}`); // Log received ID
   const supabase = await createClient();
 
   // 1. Verify user is admin
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) {
+    console.error("[Server Action] Authentication error:", userError);
     return { error: "Authentication required." };
   }
-  const { data: adminData, error: adminCheckError } = await supabase
-    .from("agents")
-    .select("id, name") // Select admin name for signature
-    .eq("user_id", user.id)
-    .eq("role", "admin")
-    .single();
+  console.log(`[Server Action] Authenticated User ID: ${user.id}`); // Log user ID
 
-  if (adminCheckError || !adminData) {
-    return { error: "Admin privileges required." };
+  const { data: agentData, error: adminCheckError } = await supabase
+    .from("agents")
+    .select("id, name, role") // Select role to log it
+    .eq("user_id", user.id)
+    .single(); // Changed from .eq("role", "admin").single() to fetch the agent record first
+
+  if (adminCheckError || !agentData) {
+    console.error(`[Server Action] Error fetching agent data for user ${user.id}:`, adminCheckError);
+    return { error: "Failed to retrieve agent data." };
+  }
+
+  console.log(`[Server Action] User's Agent Role: ${agentData.role}`); // Log the fetched role
+
+  if (agentData.role !== 'admin') {
+     console.warn(`[Server Action] User ${user.id} with role ${agentData.role} attempted admin action.`);
+     return { error: "Admin privileges required." };
   }
 
   // 2. Fetch the fund request details
+  console.log(`[Server Action] Attempting to fetch fund request with ID: ${requestId}`); // Log before fetch
   const { data: request, error: fetchError } = await supabase
     .from("fund_requests")
     .select("*, pepi_book:pepi_books(is_active, is_closed)")
