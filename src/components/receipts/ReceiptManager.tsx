@@ -89,7 +89,7 @@ export default function ReceiptManager() {
         .select(
           `
           *,
-          agents:agent_id (id, name, badge_number)
+          agent:agents!transactions_agent_id_fkey(id, name, badge_number)
         `,
         )
         .not("receipt_number", "is", null)
@@ -123,7 +123,7 @@ export default function ReceiptManager() {
       transaction.description
         ?.toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      transaction.agents?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      transaction.agent?.name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
 
