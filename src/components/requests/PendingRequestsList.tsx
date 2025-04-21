@@ -154,6 +154,10 @@ export default function PendingRequestsList() {
         throw new Error(result.error);
       }
       toast({ title: "Success", description: "Fund request approved and transaction created." });
+      // Optimistically remove the approved request from the list
+      setRequests((prevRequests) => 
+        prevRequests.filter((req) => req.id !== requestId)
+      );
     } catch (err: any) {
       console.error("Error approving request:", err);
       toast({ title: "Error", description: err.message || "Failed to approve request.", variant: "destructive" });
@@ -175,6 +179,10 @@ export default function PendingRequestsList() {
         throw new Error(result.error);
       }
       toast({ title: "Success", description: "Fund request rejected." });
+      // Optimistically remove the rejected request from the list
+      setRequests((prevRequests) => 
+        prevRequests.filter((req) => req.id !== requestId)
+      );
     } catch (err: any) {
       console.error("Error rejecting request:", err);
       toast({ title: "Error", description: err.message || "Failed to reject request.", variant: "destructive" });
