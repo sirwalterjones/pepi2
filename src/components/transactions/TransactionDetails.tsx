@@ -435,11 +435,20 @@ export default function TransactionDetails({
                   <span>${transaction.transaction_type.charAt(0).toUpperCase() + transaction.transaction_type.slice(1)}</span>
                 </div>
                 ${
-                  transaction.agents
+                  transaction.agent
                     ? `
                 <div class="info-row">
                   <span class="label">Agent:</span>
-                  <span>${transaction.agents.name} ${transaction.agents.badge_number ? `(${transaction.agents.badge_number})` : ""}</span>
+                  <span>${transaction.agent.name} ${transaction.agent.badge_number ? `(${transaction.agent.badge_number})` : ""}</span>
+                </div>`
+                    : ""
+                }
+                ${
+                  creatorName
+                    ? `
+                <div class="info-row">
+                  <span class="label">Created/Approved By:</span>
+                  <span>${creatorName}</span>
                 </div>`
                     : ""
                 }
