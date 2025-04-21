@@ -38,54 +38,66 @@ export default function AgentDashboard() {
 
   useEffect(() => {
     const fetchAgentData = async () => {
+      console.log("AgentDashboard: fetchAgentData started");
       setLoading(true);
       try {
         // Get current user
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        console.log("AgentDashboard: getUser result", { user, authError });
 
-        if (!user) {
+        if (authError || !user) {
+          console.error("AgentDashboard: User not found or auth error.");
+          setLoading(false);
           return;
         }
 
         // Get agent info
+        console.log(`AgentDashboard: Fetching agent for user_id: ${user.id}`);
         const { data: agentData, error: agentError } = await supabase
           .from("agents")
-          .select("*")
+          .select("*", { count: 'exact' })
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
+
+        console.log("AgentDashboard: agent query result", { agentData, agentError });
 
         if (agentError) {
-          console.error("Error fetching agent info:", agentError);
+          console.error("AgentDashboard: Error fetching agent info:", agentError);
+          setLoading(false);
           return;
         }
 
+        if (!agentData) {
+          console.warn("AgentDashboard: No agent record found for this user.");
+          setLoading(false);
+          return;
+        }
+
+        console.log("AgentDashboard: Setting agentInfo state.");
         setAgentInfo(agentData);
 
-        // Get agent's transactions
+        // Fetch transactions (Only if agentData is valid)
+        console.log(`AgentDashboard: Fetching transactions for agent_id: ${agentData.id}`);
         const { data: transactionData, error: transactionError } =
           await supabase
             .from("transactions")
             .select(
+              `*,
+               agents:agent_id (id, name, badge_number)
               `
-            *,
-            agents:agent_id (id, name, badge_number)
-          `,
             )
             .eq("agent_id", agentData.id)
             .order("created_at", { ascending: false });
 
+        console.log("AgentDashboard: transaction query result", { transactionData, transactionError });
+
         if (transactionError) {
-          console.error("Error fetching transactions:", transactionError);
-          return;
+          console.error("AgentDashboard: Error fetching transactions:", transactionError);
         }
 
-        // Filter pending and rejected transactions
-        const pending =
-          transactionData?.filter((t) => t.status === "pending") || [];
-        const rejected =
-          transactionData?.filter((t) => t.status === "rejected") || [];
+        // Process transactions even if fetch failed (transactionData might be null)
+        const pending = transactionData?.filter((t) => t.status === "pending") || [];
+        const rejected = transactionData?.filter((t) => t.status === "rejected") || [];
         setPendingTransactions(pending);
         setRejectedTransactions(rejected);
         setTransactions(transactionData || []);
@@ -93,10 +105,7 @@ export default function AgentDashboard() {
         // Calculate agent's current balance
         let balance = 0;
         transactionData?.forEach((transaction) => {
-          if (
-            transaction.status === "approved" ||
-            transaction.status === "pending"
-          ) {
+          if (transaction.status === "approved" || transaction.status === "pending") {
             if (transaction.transaction_type === "issuance") {
               balance += parseFloat(transaction.amount);
             } else if (transaction.transaction_type === "spending") {
@@ -106,21 +115,19 @@ export default function AgentDashboard() {
             }
           }
         });
+        console.log("AgentDashboard: Calculated balance", { balance });
         setAgentBalance(balance);
+
       } catch (error) {
-        console.error("Error fetching agent data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load agent dashboard data",
-          variant: "destructive",
-        });
+        console.error("AgentDashboard: Error in fetchAgentData try block:", error);
       } finally {
+        console.log("AgentDashboard: fetchAgentData finished");
         setLoading(false);
       }
     };
 
     fetchAgentData();
-  }, [supabase, toast]);
+  }, [supabase]);
 
   const getTransactionIcon = (type: TransactionType) => {
     switch (type) {
