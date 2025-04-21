@@ -27,6 +27,7 @@ import {
   rejectFundRequestAction,
   deleteFundRequestAction,
 } from "@/app/actions";
+import { usePepiBooks } from "@/hooks/usePepiBooks";
 
 // Define the structure of the fetched request data, including agent name
 type PendingRequest = {
@@ -47,60 +48,71 @@ export default function PendingRequestsList() {
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
   const supabase = createClient();
   const { toast } = useToast();
+  const { activeBook } = usePepiBooks();
 
   useEffect(() => {
-    const fetchRequests = async () => {
-      setLoading(true);
-      setError(null);
-      console.log("[PendingRequestsList] Fetching requests...");
-      try {
-        // Fetch pending requests and join with agents and pepi_books tables
-        const { data, error: fetchError } = await supabase
-          .from("fund_requests")
-          .select(`
-            id,
-            agent_id,
-            pepi_book_id,
-            amount,
-            case_number,
-            requested_at,
-            agent:agents!fund_requests_agent_id_fkey ( name ),
-            pepi_book:pepi_books!fund_requests_pepi_book_id_fkey ( year )
-          `)
-          .eq("status", "pending")
-          .order("requested_at", { ascending: true });
+    if (activeBook !== undefined) {
+      fetchRequests();
+    }
+  }, [activeBook]);
 
-        if (fetchError) {
-          throw fetchError;
-        }
-        console.log(`[PendingRequestsList] Fetched raw data count: ${data?.length || 0}`);
+  const fetchRequests = async () => {
+    if (!activeBook?.id) {
+      console.log("[PendingRequestsList] No active PEPI book, skipping fetch.");
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
 
-        // Map data to include agent_name and pepi_book_year directly
-        const formattedData: PendingRequest[] = data.map((req: any) => ({
-          id: req.id,
-          agent_id: req.agent_id,
-          pepi_book_id: req.pepi_book_id,
-          amount: req.amount,
-          case_number: req.case_number,
-          requested_at: req.requested_at,
-          agent_name: req.agent?.name || 'Unknown Agent',
-          pepi_book_year: req.pepi_book?.year || 0,
-        }));
-        console.log("[PendingRequestsList] Formatted Data:", JSON.stringify(formattedData, null, 2));
+    setLoading(true);
+    setError(null);
+    console.log(`[PendingRequestsList] Fetching requests for PEPI Book: ${activeBook.id}...`);
+    try {
+      const { data, error: fetchError } = await supabase
+        .from("fund_requests")
+        .select(`
+          id,
+          agent_id,
+          pepi_book_id,
+          amount,
+          case_number,
+          requested_at,
+          agent:agents!fund_requests_agent_id_fkey ( name ),
+          pepi_book:pepi_books!fund_requests_pepi_book_id_fkey ( year )
+        `)
+        .eq("status", "pending")
+        .eq("pepi_book_id", activeBook.id)
+        .order("requested_at", { ascending: true });
 
-        setRequests(formattedData);
-
-      } catch (err: any) {
-        console.error("Error fetching pending requests:", err);
-        setError(err.message || "Failed to load pending requests.");
-      } finally {
-        setLoading(false);
+      if (fetchError) {
+        throw fetchError;
       }
-    };
+      console.log(`[PendingRequestsList] Fetched raw data count: ${data?.length || 0}`);
 
-    fetchRequests();
+      // Map data to include agent_name and pepi_book_year directly
+      const formattedData: PendingRequest[] = data.map((req: any) => ({
+        id: req.id,
+        agent_id: req.agent_id,
+        pepi_book_id: req.pepi_book_id,
+        amount: req.amount,
+        case_number: req.case_number,
+        requested_at: req.requested_at,
+        agent_name: req.agent?.name || 'Unknown Agent',
+        pepi_book_year: req.pepi_book?.year || 0,
+      }));
+      console.log("[PendingRequestsList] Formatted Data:", JSON.stringify(formattedData, null, 2));
 
-    // Set up a listener for real-time updates
+      setRequests(formattedData);
+
+    } catch (err: any) {
+      console.error("Error fetching pending requests:", err);
+      setError(err.message || "Failed to load pending requests.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     const channel = supabase
       .channel('fund_requests_changes')
       .on(
@@ -117,11 +129,9 @@ export default function PendingRequestsList() {
       )
       .subscribe();
 
-    // Cleanup function to remove the listener when the component unmounts
     return () => {
       supabase.removeChannel(channel);
     };
-
   }, [supabase]);
 
   const formatCurrency = (amount: number) => {
