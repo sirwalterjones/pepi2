@@ -166,8 +166,8 @@ export default function TransactionDetails({
       case "return":
         return (
           <Badge
-            variant="success"
-            className="bg-green-100 text-green-800 hover:bg-green-100"
+            variant="outline"
+            className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200"
           >
             Returned
           </Badge>
@@ -191,8 +191,8 @@ export default function TransactionDetails({
       case "approved":
         return (
           <Badge
-            variant="success"
-            className="bg-green-100 text-green-800 hover:bg-green-100"
+            variant="outline"
+            className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200"
           >
             Approved
           </Badge>
@@ -365,7 +365,7 @@ export default function TransactionDetails({
         // Force selected transaction to update in parent component
         if (onEdit) {
           // Pass the updated transaction to the parent
-          onEdit(updatedTransaction);
+          onEdit();
         }
       }
 
@@ -601,11 +601,11 @@ export default function TransactionDetails({
                 </Select>
               ) : (
                 <div>
-                  {displayTransaction.agents ? (
+                  {displayTransaction.agent ? (
                     <>
-                      {displayTransaction.agents.name}{" "}
-                      {displayTransaction.agents.badge_number
-                        ? `(${transaction.agents.badge_number})`
+                      {displayTransaction.agent.name}{" "}
+                      {displayTransaction.agent.badge_number
+                        ? `(${displayTransaction.agent.badge_number})`
                         : ""}
                     </>
                   ) : (
