@@ -8,35 +8,74 @@ import { createClient } from "../../../supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Agent, PepiBook } from "@/types/schema";
 import PendingRequestsList from "@/components/requests/PendingRequestsList";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 export const revalidate = 0; // Prevent caching for dynamic data
 
 export default async function Dashboard() {
+  console.log("--- Dashboard Page Load Start ---"); // Add log
   const supabase = await createClient();
 
   const {
-    data: { user },
+    data: { user }, error: userError // Capture user fetch error
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (userError || !user) {
+    console.error("Dashboard Page: User fetch failed or no user", { userError }); // Log error
     return redirect("/sign-in");
   }
+  console.log(`Dashboard Page: User authenticated: ${user.id} (${user.email})`); // Log user info
 
   // Check if user is an agent or admin
   let userRole = "user";
   let isAgent = false;
   let isAdmin = false;
 
-  const { data: agentData } = await supabase
+  console.log(`Dashboard Page: Checking agent role for user_id: ${user.id}`); // Log before agent check
+  const { data: agentData, error: agentError } = await supabase
     .from("agents")
     .select("role")
     .eq("user_id", user.id)
     .single();
 
+  console.log("Dashboard Page: Agent query result", { agentData, agentError }); // Log agent query result
+
+  if (agentError && agentError.code !== 'PGRST116') { // Ignore error if it's just 'no rows found'
+      console.error("Dashboard Page: Error fetching agent data:", agentError);
+      // Decide if we should redirect or show an error message
+  }
+
   if (agentData) {
     userRole = agentData.role;
     isAgent = true;
     isAdmin = agentData.role === "admin";
+    console.log(`Dashboard Page: Agent role found: ${userRole}`); // Log found role
+  } else {
+      console.log("Dashboard Page: No agent record found for user."); // Log if no agent found
+  }
+
+  console.log("Dashboard Page: Final roles", { isAgent, isAdmin }); // Log final roles
+
+  let dashboardContent = null;
+  if (isAgent && !isAdmin) {
+    console.log("Dashboard Page: Rendering AgentDashboard");
+    dashboardContent = <AgentDashboard />;
+  } else if (isAdmin) {
+    console.log("Dashboard Page: Rendering Admin View (Overview + Pending Requests)");
+    dashboardContent = (
+      <div className="space-y-8">
+        <DashboardOverview />
+        <PendingRequestsList />
+      </div>
+    );
+  } else {
+    console.log("Dashboard Page: Rendering message for non-agent/non-admin user");
+    dashboardContent = (
+      <Card>
+        <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
+        <CardContent><p>Your account is not associated with an agent profile.</p></CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -71,15 +110,8 @@ export default async function Dashboard() {
             </p>
           </header>
 
-          {/* Dashboard Content - Show different views based on role */}
-          {isAgent && !isAdmin ? <AgentDashboard /> : (
-            isAdmin && (
-              <div className="space-y-8">
-                <DashboardOverview />
-                <PendingRequestsList />
-              </div>
-            )
-          )}
+          {/* Dashboard Content */}
+          {dashboardContent} { /* Render the determined content */}
 
           {/* User Profile Section */}
           <section className="bg-card rounded-xl p-6 border shadow-sm">
