@@ -502,105 +502,124 @@ export async function requestFundsAction(formData: {
 // Action to approve a fund request
 export async function approveFundRequestAction(requestId: string) {
   "use server";
-  console.log(`[Server Action TEST] >>> approveFundRequestAction called with requestId: ${requestId}`);
-  // Temporarily return an error to prevent further execution during this test
-  return { error: "TEST: Action invoked, but logic skipped." };
-/*
-  console.log(`[Server Action] approveFundRequestAction called with requestId: ${requestId}`); // Log received ID
-  const supabase = await createClient();
+  // Log invocation immediately
+  console.log(`[Server Action] approveFundRequestAction INVOKED with requestId: ${requestId}`);
 
-  // 1. Verify user is admin
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    console.error("[Server Action] Authentication error:", userError);
-    return { error: "Authentication required." };
+  try {
+    // Original logic starts here
+    const supabase = await createClient();
+
+    // 1. Verify user is admin
+    console.log(`[Server Action] Attempting to get user...`);
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error("[Server Action] Authentication error:", userError);
+      return { error: "Authentication required." };
+    }
+    console.log(`[Server Action] Authenticated User ID: ${user.id}`);
+
+    console.log(`[Server Action] Attempting to fetch agent data for user ${user.id}...`);
+    const { data: agentData, error: adminCheckError } = await supabase
+      .from("agents")
+      .select("id, name, role") // Select role
+      .eq("user_id", user.id)
+      .single();
+
+    if (adminCheckError || !agentData) {
+      console.error(`[Server Action] Error fetching agent data for user ${user.id}:`, adminCheckError);
+      // Provide more specific feedback if possible
+      if (adminCheckError?.code === 'PGRST116') { // Code for 'No rows found'
+         return { error: `No agent record found linked to user ID ${user.id}. Cannot verify role.` };
+      }
+      return { error: "Failed to retrieve agent data." };
+    }
+    console.log(`[Server Action] User's Agent Role: ${agentData.role}`);
+
+    if (agentData.role !== 'admin') {
+       console.warn(`[Server Action] User ${user.id} with role ${agentData.role} attempted admin action.`);
+       return { error: "Admin privileges required." };
+    }
+
+    // 2. Fetch the fund request details
+    console.log(`[Server Action] Attempting to fetch fund request with ID: ${requestId}`);
+    const { data: request, error: fetchError } = await supabase
+      .from("fund_requests")
+      .select("*, pepi_book:pepi_books(is_active, is_closed)")
+      .eq("id", requestId)
+      .single();
+
+    if (fetchError || !request) {
+      console.error(`[Server Action] Error fetching fund request ${requestId}:`, fetchError);
+      // Log the specific Supabase error if available
+      return { error: `Fund request not found (ID: ${requestId.substring(0,8)}...). Supabase error: ${fetchError?.message}` };
+    }
+    console.log(`[Server Action] Found fund request ${requestId}. Status: ${request.status}`);
+
+    if (request.status !== 'pending') {
+      console.warn(`[Server Action] Request ${requestId} already processed. Status: ${request.status}`);
+      return { error: "Request has already been processed." };
+    }
+
+    if (!request.pepi_book?.is_active || request.pepi_book?.is_closed) {
+      console.warn(`[Server Action] Request ${requestId} belongs to inactive/closed PEPI Book.`);
+      return { error: "Cannot process request for an inactive or closed PEPI Book." };
+    }
+
+    // 3. Create the corresponding transaction
+    console.log(`[Server Action] Creating transaction for request ${requestId}...`);
+    const transactionDescription = `Approved fund request for case ${request.case_number || 'N/A'}`;
+    const { data: newTransaction, error: transactionError } = await supabase
+      .from("transactions")
+      .insert({
+        agent_id: request.agent_id,
+        pepi_book_id: request.pepi_book_id,
+        transaction_type: "issuance",
+        amount: request.amount,
+        description: transactionDescription,
+        created_by: user.id, // Admin user ID
+        status: "approved", // Auto-approved issuance
+        receipt_number: `REQ-${requestId.substring(0, 8)}`, // Generate a receipt number
+      })
+      .select('id') // Select the ID of the newly created transaction
+      .single();
+
+    if (transactionError || !newTransaction) {
+      console.error(`[Server Action] Error creating transaction for fund request ${requestId}:`, transactionError);
+      return { error: "Failed to create associated transaction." };
+    }
+    console.log(`[Server Action] Created transaction ${newTransaction.id} for request ${requestId}.`);
+
+    // 4. Update the fund request status
+    console.log(`[Server Action] Updating status for request ${requestId} to approved...`);
+    const { error: updateError } = await supabase
+      .from("fund_requests")
+      .update({
+        status: "approved",
+        reviewed_by_user_id: user.id,
+        reviewed_at: new Date().toISOString(),
+        transaction_id: newTransaction.id, // Link to the created transaction
+      })
+      .eq("id", requestId);
+
+    if (updateError) {
+      console.error(`[Server Action] CRITICAL: Failed to update fund request ${requestId} status after creating transaction ${newTransaction.id}:`, updateError);
+      // TODO: Consider trying to delete the created transaction here if possible
+      return { error: "Failed to update request status after approval." };
+    }
+    console.log(`[Server Action] Successfully updated status for request ${requestId}.`);
+
+    // 5. Revalidate paths
+    console.log(`[Server Action] Revalidating /dashboard path...`);
+    revalidatePath("/dashboard");
+
+    console.log(`[Server Action] approveFundRequestAction COMPLETED successfully for requestId: ${requestId}`);
+    return { success: true };
+
+  } catch (error: any) {
+    // Catch any unexpected errors in the entire block
+    console.error(`[Server Action] UNHANDLED ERROR in approveFundRequestAction for requestId: ${requestId}:`, error);
+    return { error: `An unexpected server error occurred: ${error.message}` };
   }
-  console.log(`[Server Action] Authenticated User ID: ${user.id}`); // Log user ID
-
-  const { data: agentData, error: adminCheckError } = await supabase
-    .from("agents")
-    .select("id, name, role") // Select role to log it
-    .eq("user_id", user.id)
-    .single(); // Changed from .eq("role", "admin").single() to fetch the agent record first
-
-  if (adminCheckError || !agentData) {
-    console.error(`[Server Action] Error fetching agent data for user ${user.id}:`, adminCheckError);
-    return { error: "Failed to retrieve agent data." };
-  }
-
-  console.log(`[Server Action] User's Agent Role: ${agentData.role}`); // Log the fetched role
-
-  if (agentData.role !== 'admin') {
-     console.warn(`[Server Action] User ${user.id} with role ${agentData.role} attempted admin action.`);
-     return { error: "Admin privileges required." };
-  }
-
-  // 2. Fetch the fund request details
-  console.log(`[Server Action] Attempting to fetch fund request with ID: ${requestId}`); // Log before fetch
-  const { data: request, error: fetchError } = await supabase
-    .from("fund_requests")
-    .select("*, pepi_book:pepi_books(is_active, is_closed)")
-    .eq("id", requestId)
-    .single();
-
-  if (fetchError || !request) {
-    return { error: "Fund request not found." };
-  }
-
-  if (request.status !== 'pending') {
-    return { error: "Request has already been processed." };
-  }
-
-  if (!request.pepi_book?.is_active || request.pepi_book?.is_closed) {
-     return { error: "Cannot process request for an inactive or closed PEPI Book." };
-  }
-
-  // 3. Create the corresponding transaction
-  const transactionDescription = `Approved fund request for case ${request.case_number || 'N/A'}`;
-  const { data: newTransaction, error: transactionError } = await supabase
-    .from("transactions")
-    .insert({
-      agent_id: request.agent_id,
-      pepi_book_id: request.pepi_book_id,
-      transaction_type: "issuance",
-      amount: request.amount,
-      description: transactionDescription,
-      created_by: user.id, // Admin user ID
-      status: "approved", // Auto-approved issuance
-      receipt_number: `REQ-${requestId.substring(0, 8)}`, // Generate a receipt number
-    })
-    .select('id') // Select the ID of the newly created transaction
-    .single();
-
-  if (transactionError || !newTransaction) {
-    console.error("Error creating transaction for fund request:", transactionError);
-    return { error: "Failed to create associated transaction." };
-  }
-
-  // 4. Update the fund request status
-  const { error: updateError } = await supabase
-    .from("fund_requests")
-    .update({
-      status: "approved",
-      reviewed_by_user_id: user.id,
-      reviewed_at: new Date().toISOString(),
-      transaction_id: newTransaction.id, // Link to the created transaction
-      // NOTE: Supervisor signature (admin name) is implicitly known by reviewed_by_user_id
-    })
-    .eq("id", requestId);
-
-  if (updateError) {
-    // Attempt to rollback or log the inconsistency
-    console.error("CRITICAL: Failed to update fund request status after creating transaction:", updateError);
-    // TODO: Consider trying to delete the created transaction here if possible
-    return { error: "Failed to update request status after approval." };
-  }
-
-  // 5. Revalidate paths
-  revalidatePath("/dashboard"); // Revalidate agent and admin dashboards
-
-  return { success: true };
-*/
 }
 
 // Action to reject a fund request
