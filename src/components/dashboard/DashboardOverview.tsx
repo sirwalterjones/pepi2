@@ -157,6 +157,19 @@ export default function DashboardOverview() {
         // Current balance should account for initial funding, spending, and returns
         const currentBalance = initialFunding - spendingTotal + returnedTotal;
 
+        // --- Debugging Logs ---
+        console.log("Dashboard Data Fetch Complete:", {
+          initialFunding,
+          spendingTotal,
+          returnedTotal,
+          calculatedCashOnHand: cashOnHand,
+          calculatedCurrentBalance: currentBalance,
+          activeBookId: activeBook?.id,
+          isAdmin,
+          initialLoadComplete: true, // Value *will be* set to true in finally block
+        });
+        // --- End Debugging Logs ---
+
         setStats({
           totalAgents: agentsCount || 0,
           totalTransactions: transactions?.length || 0,
@@ -182,6 +195,16 @@ export default function DashboardOverview() {
 
   // Effect to check balance and show alert
   useEffect(() => {
+    // --- Debugging Log ---
+    console.log("Alert Check Triggered:", {
+      initialLoadComplete,
+      isAdmin,
+      currentBalance: stats.currentBalance,
+      lowBalanceAlertShown,
+      shouldShowAlert: initialLoadComplete && isAdmin && stats.currentBalance <= 500 && !lowBalanceAlertShown,
+    });
+    // --- End Debugging Log ---
+
     if (
       initialLoadComplete &&
       isAdmin &&
