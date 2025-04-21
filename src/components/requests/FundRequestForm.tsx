@@ -102,6 +102,14 @@ export default function FundRequestForm({ onSuccess, initialData }: FundRequestF
 
     setIsSubmitting(true);
 
+    // Add logging here to see what the component thinks it's doing
+    console.log(`[FundRequestForm handleSubmit] initialData exists: ${!!initialData}`);
+    if (initialData) {
+        console.log(`[FundRequestForm handleSubmit] Attempting to call resubmitFundRequestAction for ID: ${initialData.id}`);
+    } else {
+        console.log(`[FundRequestForm handleSubmit] Attempting to call requestFundsAction`);
+    }
+
     try {
       let result: { success?: boolean; error?: string } | undefined;
 
