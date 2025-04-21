@@ -383,7 +383,11 @@ export default function TransactionList() {
         throw new Error(result.error);
       }
       toast({ title: "Success", description: "Fund request deleted." });
-      // List should refresh via real-time subscription
+      // Optimistically remove the item from the list
+      setCombinedList((prevList) => 
+        prevList.filter((item) => item.id !== requestId)
+      );
+      // List should refresh via real-time subscription eventually anyway
     } catch (err: any) {
       console.error("Error deleting request:", err);
       toast({ title: "Error", description: err.message || "Failed to delete request.", variant: "destructive" });
