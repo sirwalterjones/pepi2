@@ -51,6 +51,7 @@ export default function PendingRequestsList() {
     const fetchRequests = async () => {
       setLoading(true);
       setError(null);
+      console.log("[PendingRequestsList] Fetching requests...");
       try {
         // Fetch pending requests and join with agents and pepi_books tables
         const { data, error: fetchError } = await supabase
@@ -71,6 +72,7 @@ export default function PendingRequestsList() {
         if (fetchError) {
           throw fetchError;
         }
+        console.log(`[PendingRequestsList] Fetched raw data count: ${data?.length || 0}`);
 
         // Map data to include agent_name and pepi_book_year directly
         const formattedData: PendingRequest[] = data.map((req: any) => ({
@@ -83,6 +85,7 @@ export default function PendingRequestsList() {
           agent_name: req.agent?.name || 'Unknown Agent',
           pepi_book_year: req.pepi_book?.year || 0,
         }));
+        console.log("[PendingRequestsList] Formatted Data:", JSON.stringify(formattedData, null, 2));
 
         setRequests(formattedData);
 
@@ -96,14 +99,15 @@ export default function PendingRequestsList() {
 
     fetchRequests();
 
-    // Set up a listener for real-time updates (optional but recommended)
+    // Set up a listener for real-time updates
     const channel = supabase
       .channel('fund_requests_changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'fund_requests' },
         (payload) => {
-          console.log('Change received!', payload);
+          console.log('[PendingRequestsList] Change received!', payload);
+          console.log("[PendingRequestsList] Refetching data due to change...");
           // Refetch data on any change to the table
           fetchRequests();
         }
@@ -146,9 +150,14 @@ export default function PendingRequestsList() {
   };
 
   const handleReject = async (requestId: string) => {
+    // Prompt for rejection reason
+    const reason = prompt("Please enter the reason for rejecting this request (optional):");
+    // If user cancels the prompt, reason will be null, which is handled by the server action
+    
     setProcessingRequestId(requestId);
     try {
-      const result = await rejectFundRequestAction(requestId);
+      // Pass the reason to the server action
+      const result = await rejectFundRequestAction(requestId, reason);
       if (result?.error) {
         throw new Error(result.error);
       }
