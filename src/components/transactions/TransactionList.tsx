@@ -49,6 +49,7 @@ import {
 import FundRequestForm from "../requests/FundRequestForm";
 import { PlusCircle } from "lucide-react";
 import { deleteFundRequestAction } from "@/app/actions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Define a type for the combined list items
 type TransactionListItem = (TransactionWithAgent & { itemType: 'transaction' }) | 
@@ -330,32 +331,29 @@ export default function TransactionList() {
   const calculatePepiBookBalance = () => {
     if (!activeBook) return 0;
 
-    // Start with the initial balance from the active PEPI book
-    const initialFunding = activeBook.starting_amount || 0;
+    let currentBalance = 0; // Start from zero
 
-    // Calculate total spending
-    let spendingTotal = 0;
-
-    // Only process if we have transactions
-    if (transactions.length) {
-      // Calculate based on approved and pending transactions
-      transactions.forEach((transaction: TransactionWithAgent) => {
+    // Process all fetched transactions for the active book
+    transactions.forEach((transaction: TransactionWithAgent) => {
+        // Ensure the transaction belongs to the active book and is approved
         if (
-          (transaction.status === "approved" ||
-            transaction.status === "pending") &&
-          transaction.pepi_book_id === activeBook.id
+            transaction.pepi_book_id === activeBook.id &&
+            transaction.status === "approved" // Only count approved transactions towards balance
         ) {
-          if (transaction.transaction_type === "spending") {
-            spendingTotal += transaction.amount;
-          }
+            if (transaction.transaction_type === "issuance") {
+                currentBalance += transaction.amount; // Add issued funds
+            } else if (transaction.transaction_type === "spending") {
+                currentBalance -= transaction.amount; // Subtract spent funds
+            } else if (transaction.transaction_type === "return") {
+                currentBalance += transaction.amount; // Add returned funds
+            }
         }
-      });
-    }
+    });
 
-    // Current balance is the initial funding minus what's been spent
-    return initialFunding - spendingTotal;
+    return currentBalance;
   };
 
+  const pepiBookBalance = calculatePepiBookBalance(); // Calculate once
   const agentBalance = calculateAgentBalance();
 
   // Function to handle opening the edit form
@@ -453,10 +451,20 @@ export default function TransactionList() {
                 </p>
               </div>
               <div className="text-2xl font-bold text-green-700">
-                {formatCurrency(calculatePepiBookBalance())}
+                {formatCurrency(pepiBookBalance)}
               </div>
             </div>
           </div>
+        )}
+
+        {/* Low Balance Alert for Admins */}
+        {isAdmin && activeBook && pepiBookBalance <= 0 && (
+             <Alert variant="destructive" className="mt-4">
+                 <AlertCircle className="h-4 w-4" />
+                 <AlertDescription>
+                     Low Balance Alert: Current book balance is {formatCurrency(pepiBookBalance)}. Please consider adding funds.
+                 </AlertDescription>
+            </Alert>
         )}
 
         {!isAdmin && currentUserAgentId && (
