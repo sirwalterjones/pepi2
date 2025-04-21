@@ -485,10 +485,14 @@ export default function TransactionDetails({
 
     setIsDeleting(true);
     try {
+      console.log(`[Client] Attempting to delete transaction ID: ${transaction.id}`);
       const { error } = await supabase
         .from("transactions")
         .delete()
         .eq("id", transaction.id);
+
+      // Log the error object regardless
+      console.log(`[Client] Supabase delete result error:`, error);
 
       if (error) throw error;
 
