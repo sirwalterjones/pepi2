@@ -178,17 +178,12 @@ export default function ReceiptManager() {
   const handlePrintReceipt = () => {
     if (!selectedReceipt) return;
 
-    // Use the receipt generator utility
-    import("./ReceiptGenerator")
-      .then(({ printReceipt }) => {
-        printReceipt(selectedReceipt);
-      })
-      .catch((error) => {
-        console.error("Error loading receipt generator:", error);
-        // Fallback to inline implementation if module fails to load
-        const printWindow = window.open("", "_blank");
-        if (printWindow) {
-          printWindow.document.write(`
+    console.log("[ReceiptManager] Data for printing:", JSON.stringify(selectedReceipt, null, 2)); // Log the data being used
+
+    // Directly use the inline HTML generation (removed import attempt)
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`
           <html>
             <head>
               <title>Receipt #${selectedReceipt.receipt_number}</title>
@@ -262,9 +257,8 @@ export default function ReceiptManager() {
             </body>
           </html>
         `);
-          printWindow.document.close();
-        }
-      });
+      printWindow.document.close();
+    }
   };
 
   return (
