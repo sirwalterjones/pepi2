@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+import Script from "next/script";
+import { TempoInit } from "./tempo-init";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,6 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
+        <Script src="https://api.tempo.new/proxy-asset?url=https://storage.googleapis.com/tempo-public-assets/error-handling.js" />
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
@@ -26,6 +29,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <TempoInit />
           <Toaster />
         </ThemeProvider>
       </body>
