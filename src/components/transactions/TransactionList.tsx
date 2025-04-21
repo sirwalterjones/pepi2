@@ -494,16 +494,6 @@ export default function TransactionList() {
           </div>
         )}
 
-        {/* Low Balance Alert for Admins */}
-        {isAdmin && activeBook && pepiBookBalance <= 0 && (
-             <Alert variant="destructive" className="mt-4">
-                 <AlertCircle className="h-4 w-4" />
-                 <AlertDescription>
-                     Low Balance Alert: Current book balance is {formatCurrency(pepiBookBalance)}. Please consider adding funds.
-                 </AlertDescription>
-            </Alert>
-        )}
-
         {!isAdmin && currentUserAgentId && (
           <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-lg">
             <div className="flex justify-between items-center">

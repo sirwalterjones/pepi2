@@ -236,25 +236,6 @@ export default function DashboardOverview() {
     }
   }
 
-  // Effect to check balance and show alert (remove debug log)
-  useEffect(() => {
-    if (
-      initialLoadComplete &&
-      isAdmin &&
-      stats.currentBalance <= 500 &&
-      !lowBalanceAlertShown
-    ) {
-      toast({
-        title: "Low Balance Alert",
-        description: `Current balance is ${formatCurrency(
-          stats.currentBalance,
-        )}. Please consider adding funds.`,
-        variant: "destructive",
-      });
-      setLowBalanceAlertShown(true);
-    }
-  }, [initialLoadComplete, stats.currentBalance, isAdmin, lowBalanceAlertShown, toast]);
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
