@@ -544,7 +544,7 @@ export async function approveFundRequestAction(requestId: string) {
     console.log(`[Server Action] Attempting to fetch fund request with ID: ${requestId}`);
     const { data: request, error: fetchError } = await supabase
       .from("fund_requests")
-      .select("*, pepi_book:pepi_books(is_active, is_closed)")
+      .select("*, pepi_book:pepi_books!fund_requests_pepi_book_id_fkey(is_active, is_closed)")
       .eq("id", requestId)
       .single();
 
