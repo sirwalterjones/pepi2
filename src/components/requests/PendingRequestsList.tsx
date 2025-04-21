@@ -19,12 +19,13 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import {
   approveFundRequestAction,
   rejectFundRequestAction,
+  deleteFundRequestAction,
 } from "@/app/actions";
 
 // Define the structure of the fetched request data, including agent name
@@ -172,6 +173,25 @@ export default function PendingRequestsList() {
     }
   };
 
+  const handleDelete = async (requestId: string) => {
+    if (!confirm("Are you sure you want to permanently delete this fund request?")) {
+      return;
+    }
+    setProcessingRequestId(requestId);
+    try {
+      const result = await deleteFundRequestAction(requestId);
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+      toast({ title: "Success", description: "Fund request deleted." });
+    } catch (err: any) {
+      console.error("Error deleting request:", err);
+      toast({ title: "Error", description: err.message || "Failed to delete request.", variant: "destructive" });
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -232,7 +252,7 @@ export default function PendingRequestsList() {
                   <TableCell>{formatCurrency(request.amount)}</TableCell>
                   <TableCell>{request.case_number || "N/A"}</TableCell>
                   <TableCell>{request.pepi_book_year || "N/A"}</TableCell>
-                  <TableCell className="space-x-2">
+                  <TableCell className="space-x-2 whitespace-nowrap">
                     <Button
                       variant="outline"
                       size="sm"
@@ -248,6 +268,16 @@ export default function PendingRequestsList() {
                       disabled={processingRequestId === request.id}
                     >
                       {processingRequestId === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Reject'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:bg-red-100 hover:text-red-700"
+                      onClick={() => handleDelete(request.id)}
+                      disabled={processingRequestId === request.id}
+                      title="Delete Request"
+                    >
+                      {processingRequestId === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" /> }
                     </Button>
                   </TableCell>
                 </TableRow>

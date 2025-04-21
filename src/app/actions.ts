@@ -780,3 +780,87 @@ export async function resubmitFundRequestAction(formData: {
 
     return { success: true };
 }
+
+// Action to delete a fund request
+export async function deleteFundRequestAction(requestId: string) {
+    "use server";
+    console.log(`[Server Action] deleteFundRequestAction called for: ${requestId}`);
+    const supabase = await createClient();
+
+    // 1. Get current user and their agent details (ID and Role)
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+        console.error("[Server Action] Authentication error during delete:", userError);
+        return { error: "Authentication required." };
+    }
+
+    const { data: agentData, error: agentCheckError } = await supabase
+        .from("agents")
+        .select("id, role")
+        .eq("user_id", user.id)
+        .single();
+
+    if (agentCheckError || !agentData) {
+        console.error(`[Server Action] Failed to find agent record for user ${user.id} during delete:`, agentCheckError);
+        return { error: "Agent verification failed." };
+    }
+    console.log(`[Server Action] Delete initiated by Agent ID: ${agentData.id}, Role: ${agentData.role}`);
+
+    // 2. Fetch the request to check ownership and status
+    const { data: requestToDelete, error: fetchError } = await supabase
+        .from("fund_requests")
+        .select("id, agent_id, status")
+        .eq("id", requestId)
+        .single();
+
+    if (fetchError || !requestToDelete) {
+        console.error(`[Server Action] Fund request ${requestId} not found for deletion:`, fetchError);
+        // Don't reveal if request exists or not for security, just say failed.
+        return { error: "Could not delete request. It may have already been removed." }; 
+    }
+
+    // 3. Authorization Check
+    let canDelete = false;
+    if (agentData.role === 'admin') {
+        canDelete = true; // Admins can delete any request
+        console.log(`[Server Action] Admin deletion authorized for request ${requestId}.`);
+    } else if (agentData.id === requestToDelete.agent_id) {
+        // Agents can delete their own requests only if pending or rejected
+        if (requestToDelete.status === 'pending' || requestToDelete.status === 'rejected') {
+            canDelete = true;
+            console.log(`[Server Action] Agent deletion authorized for own ${requestToDelete.status} request ${requestId}.`);
+        } else {
+            console.warn(`[Server Action] Agent ${agentData.id} denied deletion of own ${requestToDelete.status} request ${requestId}.`);
+            return { error: "Cannot delete a request that has already been approved." };
+        }
+    } else {
+        // Agent trying to delete someone else's request
+        console.warn(`[Server Action] Agent ${agentData.id} denied deletion of request ${requestId} owned by ${requestToDelete.agent_id}.`);
+        return { error: "You do not have permission to delete this request." };
+    }
+
+    if (!canDelete) {
+         // Should not be reached due to checks above, but as a safeguard
+         console.error(`[Server Action] Authorization failed unexpectedly for delete request ${requestId}.`);
+         return { error: "Authorization failed." };
+    }
+
+    // 4. Perform Deletion
+    console.log(`[Server Action] Performing deletion for request ${requestId}...`);
+    const { error: deleteError } = await supabase
+        .from("fund_requests")
+        .delete()
+        .eq("id", requestId);
+
+    if (deleteError) {
+        console.error(`[Server Action] Error deleting fund request ${requestId}:`, deleteError);
+        return { error: "Failed to delete fund request from database." };
+    }
+
+    console.log(`[Server Action] Successfully deleted request ${requestId}.`);
+
+    // 5. Revalidate paths
+    revalidatePath("/dashboard");
+
+    return { success: true };
+}

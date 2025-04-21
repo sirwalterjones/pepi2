@@ -26,6 +26,7 @@ import {
   XCircle,
   AlertCircle,
   Edit,
+  Trash2,
 } from "lucide-react";
 import { Input } from "../ui/input";
 import {
@@ -47,6 +48,7 @@ import {
 } from "@/components/ui/dialog";
 import FundRequestForm from "../requests/FundRequestForm";
 import { PlusCircle } from "lucide-react";
+import { deleteFundRequestAction } from "@/app/actions";
 
 // Define a type for the combined list items
 type TransactionListItem = (TransactionWithAgent & { itemType: 'transaction' }) | 
@@ -82,6 +84,7 @@ export default function TransactionList() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isRequestFormOpen, setIsRequestFormOpen] = useState(false);
   const [requestToEdit, setRequestToEdit] = useState<FundRequest | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   // Fetch current user's agent ID and role
   useEffect(() => {
@@ -364,6 +367,31 @@ export default function TransactionList() {
       }
   }
 
+  // Re-purpose isOwnTransaction to check request/transaction ownership based on agent_id
+  const isOwnItem = (item: TransactionListItem | FundRequest | TransactionWithAgent | null): boolean => {
+    return !!currentUserAgentId && !!item && item.agent_id === currentUserAgentId;
+  };
+
+  const handleDeleteRequest = async (requestId: string) => {
+    if (!confirm("Are you sure you want to permanently delete this fund request?")) {
+      return;
+    }
+    setProcessingId(requestId); // Use processing state
+    try {
+      const result = await deleteFundRequestAction(requestId);
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+      toast({ title: "Success", description: "Fund request deleted." });
+      // List should refresh via real-time subscription
+    } catch (err: any) {
+      console.error("Error deleting request:", err);
+      toast({ title: "Error", description: err.message || "Failed to delete request.", variant: "destructive" });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -526,7 +554,7 @@ export default function TransactionList() {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3 ml-4">
+                <div className="flex items-center gap-2 ml-4">
                   <div className="text-right">
                     <div
                       className={`font-medium 
@@ -546,7 +574,7 @@ export default function TransactionList() {
                           : <Badge variant="outline">Request</Badge>
                       }
                       {item.status && <TransactionStatus status={item.status as any} />}
-                      {item.itemType === 'request' && item.status === "rejected" && isOwnTransaction(item) && (
+                      {item.itemType === 'request' && item.status === "rejected" && isOwnItem(item) && (
                         <Badge variant="destructive" className="animate-pulse">
                           Action Required
                         </Badge>
@@ -564,16 +592,33 @@ export default function TransactionList() {
                     >
                       View
                     </Button>
-                  ) : item.itemType === 'request' && item.status === 'rejected' && isOwnTransaction(item) ? (
-                      <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleEditRequest(item)}
-                      >
-                          <Edit className="mr-2 h-4 w-4" /> Edit Request
-                      </Button> 
+                  ) : item.itemType === 'request' && isOwnItem(item) && (item.status === 'pending' || item.status === 'rejected') ? (
+                    <>
+                        {item.status === 'rejected' && (
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="w-full justify-start text-xs px-2 h-7 mb-1"
+                                onClick={() => handleEditRequest(item)}
+                                disabled={processingId === item.id}
+                            >
+                                <Edit className="mr-1 h-3 w-3" /> Edit
+                            </Button> 
+                        )}
+                         <Button
+                            variant="ghost" 
+                            size="sm"
+                            className="w-full justify-start text-red-600 hover:bg-red-100 hover:text-red-700 text-xs px-2 h-7"
+                            onClick={() => handleDeleteRequest(item.id)}
+                            disabled={processingId === item.id}
+                            title="Delete Request"
+                        >
+                            {processingId === item.id ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Trash2 className="mr-1 h-3 w-3" /> }
+                            Delete
+                        </Button>
+                    </>
                   ) : (
-                      <div className="w-[58px]"></div>
+                      <div className="w-[64px] h-[32px]"></div>
                   ) }
                 </div>
               </div>
