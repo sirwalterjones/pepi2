@@ -335,33 +335,55 @@ export default function TransactionList() {
     console.log(`[calculatePepiBookBalance] Starting calculation for Book ID: ${activeBook.id}`);
     console.log(`[calculatePepiBookBalance] Total transactions fetched: ${transactions.length}`);
 
-    // Process all fetched transactions for the active book
+    // Find initial funding transaction amount
+    const initialFundingTx = transactions.find(tx => 
+        tx.pepi_book_id === activeBook.id &&
+        tx.transaction_type === 'issuance' &&
+        tx.status === 'approved' &&
+        (tx.description?.toLowerCase().includes("initial funding") || tx.agent_id === null) && // Heuristic for initial/added
+        !tx.description?.toLowerCase().includes("approved fund request") // Exclude request approvals
+    );
+    if (initialFundingTx) {
+        currentBalance = initialFundingTx.amount; // Start with initial/added funds
+        console.log(`  [calculatePepiBookBalance] Initial Funding/Added Tx ID: ${initialFundingTx.id.substring(0,8)}, Amount: ${initialFundingTx.amount}, Starting Balance: ${currentBalance}`);
+    } else {
+        // Fallback if specific initial funding not found (might use starting_amount, but transaction based is better)
+        // currentBalance = activeBook.starting_amount || 0;
+        console.log(`  [calculatePepiBookBalance] WARNING: Could not identify a specific initial funding transaction. Starting balance 0.`);
+    }
+    
+    // Process other relevant approved transactions
     transactions.forEach((transaction: TransactionWithAgent) => {
-        // Log every transaction considered
-        // console.log(`[calculatePepiBookBalance] Checking Tx ID: ${transaction.id.substring(0,8)}, Type: ${transaction.transaction_type}, Status: ${transaction.status}, Amount: ${transaction.amount}, Book: ${transaction.pepi_book_id}`);
-
+        // Skip the initial funding transaction we already processed
+        if (transaction.id === initialFundingTx?.id) return;
+        
         // Ensure the transaction belongs to the active book and is approved
         if (
             transaction.pepi_book_id === activeBook.id &&
-            transaction.status === "approved" // Only count approved transactions towards balance
+            transaction.status === "approved"
         ) {
             let balanceChange = 0;
-            if (transaction.transaction_type === "issuance") {
-                balanceChange = transaction.amount; // Add issued funds
-                currentBalance += balanceChange;
+            let applied = false;
+            if (transaction.transaction_type === "issuance" && transaction.agent_id === null && !transaction.description?.toLowerCase().includes("approved fund request")) {
+                 // Count manual fund additions (issuance with no agent_id)
+                 balanceChange = transaction.amount;
+                 currentBalance += balanceChange;
+                 applied = true;
             } else if (transaction.transaction_type === "spending") {
-                balanceChange = -transaction.amount; // Subtract spent funds
+                balanceChange = -transaction.amount;
                 currentBalance += balanceChange;
+                applied = true;
             } else if (transaction.transaction_type === "return") {
-                balanceChange = transaction.amount; // Add returned funds
+                balanceChange = transaction.amount;
                 currentBalance += balanceChange;
+                applied = true;
             }
-            // Log the effect of this transaction
-            console.log(`  [calculatePepiBookBalance] Applied Tx ID: ${transaction.id.substring(0,8)}, Type: ${transaction.transaction_type}, Change: ${balanceChange}, New Balance: ${currentBalance}`);
-        } else {
-             // Log why it was skipped
-             // console.log(`  [calculatePepiBookBalance] Skipped Tx ID: ${transaction.id.substring(0,8)} (Book Match: ${transaction.pepi_book_id === activeBook.id}, Status Approved: ${transaction.status === "approved"})`);
-        }
+            // Log the effect of this transaction if applied
+            if (applied) {
+                console.log(`  [calculatePepiBookBalance] Applied Tx ID: ${transaction.id.substring(0,8)}, Type: ${transaction.transaction_type}, Change: ${balanceChange}, New Balance: ${currentBalance}`);
+            }
+            // Issuances to agents (transaction.transaction_type === "issuance" && transaction.agent_id !== null) are ignored here
+        } 
     });
 
     console.log(`[calculatePepiBookBalance] Final Calculated Balance: ${currentBalance}`);

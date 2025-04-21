@@ -171,40 +171,60 @@ export default function DashboardOverview() {
         return;
       }
 
-      // Calculate stats based on APPROVED transactions only
-      let currentBalance = 0;
-      let totalIssuance = 0;  // For display card
-      let totalSpending = 0;  // For display card
-      let totalReturned = 0;  // For display card
+      // Calculate stats based on APPROVED transactions only using the refined logic
+      let pepiBookBalance = 0;
+      let totalIssuedToAgents = 0;
+      let totalSpentByAgents = 0;
+      let totalReturnedByAgents = 0;
+      let totalAddedToBook = 0;
 
+      // Find initial funding transaction amount
+      const initialFundingTx = transactions?.find(tx => 
+          tx.pepi_book_id === activeBook.id &&
+          tx.transaction_type === 'issuance' &&
+          tx.status === 'approved' &&
+          (tx.description?.toLowerCase().includes("initial funding") || tx.agent_id === null) && // Heuristic for initial/added
+          !tx.description?.toLowerCase().includes("approved fund request") // Exclude request approvals
+      );
+      if (initialFundingTx) {
+          pepiBookBalance = initialFundingTx.amount; 
+          totalAddedToBook += initialFundingTx.amount; // Count this as funds added
+      }
+
+      // Process other relevant approved transactions
       transactions?.forEach((transaction: Transaction) => {
-        if (transaction.status === "approved") { // <-- Only check approved
-            if (transaction.transaction_type === "issuance") {
-                currentBalance += transaction.amount;
-                totalIssuance += transaction.amount; // Sum for the card
-            } else if (transaction.transaction_type === "spending") {
-                currentBalance -= transaction.amount;
-                totalSpending += transaction.amount; // Sum for the card
-            } else if (transaction.transaction_type === "return") {
-                currentBalance += transaction.amount;
-                totalReturned += transaction.amount; // Sum for the card
-            }
-        }
-      });
+          // Skip the initial funding transaction we already processed
+          if (transaction.id === initialFundingTx?.id) return;
 
-      // Cash on hand calculation might need review - what does it represent?
-      // If it's meant to be "unspent funds issued to agents", it needs different logic.
-      // For now, let's make it match currentBalance as the most representative value.
-      const cashOnHand = currentBalance; 
+          if (transaction.status === "approved") { 
+              if (transaction.transaction_type === "issuance") {
+                  if (transaction.agent_id !== null) {
+                      // Issuance TO an agent
+                      totalIssuedToAgents += transaction.amount;
+                      // Does NOT affect pepiBookBalance
+                  } else if (!transaction.description?.toLowerCase().includes("approved fund request")){
+                      // Manual Additions to Book (issuance, no agent, not an approved request)
+                      pepiBookBalance += transaction.amount;
+                      totalAddedToBook += transaction.amount;
+                  }
+              } else if (transaction.transaction_type === "spending") {
+                  pepiBookBalance -= transaction.amount;
+                  totalSpentByAgents += transaction.amount;
+              } else if (transaction.transaction_type === "return") {
+                  pepiBookBalance += transaction.amount;
+                  totalReturnedByAgents += transaction.amount;
+              }
+          }
+      });
 
       setStats({
         totalAgents: agentsCount || 0,
-        totalTransactions: transactions?.filter(t => t.status === 'approved').length || 0, // Count only approved Tx
-        totalIssuance: totalIssuance,     // Use summed approved value
-        totalReturned: totalReturned,     // Use summed approved value
-        currentBalance: currentBalance,   // Use the directly calculated balance
-        cashOnHand: cashOnHand,           // Set to currentBalance for now
-        spendingTotal: totalSpending,     // Use summed approved value
+        totalTransactions: transactions?.filter(t => t.status === 'approved').length || 0, 
+        totalIssuance: totalIssuedToAgents,   // Reflects funds issued TO agents
+        totalReturned: totalReturnedByAgents, // Reflects funds returned BY agents
+        currentBalance: pepiBookBalance,      // Correct book balance
+        cashOnHand: pepiBookBalance,          // Correct book balance
+        spendingTotal: totalSpentByAgents,    // Reflects funds spent BY agents
         activePepiBookId: activeBook?.id || null,
         activePepiBookYear: activeBook?.year || null,
       });
@@ -267,45 +287,59 @@ export default function DashboardOverview() {
               {formatCurrency(activeBook?.starting_amount || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Total PEPI book funds
+              PEPI book starting amount
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Funds Issued
+              Issued To Agents
             </CardTitle>
-            <ArrowUpRight className="h-4 w-4 text-red-500" />
+            <ArrowUpRight className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {formatCurrency(stats.totalIssuance)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Funds issued to agents
+              Approved funds moved to agents
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Funds Spent
+              Total Spent By Agents
             </CardTitle>
             <DollarSign className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(stats.spendingTotal || 0)}
+              {formatCurrency(stats.spendingTotal)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Funds spent by agents
+              Approved spending by agents
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cash On Hand</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Returned By Agents</CardTitle>
+            <ArrowDownLeft className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(stats.totalReturned)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Approved funds returned by agents
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Book Balance (Cash On Hand)</CardTitle>
             <DollarSign className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
@@ -313,14 +347,14 @@ export default function DashboardOverview() {
               {formatCurrency(stats.cashOnHand)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Initial funds minus spent
+              Remaining funds in PEPI Book
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Current Balance
+              Current Book Balance 
               {stats.currentBalance <= 500 && (
                 <span className="ml-2 inline-flex items-center">
                   <AlertTriangle className="h-4 w-4 text-red-500" />
@@ -336,7 +370,7 @@ export default function DashboardOverview() {
               {formatCurrency(stats.currentBalance)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Initial funding amount
+              Calculated book balance
             </p>
           </CardContent>
         </Card>
