@@ -847,7 +847,7 @@ export async function deleteFundRequestAction(requestId: string) {
 
     // 4. Perform Deletion
     console.log(`[Server Action] Performing deletion for request ${requestId}...`);
-    const { error: deleteError } = await supabase
+    const { error: deleteError, count: deleteCount } = await supabase // Capture count
         .from("fund_requests")
         .delete()
         .eq("id", requestId);
@@ -857,7 +857,16 @@ export async function deleteFundRequestAction(requestId: string) {
         return { error: "Failed to delete fund request from database." };
     }
 
-    console.log(`[Server Action] Successfully deleted request ${requestId}.`);
+    // Log the count of deleted rows
+    console.log(`[Server Action] Delete operation completed for ${requestId}. Rows affected: ${deleteCount}`);
+
+    if (deleteCount === 0) {
+        console.warn(`[Server Action] Delete operation for ${requestId} completed without error, but 0 rows were affected. RLS or timing issue?`);
+        // Optionally return an error here if 0 affected rows is unexpected
+        // return { error: "Delete operation completed but did not remove the request." };
+    }
+
+    console.log(`[Server Action] Successfully confirmed deletion of request ${requestId}.`); // Modified log message
 
     // 5. Revalidate paths
     revalidatePath("/dashboard");
