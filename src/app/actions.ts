@@ -502,6 +502,10 @@ export async function requestFundsAction(formData: {
 // Action to approve a fund request
 export async function approveFundRequestAction(requestId: string) {
   "use server";
+  console.log(`[Server Action TEST] >>> approveFundRequestAction called with requestId: ${requestId}`);
+  // Temporarily return an error to prevent further execution during this test
+  return { error: "TEST: Action invoked, but logic skipped." };
+/*
   console.log(`[Server Action] approveFundRequestAction called with requestId: ${requestId}`); // Log received ID
   const supabase = await createClient();
 
@@ -596,6 +600,7 @@ export async function approveFundRequestAction(requestId: string) {
   revalidatePath("/dashboard"); // Revalidate agent and admin dashboards
 
   return { success: true };
+*/
 }
 
 // Action to reject a fund request
