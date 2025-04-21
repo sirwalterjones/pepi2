@@ -41,5 +41,6 @@ yarn-error.log*
 next-env.d.ts
 
 # tempo
-**/tempobook/dynamic/
-**/tempobook/storyboards/
+# Commenting out these lines to allow Vercel to build properly
+# **/tempobook/dynamic/
+# **/tempobook/storyboards/
