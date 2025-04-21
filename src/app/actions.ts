@@ -544,13 +544,16 @@ export async function approveFundRequestAction(requestId: string) {
     console.log(`[Server Action] Attempting to fetch fund request with ID: ${requestId}`);
     const { data: request, error: fetchError } = await supabase
       .from("fund_requests")
-      .select("*, pepi_book:pepi_books!fund_requests_pepi_book_id_fkey(is_active, is_closed)")
+      .select(`
+        *,
+        pepi_book:pepi_books!fund_requests_pepi_book_id_fkey(is_active, is_closed),
+        agent:agents!fund_requests_agent_id_fkey(name)
+      `)
       .eq("id", requestId)
       .single();
 
     if (fetchError || !request) {
       console.error(`[Server Action] Error fetching fund request ${requestId}:`, fetchError);
-      // Log the specific Supabase error if available
       return { error: `Fund request not found (ID: ${requestId.substring(0,8)}...). Supabase error: ${fetchError?.message}` };
     }
     console.log(`[Server Action] Found fund request ${requestId}. Status: ${request.status}`);
@@ -565,9 +568,20 @@ export async function approveFundRequestAction(requestId: string) {
       return { error: "Cannot process request for an inactive or closed PEPI Book." };
     }
 
-    // 3. Create the corresponding transaction
+    // Inline formatters (or use global ones if available)
+    const formatCurrency = (amount: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+    const formatDate = (dateString: string) => new Date(dateString).toLocaleString();
+
+    // 3. Create the corresponding transaction with a detailed description
     console.log(`[Server Action] Creating transaction for request ${requestId}...`);
-    const transactionDescription = `Approved fund request for case ${request.case_number || 'N/A'}`;
+    const transactionDescription = 
+      `Approved fund request for ${request.agent?.name || request.agent_id} ` +
+      `(Case: ${request.case_number || 'N/A'}). ` +
+      `Amount: ${formatCurrency(request.amount)}. ` +
+      `Requested: ${formatDate(request.requested_at)}. ` +
+      `Approved by: ${agentData.name || user.email}. ` +
+      `Agent Signature on Request: ${request.agent_signature || 'N/A'}`;
+
     const { data: newTransaction, error: transactionError } = await supabase
       .from("transactions")
       .insert({
