@@ -332,24 +332,39 @@ export default function TransactionList() {
     if (!activeBook) return 0;
 
     let currentBalance = 0; // Start from zero
+    console.log(`[calculatePepiBookBalance] Starting calculation for Book ID: ${activeBook.id}`);
+    console.log(`[calculatePepiBookBalance] Total transactions fetched: ${transactions.length}`);
 
     // Process all fetched transactions for the active book
     transactions.forEach((transaction: TransactionWithAgent) => {
+        // Log every transaction considered
+        // console.log(`[calculatePepiBookBalance] Checking Tx ID: ${transaction.id.substring(0,8)}, Type: ${transaction.transaction_type}, Status: ${transaction.status}, Amount: ${transaction.amount}, Book: ${transaction.pepi_book_id}`);
+
         // Ensure the transaction belongs to the active book and is approved
         if (
             transaction.pepi_book_id === activeBook.id &&
             transaction.status === "approved" // Only count approved transactions towards balance
         ) {
+            let balanceChange = 0;
             if (transaction.transaction_type === "issuance") {
-                currentBalance += transaction.amount; // Add issued funds
+                balanceChange = transaction.amount; // Add issued funds
+                currentBalance += balanceChange;
             } else if (transaction.transaction_type === "spending") {
-                currentBalance -= transaction.amount; // Subtract spent funds
+                balanceChange = -transaction.amount; // Subtract spent funds
+                currentBalance += balanceChange;
             } else if (transaction.transaction_type === "return") {
-                currentBalance += transaction.amount; // Add returned funds
+                balanceChange = transaction.amount; // Add returned funds
+                currentBalance += balanceChange;
             }
+            // Log the effect of this transaction
+            console.log(`  [calculatePepiBookBalance] Applied Tx ID: ${transaction.id.substring(0,8)}, Type: ${transaction.transaction_type}, Change: ${balanceChange}, New Balance: ${currentBalance}`);
+        } else {
+             // Log why it was skipped
+             // console.log(`  [calculatePepiBookBalance] Skipped Tx ID: ${transaction.id.substring(0,8)} (Book Match: ${transaction.pepi_book_id === activeBook.id}, Status Approved: ${transaction.status === "approved"})`);
         }
     });
 
+    console.log(`[calculatePepiBookBalance] Final Calculated Balance: ${currentBalance}`);
     return currentBalance;
   };
 
