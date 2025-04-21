@@ -55,6 +55,22 @@ export default async function Dashboard() {
       console.log("Dashboard Page: No agent record found for user."); // Log if no agent found
   }
 
+  // Fetch Active PEPI Book (only needed for admin view)
+  let activeBook: PepiBook | null = null;
+  if (isAdmin) {
+      const { data: bookData, error: bookError } = await supabase
+          .from('pepi_books')
+          .select('*')
+          .eq('is_active', true)
+          .maybeSingle(); 
+      if (bookError) {
+          console.error("Dashboard Page: Error fetching active PEPI Book:", bookError);
+      } else {
+          activeBook = bookData;
+          console.log(`Dashboard Page: Fetched active book: ${activeBook ? activeBook.year : 'None'}`);
+      }
+  }
+
   console.log("Dashboard Page: Final roles", { isAgent, isAdmin }); // Log final roles
 
   let dashboardContent = null;
@@ -65,6 +81,26 @@ export default async function Dashboard() {
     console.log("Dashboard Page: Rendering Admin View (Pending Requests + Overview + Transactions)");
     dashboardContent = (
       <div className="space-y-8">
+        {/* Moved Active PEPI Book Notice Here */}
+        {activeBook ? (
+          <div className="bg-muted p-4 rounded-lg border">
+            <h2 className="text-lg font-medium">
+              Active PEPI Book: {activeBook.year}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              All statistics and lists below are filtered for this active PEPI book.
+            </p>
+          </div>
+        ) : (
+           <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-lg">
+             <h2 className="text-lg font-medium">
+               No Active PEPI Book
+             </h2>
+             <p className="text-sm">
+               Please activate a PEPI Book in the settings to view dashboard data.
+             </p>
+           </div>
+        )}
         <PendingRequestsList />
         <DashboardOverview />
         <TransactionList />

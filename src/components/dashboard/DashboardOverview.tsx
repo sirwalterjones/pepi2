@@ -245,16 +245,6 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-6">
-      {stats.activePepiBookYear && (
-        <div className="bg-muted p-4 rounded-lg mb-4">
-          <h2 className="text-lg font-medium">
-            Active PEPI Book: {stats.activePepiBookYear}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            All statistics below are filtered for the active PEPI book
-          </p>
-        </div>
-      )}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
