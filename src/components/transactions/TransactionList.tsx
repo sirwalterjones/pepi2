@@ -39,6 +39,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import FundRequestForm from "../requests/FundRequestForm";
 import { PlusCircle } from "lucide-react";
@@ -327,6 +328,12 @@ export default function TransactionList() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Request Additional Funds</DialogTitle>
+                    <DialogDescription>
+                      Submit a request for more funds. Enter the amount and reason below.
+                    </DialogDescription>
+                  </DialogHeader>
                   <FundRequestForm onSuccess={() => setIsRequestFormOpen(false)} />
                 </DialogContent>
               </Dialog>

@@ -63,7 +63,7 @@ export default function PendingRequestsList() {
             case_number,
             requested_at,
             agent:agents!fund_requests_agent_id_fkey ( name ),
-            pepi_book:pepi_books ( year )
+            pepi_book:pepi_books!fund_requests_pepi_book_id_fkey ( year )
           `)
           .eq("status", "pending")
           .order("requested_at", { ascending: true });
