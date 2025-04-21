@@ -311,7 +311,7 @@ export default function TransactionList() {
     transactions.forEach((transaction: TransactionWithAgent) => { // Use original transactions state
       if (
         transaction.agent_id === currentUserAgentId &&
-        (transaction.status === "approved" || transaction.status === "pending") // Only approved/pending transactions affect balance?
+        transaction.status === "approved" // <-- Only count approved transactions
       ) {
         if (transaction.transaction_type === "issuance") {
           balance += transaction.amount;
