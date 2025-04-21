@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../supabase/server";
 import { Badge } from "@/components/ui/badge";
+import { Agent, PepiBook } from "@/types/schema";
+import PendingRequestsList from "@/components/requests/PendingRequestsList";
+
+export const revalidate = 0; // Prevent caching for dynamic data
 
 export default async function Dashboard() {
   const supabase = await createClient();
@@ -68,7 +72,14 @@ export default async function Dashboard() {
           </header>
 
           {/* Dashboard Content - Show different views based on role */}
-          {isAgent && !isAdmin ? <AgentDashboard /> : <DashboardOverview />}
+          {isAgent && !isAdmin ? <AgentDashboard /> : (
+            isAdmin && (
+              <div className="space-y-8">
+                <DashboardOverview />
+                <PendingRequestsList />
+              </div>
+            )
+          )}
 
           {/* User Profile Section */}
           <section className="bg-card rounded-xl p-6 border shadow-sm">

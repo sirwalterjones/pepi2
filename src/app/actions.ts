@@ -5,6 +5,9 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "../../supabase/server";
 import { PepiBook } from "@/types/schema";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { type FundRequest } from "@/types/schema";
 
 export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
@@ -406,3 +409,236 @@ export const addPepiBookFundsAction = async (formData: FormData) => {
     };
   }
 };
+
+// Validation schema for fund request data
+const FundRequestSchema = z.object({
+  amount: z.number().positive("Amount must be positive"),
+  caseNumber: z.string().trim().optional().nullable(),
+  agentSignature: z.string().trim().min(1, "Signature is required"),
+  agentId: z.string().uuid("Invalid Agent ID"),
+  pepiBookId: z.string().uuid("Invalid Pepi Book ID"),
+});
+
+export async function requestFundsAction(formData: {
+  amount: number;
+  caseNumber: string | null;
+  agentSignature: string;
+  agentId: string;
+  pepiBookId: string;
+}) {
+  "use server";
+
+  const supabase = await createClient();
+
+  // 1. Get current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    console.error("User not authenticated:", userError);
+    return { error: "Authentication failed. Please log in again." };
+  }
+
+  // 2. Verify the agent submitting is the logged-in user
+  const { data: agentData, error: agentCheckError } = await supabase
+    .from("agents")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("id", formData.agentId)
+    .single();
+
+  if (agentCheckError || !agentData) {
+    console.error("Agent verification failed:", agentCheckError);
+    return { error: "Agent verification failed. You can only submit requests for yourself." };
+  }
+
+  // 3. Validate incoming data
+  const validatedFields = FundRequestSchema.safeParse(formData);
+
+  if (!validatedFields.success) {
+    console.error("Fund request validation failed:", validatedFields.error.flatten().fieldErrors);
+    // Safer way to get the first error message
+    const fieldErrors = validatedFields.error.flatten().fieldErrors;
+    // Ensure fieldErrors is not empty and get the first key
+    const errorKeys = Object.keys(fieldErrors) as (keyof typeof fieldErrors)[];
+    const firstErrorKey = errorKeys[0];
+    // Get the message using the typed key
+    const firstErrorMessage = firstErrorKey ? fieldErrors[firstErrorKey]?.[0] : undefined;
+    return { error: firstErrorMessage || "Invalid data provided. Please check the form." };
+  }
+
+  const { amount, caseNumber, agentSignature, agentId, pepiBookId } = validatedFields.data;
+
+  // 4. Insert into fund_requests table
+  try {
+    const { error: insertError } = await supabase
+      .from("fund_requests")
+      .insert({
+        agent_id: agentId,
+        pepi_book_id: pepiBookId,
+        amount: amount,
+        case_number: caseNumber,
+        agent_signature: agentSignature,
+        // status defaults to 'pending'
+        // requested_at defaults to now()
+      });
+
+    if (insertError) {
+      console.error("Error inserting fund request:", insertError);
+      throw new Error("Database error: Could not save fund request.");
+    }
+
+    // 5. Revalidate relevant paths (e.g., where requests are listed)
+    revalidatePath("/dashboard"); // Revalidate agent dashboard
+    // TODO: Add path for admin view if different
+
+    return { success: true };
+
+  } catch (error: any) {
+    console.error("Fund request submission failed:", error);
+    return { error: error.message || "An unexpected error occurred." };
+  }
+}
+
+// Action to approve a fund request
+export async function approveFundRequestAction(requestId: string) {
+  "use server";
+  const supabase = await createClient();
+
+  // 1. Verify user is admin
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    return { error: "Authentication required." };
+  }
+  const { data: adminData, error: adminCheckError } = await supabase
+    .from("agents")
+    .select("id, name") // Select admin name for signature
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .single();
+
+  if (adminCheckError || !adminData) {
+    return { error: "Admin privileges required." };
+  }
+
+  // 2. Fetch the fund request details
+  const { data: request, error: fetchError } = await supabase
+    .from("fund_requests")
+    .select("*, pepi_book:pepi_books(is_active, is_closed)")
+    .eq("id", requestId)
+    .single();
+
+  if (fetchError || !request) {
+    return { error: "Fund request not found." };
+  }
+
+  if (request.status !== 'pending') {
+    return { error: "Request has already been processed." };
+  }
+
+  if (!request.pepi_book?.is_active || request.pepi_book?.is_closed) {
+     return { error: "Cannot process request for an inactive or closed PEPI Book." };
+  }
+
+  // 3. Create the corresponding transaction
+  const transactionDescription = `Approved fund request for case ${request.case_number || 'N/A'}`;
+  const { data: newTransaction, error: transactionError } = await supabase
+    .from("transactions")
+    .insert({
+      agent_id: request.agent_id,
+      pepi_book_id: request.pepi_book_id,
+      transaction_type: "issuance",
+      amount: request.amount,
+      description: transactionDescription,
+      created_by: user.id, // Admin user ID
+      status: "approved", // Auto-approved issuance
+      receipt_number: `REQ-${requestId.substring(0, 8)}`, // Generate a receipt number
+    })
+    .select('id') // Select the ID of the newly created transaction
+    .single();
+
+  if (transactionError || !newTransaction) {
+    console.error("Error creating transaction for fund request:", transactionError);
+    return { error: "Failed to create associated transaction." };
+  }
+
+  // 4. Update the fund request status
+  const { error: updateError } = await supabase
+    .from("fund_requests")
+    .update({
+      status: "approved",
+      reviewed_by_user_id: user.id,
+      reviewed_at: new Date().toISOString(),
+      transaction_id: newTransaction.id, // Link to the created transaction
+      // NOTE: Supervisor signature (admin name) is implicitly known by reviewed_by_user_id
+    })
+    .eq("id", requestId);
+
+  if (updateError) {
+    // Attempt to rollback or log the inconsistency
+    console.error("CRITICAL: Failed to update fund request status after creating transaction:", updateError);
+    // TODO: Consider trying to delete the created transaction here if possible
+    return { error: "Failed to update request status after approval." };
+  }
+
+  // 5. Revalidate paths
+  revalidatePath("/dashboard"); // Revalidate agent and admin dashboards
+
+  return { success: true };
+}
+
+// Action to reject a fund request
+export async function rejectFundRequestAction(requestId: string) {
+  "use server";
+  const supabase = await createClient();
+
+  // 1. Verify user is admin
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    return { error: "Authentication required." };
+  }
+  const { data: adminData, error: adminCheckError } = await supabase
+    .from("agents")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .single();
+
+  if (adminCheckError || !adminData) {
+    return { error: "Admin privileges required." };
+  }
+
+  // 2. Fetch the fund request to ensure it's pending
+  const { data: request, error: fetchError } = await supabase
+    .from("fund_requests")
+    .select("status")
+    .eq("id", requestId)
+    .single();
+
+  if (fetchError || !request) {
+    return { error: "Fund request not found." };
+  }
+
+  if (request.status !== 'pending') {
+    return { error: "Request has already been processed." };
+  }
+
+  // 3. Update the fund request status
+  const { error: updateError } = await supabase
+    .from("fund_requests")
+    .update({
+      status: "rejected",
+      reviewed_by_user_id: user.id,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", requestId);
+
+  if (updateError) {
+    console.error("Error rejecting fund request:", updateError);
+    return { error: "Failed to update request status." };
+  }
+
+  // 4. Revalidate paths
+  revalidatePath("/dashboard"); // Revalidate agent and admin dashboards
+
+  return { success: true };
+}

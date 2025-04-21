@@ -11,10 +11,19 @@ import {
 } from "../ui/card";
 import { Transaction, TransactionType } from "@/types/schema";
 import { Badge } from "../ui/badge";
-import { DollarSign, ArrowUpRight, ArrowDownLeft, Clock } from "lucide-react";
+import { DollarSign, ArrowUpRight, ArrowDownLeft, Clock, PlusCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import TransactionStatus from "../transactions/TransactionStatus";
 import { useToast } from "../ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import FundRequestForm from "../requests/FundRequestForm";
 
 export default function AgentDashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -23,6 +32,7 @@ export default function AgentDashboard() {
   const [loading, setLoading] = useState(true);
   const [agentInfo, setAgentInfo] = useState<any>(null);
   const [agentBalance, setAgentBalance] = useState<number>(0);
+  const [isRequestFormOpen, setIsRequestFormOpen] = useState(false);
   const { toast } = useToast();
   const supabase = createClient();
 
@@ -154,11 +164,25 @@ export default function AgentDashboard() {
       {agentInfo && (
         <Card>
           <CardHeader>
-            <CardTitle>Agent Dashboard</CardTitle>
-            <CardDescription>
-              Welcome, {agentInfo.name}. View your transactions and pending
-              approvals.
-            </CardDescription>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <CardTitle>Agent Dashboard</CardTitle>
+                <CardDescription>
+                  Welcome, {agentInfo.name}. View your transactions and pending
+                  approvals.
+                </CardDescription>
+              </div>
+              <Dialog open={isRequestFormOpen} onOpenChange={setIsRequestFormOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Request Funds
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <FundRequestForm onSuccess={() => setIsRequestFormOpen(false)} />
+                </DialogContent>
+              </Dialog>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

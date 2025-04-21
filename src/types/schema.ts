@@ -44,6 +44,20 @@ export type Transaction = {
   review_notes: string | null;
 };
 
+export type FundRequest = {
+  id: string;
+  agent_id: string;
+  pepi_book_id: string;
+  amount: number;
+  case_number: string | null;
+  agent_signature: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requested_at: string;
+  reviewed_by_user_id: string | null;
+  reviewed_at: string | null;
+  transaction_id: string | null;
+};
+
 export type AgentWithTransactions = Agent & {
   transactions: Transaction[];
 };
