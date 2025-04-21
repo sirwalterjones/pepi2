@@ -52,6 +52,40 @@ export default function ReceiptManager() {
     }
   }, [userRole, currentAgentId]);
 
+  useEffect(() => {
+    // Only set up subscription if we have transaction fetching criteria
+    if (userRole === null && currentAgentId === null) return;
+
+    console.log("[ReceiptManager] Setting up real-time subscription for transactions...");
+
+    const channel = supabase
+      .channel('receipt-transactions-changes') // Unique channel name
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions' },
+        (payload) => {
+          console.log('[ReceiptManager] Change received!', payload);
+          // Refetch data on any change to the transactions table
+          fetchTransactions(); 
+        }
+      )
+      .subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('[ReceiptManager] Real-time subscription active.');
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error('[ReceiptManager] Real-time subscription error:', status, err);
+            // Optionally, notify user or attempt to resubscribe
+          }
+      });
+
+    // Cleanup function to remove the listener when the component unmounts
+    return () => {
+      console.log("[ReceiptManager] Removing real-time subscription.");
+      supabase.removeChannel(channel);
+    };
+
+  }, [supabase, userRole, currentAgentId]); // Add dependencies
+
   const fetchUserRole = async () => {
     try {
       // Get the current user
