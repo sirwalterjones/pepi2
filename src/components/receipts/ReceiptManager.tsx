@@ -149,8 +149,8 @@ export default function ReceiptManager() {
       case "return":
         return (
           <Badge
-            variant="success"
-            className="bg-green-100 text-green-800 hover:bg-green-100"
+            variant="outline"
+            className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200"
           >
             Returned
           </Badge>
@@ -225,11 +225,11 @@ export default function ReceiptManager() {
                     <span>${selectedReceipt.transaction_type.charAt(0).toUpperCase() + selectedReceipt.transaction_type.slice(1)}</span>
                   </div>
                   ${
-                    selectedReceipt.agents
+                    selectedReceipt.agent
                       ? `
                   <div class="info-row">
                     <span class="label">Agent:</span>
-                    <span>${selectedReceipt.agents.name} ${selectedReceipt.agents.badge_number ? `(${selectedReceipt.agents.badge_number})` : ""}</span>
+                    <span>${selectedReceipt.agent.name} ${selectedReceipt.agent.badge_number ? `(${selectedReceipt.agent.badge_number})` : ""}</span>
                   </div>`
                       : ""
                   }
@@ -317,8 +317,8 @@ export default function ReceiptManager() {
                       <span>{formatDate(transaction.created_at)}</span>
                       <span>•</span>
                       <span>
-                        {transaction.agents
-                          ? `${transaction.agents.name} ${transaction.agents.badge_number ? `(${transaction.agents.badge_number})` : ""}`
+                        {transaction.agent
+                          ? `${transaction.agent.name} ${transaction.agent.badge_number ? `(${transaction.agent.badge_number})` : ""}`
                           : "No agent"}
                       </span>
                     </div>

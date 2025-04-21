@@ -58,24 +58,24 @@ export default function ReceiptTemplate({ transaction }: ReceiptTemplateProps) {
           <span>{getTransactionTypeLabel(transaction.transaction_type)}</span>
         </div>
 
-        {transaction.agents && (
+        {transaction.agent && (
           <div className="flex justify-between">
             <span className="font-medium">Agent:</span>
             <span>
-              {transaction.agents.name}{" "}
-              {transaction.agents.badge_number
-                ? `(${transaction.agents.badge_number})`
+              {transaction.agent.name}{" "}
+              {transaction.agent.badge_number
+                ? `(${transaction.agent.badge_number})`
                 : ""}
             </span>
           </div>
         )}
 
         {transaction.description && (
-          <div className="flex justify-between">
-            <span className="font-medium">Description:</span>
-            <span className="text-right max-w-[60%]">
+          <div className="mt-4">
+            <div className="font-medium mb-1">Description:</div>
+            <div className="text-sm bg-muted/50 p-2 rounded">
               {transaction.description}
-            </span>
+            </div>
           </div>
         )}
 
