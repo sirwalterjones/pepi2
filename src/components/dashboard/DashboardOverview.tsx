@@ -16,7 +16,7 @@ import {
   ArrowDownLeft,
   AlertTriangle,
 } from "lucide-react";
-import { TransactionType } from "@/types/schema";
+import { TransactionType, Transaction } from "@/types/schema";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -28,7 +28,7 @@ type DashboardStats = {
   currentBalance: number;
   cashOnHand: number;
   spendingTotal: number;
-  recentTransactions: any[];
+  recentTransactions: Transaction[];
   activePepiBookId: string | null;
   activePepiBookYear: number | null;
 };
@@ -49,6 +49,7 @@ export default function DashboardOverview() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [lowBalanceAlertShown, setLowBalanceAlertShown] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const supabase = createClient();
   const { activeBook } = usePepiBooks();
   const { toast } = useToast();
@@ -82,6 +83,7 @@ export default function DashboardOverview() {
   useEffect(() => {
     async function fetchDashboardData() {
       setLoading(true);
+      setInitialLoadComplete(false);
       try {
         // Fetch agents count
         const { count: agentsCount, error: agentsError } = await supabase
@@ -124,12 +126,12 @@ export default function DashboardOverview() {
 
         // Find initial funding transaction
         const initialFundingTransaction = transactions?.find(
-          (transaction) =>
+          (transaction: Transaction) =>
             transaction.transaction_type === "issuance" &&
             transaction.description?.toLowerCase().includes("initial funding"),
         );
 
-        transactions?.forEach((transaction) => {
+        transactions?.forEach((transaction: Transaction) => {
           if (
             (transaction.status === "approved" ||
               transaction.status === "pending") &&
@@ -137,11 +139,11 @@ export default function DashboardOverview() {
             transaction.id !== initialFundingTransaction?.id
           ) {
             if (transaction.transaction_type === "issuance") {
-              issuanceTotal += parseFloat(transaction.amount);
+              issuanceTotal += transaction.amount;
             } else if (transaction.transaction_type === "return") {
-              returnedTotal += parseFloat(transaction.amount);
+              returnedTotal += transaction.amount;
             } else if (transaction.transaction_type === "spending") {
-              spendingTotal += parseFloat(transaction.amount);
+              spendingTotal += transaction.amount;
             }
           }
         });
@@ -171,6 +173,7 @@ export default function DashboardOverview() {
         console.error("Error fetching dashboard data:", error);
       } finally {
         setLoading(false);
+        setInitialLoadComplete(true);
       }
     }
 
@@ -179,15 +182,22 @@ export default function DashboardOverview() {
 
   // Effect to check balance and show alert
   useEffect(() => {
-    if (isAdmin && stats.currentBalance <= 500 && !lowBalanceAlertShown) {
+    if (
+      initialLoadComplete &&
+      isAdmin &&
+      stats.currentBalance <= 500 &&
+      !lowBalanceAlertShown
+    ) {
       toast({
         title: "Low Balance Alert",
-        description: `Current balance is ${formatCurrency(stats.currentBalance)}. Please consider adding funds.`,
+        description: `Current balance is ${formatCurrency(
+          stats.currentBalance,
+        )}. Please consider adding funds.`,
         variant: "destructive",
       });
       setLowBalanceAlertShown(true);
     }
-  }, [stats.currentBalance, isAdmin, lowBalanceAlertShown]);
+  }, [initialLoadComplete, stats.currentBalance, isAdmin, lowBalanceAlertShown, toast]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -327,7 +337,7 @@ export default function DashboardOverview() {
             </div>
           ) : (
             <div className="space-y-4">
-              {stats.recentTransactions.map((transaction) => (
+              {stats.recentTransactions.map((transaction: Transaction) => (
                 <div
                   key={transaction.id}
                   className="flex flex-col border-b pb-3 pt-2"
