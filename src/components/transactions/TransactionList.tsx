@@ -462,7 +462,7 @@ export default function TransactionList() {
                      <PlusCircle className="mr-2 h-4 w-4" /> Request Funds
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[425px] w-full max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Request Additional Funds</DialogTitle>
                     <DialogDescription>
