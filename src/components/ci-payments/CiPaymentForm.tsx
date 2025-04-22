@@ -103,44 +103,62 @@ export default function CiPaymentForm({
 
     const getSignatureData = (ref: React.RefObject<SignatureCanvas>): string | undefined => {
         try {
-            // Add more checks: ensure ref.current exists and expected methods are functions
-            if (!ref.current || typeof ref.current.isEmpty !== 'function' || ref.current.isEmpty()) {
+            // Check if ref and ref.current are valid
+            if (!ref || !ref.current) {
+                console.error("Signature ref is not available.");
                 return undefined;
             }
-            if (typeof ref.current.getTrimmedCanvas !== 'function') {
-                 console.error("getTrimmedCanvas method not found on signature ref", ref);
-                 toast({
-                     variant: "destructive",
-                     title: "Signature Component Error",
-                     description: "Internal error reading signature. Please try again.",
-                 });
-                 return undefined; // Indicate failure
+
+            // Check isEmpty method exists and if the canvas is empty
+            if (typeof ref.current.isEmpty !== 'function' || ref.current.isEmpty()) {
+                return undefined; // Empty signature is valid (returns undefined), no error needed
             }
 
-            const canvas = ref.current.getTrimmedCanvas();
-            
+            // Use getCanvas() instead of getTrimmedCanvas()
+            if (typeof ref.current.getCanvas !== 'function') {
+                console.error("getCanvas method not found on signature ref", ref);
+                toast({
+                    variant: "destructive",
+                    title: "Signature Component Error",
+                    description: "Internal error accessing signature canvas. Please try again.",
+                });
+                return undefined; // Indicate failure
+            }
+
+            const canvas = ref.current.getCanvas();
+
             // Verify it returned a canvas
             if (!(canvas instanceof HTMLCanvasElement)) {
-                 console.error("getTrimmedCanvas did not return a valid canvas", canvas);
+                 console.error("getCanvas did not return a valid canvas element", canvas);
                  toast({
                      variant: "destructive",
                      title: "Signature Read Error",
-                     description: "Could not get signature image data. Please try again.",
+                     description: "Could not get signature canvas element. Please try again.",
                  });
                  return undefined; // Indicate failure
             }
-            
+
+            // Check if toDataURL exists
+            if (typeof canvas.toDataURL !== 'function') {
+                 console.error("toDataURL method not found on the canvas element");
+                 toast({
+                     variant: "destructive",
+                     title: "Signature Export Error",
+                     description: "Could not export signature data. Please try again.",
+                 });
+                 return undefined;
+            }
+
+            // Get the data URL directly from the canvas
             return canvas.toDataURL('image/png');
 
         } catch (error) {
-            console.error("Error getting signature data:", error);
+            console.error("Error getting signature data:", error); // This should catch unexpected errors
             toast({ 
                  variant: "destructive",
                  title: "Signature Error",
                  description: "Could not read signature data. Please try clearing and signing again.",
              });
-            // Re-throwing might be too disruptive, return undefined to indicate failure
-            // throw error; 
             return undefined;
         }
     };
