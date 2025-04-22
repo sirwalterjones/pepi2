@@ -1,5 +1,3 @@
-"use client";
-
 import React from 'react';
 import { createClient } from '@/../supabase/server';
 import { redirect } from 'next/navigation';
