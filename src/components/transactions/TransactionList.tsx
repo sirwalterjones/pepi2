@@ -592,6 +592,13 @@ export default function TransactionList() {
                           <span>Receipt: {item.receipt_number}</span>
                         </>
                       )}
+                      {/* Display Spending Category if applicable */}
+                      {item.itemType === 'transaction' && item.transaction_type === 'spending' && item.spending_category && (
+                          <>
+                            <span>•</span>
+                            <span>Category: {item.spending_category}</span>
+                          </>
+                      )}
                     </div>
                     {item.itemType === 'request' && item.status === 'rejected' && item.rejection_reason && (
                         <div className="mt-1 p-2 text-xs bg-red-100 border border-red-200 text-red-800 rounded">

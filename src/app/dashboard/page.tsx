@@ -151,91 +151,11 @@ export default async function Dashboard() {
           {/* Dashboard Content */}
           {dashboardContent} { /* Render the determined content */}
 
-          {/* User Profile Section */}
+          {/* User Profile Section REMOVED
           <section className="bg-card rounded-xl p-6 border shadow-sm">
-            <div className="flex items-center gap-4 mb-6">
-              <UserCircle size={48} className="text-primary" />
-              <div>
-                <h2 className="font-semibold text-xl">User Profile</h2>
-                <p className="text-sm text-muted-foreground">{user.email}</p>
-              </div>
-            </div>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    Account Information
-                  </h3>
-                  <div className="mt-2 space-y-3">
-                    <div className="flex justify-between border-b pb-2">
-                      <span className="font-medium">Email</span>
-                      <span>{user.email}</span>
-                    </div>
-                    <div className="flex justify-between border-b pb-2">
-                      <span className="font-medium">User ID</span>
-                      <span className="font-mono text-xs">
-                        {user.id.substring(0, 12)}...
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b pb-2">
-                      <span className="font-medium">Email Verified</span>
-                      <span>{user.email_confirmed_at ? "Yes" : "No"}</span>
-                    </div>
-                    <div className="flex justify-between border-b pb-2">
-                      <span className="font-medium">Last Sign In</span>
-                      <span>
-                        {user.last_sign_in_at
-                          ? new Date(user.last_sign_in_at).toLocaleString()
-                          : "N/A"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    Authentication Details
-                  </h3>
-                  <div className="mt-2 space-y-3">
-                    <div className="flex justify-between border-b pb-2">
-                      <span className="font-medium">Provider</span>
-                      <span className="capitalize">
-                        {user.app_metadata?.provider || "email"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b pb-2">
-                      <span className="font-medium">Created</span>
-                      <span>
-                        {user.created_at
-                          ? new Date(user.created_at).toLocaleDateString()
-                          : "N/A"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b pb-2">
-                      <span className="font-medium">Updated</span>
-                      <span>
-                        {user.updated_at
-                          ? new Date(user.updated_at).toLocaleDateString()
-                          : "N/A"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b pb-2">
-                      <span className="font-medium">Role</span>
-                      <span className="capitalize">{userRole}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <Button variant="outline" size="sm" asChild>
-                <a href="/dashboard/reset-password">Change Password</a>
-              </Button>
-            </div>
+             ... (entire section content) ...
           </section>
+          */}
         </div>
       </main>
     </>

@@ -65,6 +65,11 @@ export type AgentWithTransactions = Agent & {
 
 export type TransactionWithAgent = Transaction & {
   agent: Agent | null;
+  spending_category?: string | null;
+  case_number?: string | null;
+  paid_to?: string | null;
+  ecr_number?: string | null;
+  date_to_evidence?: string | null;
 };
 
 export type TransactionWithAgentAndBook = Transaction & {
