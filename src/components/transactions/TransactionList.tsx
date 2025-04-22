@@ -509,8 +509,8 @@ export default function TransactionList() {
                                 <PlusCircle className="mr-2 h-4 w-4" /> New CI Payment
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="w-[90vw] max-w-3xl p-4 md:p-6">
-                            <DialogHeader>
+                        <DialogContent className="w-[95vw] sm:max-w-lg md:max-w-xl lg:max-w-3xl max-h-[90vh] p-0">
+                            <DialogHeader className="p-4 md:p-6 pb-0">
                                 <DialogTitle>New CI Payment</DialogTitle>
                                 <DialogDescription>
                                     Fill out the form to record a Confidential Informant payment. It will be submitted for approval.

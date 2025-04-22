@@ -182,157 +182,160 @@ export default function CiPaymentForm({
     };
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-4 border rounded-md shadow-sm">
-            <h2 className="text-xl font-semibold mb-4">CI Payment Form</h2>
+        // Add a wrapper div for scrolling
+        <div className="max-h-[80vh] overflow-y-auto pr-2"> 
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-1 border rounded-md shadow-sm">
+                <h2 className="text-xl font-semibold mb-4">CI Payment Form</h2>
 
-            {/* Row 1: Date, Paying Agent (Admin only) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 {/* Date Picker */}
-                 <div className="space-y-2">
-                     <Label htmlFor="date">Date</Label>
-                     <Controller
-                         name="date"
-                         control={control}
-                         render={({ field }) => (
-                             <Popover>
-                                 <PopoverTrigger asChild>
-                                     <Button
-                                         variant={"outline"}
-                                         className={cn(
-                                             "w-full justify-start text-left font-normal",
-                                             !field.value && "text-muted-foreground"
-                                         )}
-                                     >
-                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                         {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                     </Button>
-                                 </PopoverTrigger>
-                                 <PopoverContent className="w-auto p-0">
-                                     <Calendar
-                                         mode="single"
-                                         selected={field.value}
-                                         onSelect={field.onChange}
-                                         initialFocus
-                                     />
-                                 </PopoverContent>
-                             </Popover>
-                         )}
-                     />
-                     {errors.date && <p className="text-sm text-red-600">{errors.date.message}</p>}
-                 </div>
-
-                 {/* Paying Agent Select (Admin Only) */}
-                 {userRole === 'admin' && (
+                {/* Row 1: Date, Paying Agent (Admin only) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     {/* Date Picker */}
                      <div className="space-y-2">
-                         <Label htmlFor="paying_agent_id">Paying Agent (Admin)</Label>
+                         <Label htmlFor="date">Date</Label>
                          <Controller
-                             name="paying_agent_id"
+                             name="date"
                              control={control}
                              render={({ field }) => (
-                                 <Select 
-                                    onValueChange={field.onChange} 
-                                    value={field.value || ""}
-                                > 
-                                     <SelectTrigger>
-                                         <SelectValue placeholder="Select paying agent..." />
-                                     </SelectTrigger>
-                                     <SelectContent>
-                                         <SelectItem value={userId}>Myself ({agentData?.name || 'Admin'})</SelectItem>
-                                         {availableAgents.map((agent) => (
-                                             <SelectItem key={agent.user_id} value={agent.user_id}>
-                                                 {agent.name}
-                                             </SelectItem>
-                                         ))}
-                                     </SelectContent>
-                                 </Select>
+                                 <Popover>
+                                     <PopoverTrigger asChild>
+                                         <Button
+                                             variant={"outline"}
+                                             className={cn(
+                                                 "w-full justify-start text-left font-normal",
+                                                 !field.value && "text-muted-foreground"
+                                             )}
+                                         >
+                                             <CalendarIcon className="mr-2 h-4 w-4" />
+                                             {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                         </Button>
+                                     </PopoverTrigger>
+                                     <PopoverContent className="w-auto p-0">
+                                         <Calendar
+                                             mode="single"
+                                             selected={field.value}
+                                             onSelect={field.onChange}
+                                             initialFocus
+                                         />
+                                     </PopoverContent>
+                                 </Popover>
                              )}
                          />
-                         {/* No direct error message here as it's optional for admin selection */}
+                         {errors.date && <p className="text-sm text-red-600">{errors.date.message}</p>}
                      </div>
-                 )}
-            </div>
 
-
-            {/* Row 2: Amount, Case # */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="amount_paid">Amount Paid</Label>
-                    <Input id="amount_paid" type="number" step="0.01" {...register('amount_paid')} />
-                    {errors.amount_paid && <p className="text-sm text-red-600">{errors.amount_paid.message}</p>}
+                     {/* Paying Agent Select (Admin Only) */}
+                     {userRole === 'admin' && (
+                         <div className="space-y-2">
+                             <Label htmlFor="paying_agent_id">Paying Agent (Admin)</Label>
+                             <Controller
+                                 name="paying_agent_id"
+                                 control={control}
+                                 render={({ field }) => (
+                                     <Select 
+                                        onValueChange={field.onChange} 
+                                        value={field.value || ""}
+                                    > 
+                                         <SelectTrigger>
+                                             <SelectValue placeholder="Select paying agent..." />
+                                         </SelectTrigger>
+                                         <SelectContent>
+                                             <SelectItem value={userId}>Myself ({agentData?.name || 'Admin'})</SelectItem>
+                                             {availableAgents.map((agent) => (
+                                                 <SelectItem key={agent.user_id} value={agent.user_id}>
+                                                     {agent.name}
+                                                 </SelectItem>
+                                             ))}
+                                         </SelectContent>
+                                     </Select>
+                                 )}
+                             />
+                             {/* No direct error message here as it's optional for admin selection */}
+                         </div>
+                     )}
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="case_number">Case # (Optional)</Label>
-                    <Input id="case_number" {...register('case_number')} />
-                    {errors.case_number && <p className="text-sm text-red-600">{errors.case_number.message}</p>}
-                </div>
-            </div>
-
-            {/* Row 3: Printed Names */}
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div className="space-y-2">
-                     <Label htmlFor="paying_agent_printed_name">Paying Agent's Printed Name</Label>
-                     <Input
-                         id="paying_agent_printed_name"
-                         {...register('paying_agent_printed_name')}
-                         readOnly={userRole !== 'admin'} // Agent name should be read-only
-                     />
-                     {errors.paying_agent_printed_name && <p className="text-sm text-red-600">{errors.paying_agent_printed_name.message}</p>}
-                 </div>
-                  <div className="space-y-2">
-                     <Label htmlFor="witness_printed_name">Witness Printed Name (Optional)</Label>
-                     <Input id="witness_printed_name" {...register('witness_printed_name')} />
-                     {errors.witness_printed_name && <p className="text-sm text-red-600">{errors.witness_printed_name.message}</p>}
-                 </div>
-             </div>
-
-             {/* Row 4: PEPI Rec # */}
-              <div className="space-y-2">
-                     <Label htmlFor="pepi_receipt_number">PEPI Rec # (Optional)</Label>
-                     <Input id="pepi_receipt_number" {...register('pepi_receipt_number')} />
-                     {errors.pepi_receipt_number && <p className="text-sm text-red-600">{errors.pepi_receipt_number.message}</p>}
-              </div>
 
 
-            {/* Signatures Section */}
-            <div className="space-y-4">
-                <h3 className="text-lg font-medium">Signatures</h3>
-                 <p className="text-sm text-muted-foreground">Please provide the required signatures below.</p>
-
-                {/* CI Signature */}
-                <div className="space-y-2">
-                    <Label htmlFor="ci_signature">CI Signature</Label>
-                    <div className="border rounded-md bg-slate-50">
-                        <SignatureCanvas ref={ciSigRef} canvasProps={{ id: 'ci_signature', className: 'w-full h-32' }} {...signaturePadOptions} />
+                {/* Row 2: Amount, Case # */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="amount_paid">Amount Paid</Label>
+                        <Input id="amount_paid" type="number" step="0.01" {...register('amount_paid')} />
+                        {errors.amount_paid && <p className="text-sm text-red-600">{errors.amount_paid.message}</p>}
                     </div>
-                    <Button type="button" variant="outline" size="sm" onClick={() => clearSignature(ciSigRef)}>Clear CI Signature</Button>
+                    <div className="space-y-2">
+                        <Label htmlFor="case_number">Case # (Optional)</Label>
+                        <Input id="case_number" {...register('case_number')} />
+                        {errors.case_number && <p className="text-sm text-red-600">{errors.case_number.message}</p>}
+                    </div>
                 </div>
 
-                {/* Paying Agent Signature */}
-                <div className="space-y-2">
-                    <Label htmlFor="agent_signature">Paying Agent Signature</Label>
-                     <div className="border rounded-md bg-slate-50">
-                         <SignatureCanvas ref={agentSigRef} canvasProps={{ id: 'agent_signature', className: 'w-full h-32' }} {...signaturePadOptions} />
+                {/* Row 3: Printed Names */}
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                         <Label htmlFor="paying_agent_printed_name">Paying Agent's Printed Name</Label>
+                         <Input
+                             id="paying_agent_printed_name"
+                             {...register('paying_agent_printed_name')}
+                             readOnly={userRole !== 'admin'} // Agent name should be read-only
+                         />
+                         {errors.paying_agent_printed_name && <p className="text-sm text-red-600">{errors.paying_agent_printed_name.message}</p>}
                      </div>
-                    <Button type="button" variant="outline" size="sm" onClick={() => clearSignature(agentSigRef)}>Clear Agent Signature</Button>
-                </div>
-
-                {/* Witness Signature */}
-                <div className="space-y-2">
-                    <Label htmlFor="witness_signature">Witness Signature (Optional)</Label>
-                     <div className="border rounded-md bg-slate-50">
-                         <SignatureCanvas ref={witnessSigRef} canvasProps={{ id: 'witness_signature', className: 'w-full h-32' }} {...signaturePadOptions} />
+                      <div className="space-y-2">
+                         <Label htmlFor="witness_printed_name">Witness Printed Name (Optional)</Label>
+                         <Input id="witness_printed_name" {...register('witness_printed_name')} />
+                         {errors.witness_printed_name && <p className="text-sm text-red-600">{errors.witness_printed_name.message}</p>}
                      </div>
-                    <Button type="button" variant="outline" size="sm" onClick={() => clearSignature(witnessSigRef)}>Clear Witness Signature</Button>
+                 </div>
+
+                 {/* Row 4: PEPI Rec # */}
+                  <div className="space-y-2">
+                         <Label htmlFor="pepi_receipt_number">PEPI Rec # (Optional)</Label>
+                         <Input id="pepi_receipt_number" {...register('pepi_receipt_number')} />
+                         {errors.pepi_receipt_number && <p className="text-sm text-red-600">{errors.pepi_receipt_number.message}</p>}
+                  </div>
+
+
+                {/* Signatures Section */}
+                <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Signatures</h3>
+                     <p className="text-sm text-muted-foreground">Please provide the required signatures below.</p>
+
+                    {/* CI Signature */}
+                    <div className="space-y-2">
+                        <Label htmlFor="ci_signature">CI Signature</Label>
+                        <div className="border rounded-md bg-slate-50">
+                            <SignatureCanvas ref={ciSigRef} canvasProps={{ id: 'ci_signature', className: 'w-full h-32' }} {...signaturePadOptions} />
+                        </div>
+                        <Button type="button" variant="outline" size="sm" onClick={() => clearSignature(ciSigRef)}>Clear CI Signature</Button>
+                    </div>
+
+                    {/* Paying Agent Signature */}
+                    <div className="space-y-2">
+                        <Label htmlFor="agent_signature">Paying Agent Signature</Label>
+                         <div className="border rounded-md bg-slate-50">
+                             <SignatureCanvas ref={agentSigRef} canvasProps={{ id: 'agent_signature', className: 'w-full h-32' }} {...signaturePadOptions} />
+                         </div>
+                        <Button type="button" variant="outline" size="sm" onClick={() => clearSignature(agentSigRef)}>Clear Agent Signature</Button>
+                    </div>
+
+                    {/* Witness Signature */}
+                    <div className="space-y-2">
+                        <Label htmlFor="witness_signature">Witness Signature (Optional)</Label>
+                         <div className="border rounded-md bg-slate-50">
+                             <SignatureCanvas ref={witnessSigRef} canvasProps={{ id: 'witness_signature', className: 'w-full h-32' }} {...signaturePadOptions} />
+                         </div>
+                        <Button type="button" variant="outline" size="sm" onClick={() => clearSignature(witnessSigRef)}>Clear Witness Signature</Button>
+                    </div>
                 </div>
-            </div>
 
-            {/* Error Message */}
-            {error && <p className="text-sm text-red-600">{error}</p>}
+                {/* Error Message */}
+                {error && <p className="text-sm text-red-600">{error}</p>}
 
-            {/* Submit Button */}
-            <Button type="submit" disabled={isLoading} className="w-full">
-                {isLoading ? 'Submitting...' : 'Submit CI Payment'}
-            </Button>
-        </form>
+                {/* Submit Button */}
+                <Button type="submit" disabled={isLoading} className="w-full">
+                    {isLoading ? 'Submitting...' : 'Submit CI Payment'}
+                </Button>
+            </form>
+        </div>
     );
 } 
