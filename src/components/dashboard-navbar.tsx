@@ -65,7 +65,7 @@ export default function DashboardNavbar() {
       name: "Dashboard",
       href: "/dashboard",
       icon: <Home className="h-5 w-5" />,
-      showFor: ["admin"],
+      showFor: ["admin", "agent"],
     },
     {
       name: "Transactions",

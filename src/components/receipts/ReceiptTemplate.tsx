@@ -58,6 +58,43 @@ export default function ReceiptTemplate({ transaction }: ReceiptTemplateProps) {
           <span>{getTransactionTypeLabel(transaction.transaction_type)}</span>
         </div>
 
+        {/* Spending Specific Fields START */}
+        {transaction.transaction_type === 'spending' && (
+          <>
+            {transaction.spending_category && (
+              <div className="flex justify-between">
+                <span className="font-medium">Category:</span>
+                <span>{transaction.spending_category}</span>
+              </div>
+            )}
+            {transaction.case_number && (
+               <div className="flex justify-between">
+                <span className="font-medium">Case #:</span>
+                <span>{transaction.case_number}</span>
+              </div>
+            )}
+             {transaction.paid_to && (
+               <div className="flex justify-between">
+                <span className="font-medium">Paid To:</span>
+                <span>{transaction.paid_to}</span>
+              </div>
+            )}
+             {transaction.ecr_number && (
+               <div className="flex justify-between">
+                <span className="font-medium">ECR #:</span>
+                <span>{transaction.ecr_number}</span>
+              </div>
+            )}
+             {transaction.date_to_evidence && (
+               <div className="flex justify-between">
+                <span className="font-medium">Date to Evidence:</span>
+                <span>{formatDate(transaction.date_to_evidence)}</span>
+              </div>
+            )}
+          </>
+        )}
+        {/* Spending Specific Fields END */}
+
         {transaction.agent && (
           <div className="flex justify-between">
             <span className="font-medium">Agent:</span>

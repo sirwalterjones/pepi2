@@ -434,6 +434,37 @@ export default function TransactionDetails({
                   <span class="label">Transaction Type:</span>
                   <span>${transaction.transaction_type.charAt(0).toUpperCase() + transaction.transaction_type.slice(1)}</span>
                 </div>
+                
+                <!-- Spending Specific Fields START -->
+                ${transaction.transaction_type === 'spending' ? `
+                  ${transaction.spending_category ? `
+                    <div class="info-row">
+                      <span class="label">Category:</span>
+                      <span>${transaction.spending_category}</span>
+                    </div>` : ''}
+                  ${transaction.case_number ? `
+                    <div class="info-row">
+                      <span class="label">Case #:</span>
+                      <span>${transaction.case_number}</span>
+                    </div>` : ''}
+                  ${transaction.paid_to ? `
+                    <div class="info-row">
+                      <span class="label">Paid To:</span>
+                      <span>${transaction.paid_to}</span>
+                    </div>` : ''}
+                   ${transaction.ecr_number ? `
+                    <div class="info-row">
+                      <span class="label">ECR #:</span>
+                      <span>${transaction.ecr_number}</span>
+                    </div>` : ''}
+                   ${transaction.date_to_evidence ? `
+                    <div class="info-row">
+                      <span class="label">Date to Evidence:</span>
+                      <span>${formatDate(transaction.date_to_evidence)}</span>
+                    </div>` : ''}
+                ` : ''}
+                <!-- Spending Specific Fields END -->
+
                 ${
                   transaction.agent
                     ? `
