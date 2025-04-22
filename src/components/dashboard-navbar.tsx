@@ -140,6 +140,9 @@ export default function DashboardNavbar() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/profile">Profile Settings</Link>
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={async () => {
                   await supabase.auth.signOut();
