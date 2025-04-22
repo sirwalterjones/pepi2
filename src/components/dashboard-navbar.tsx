@@ -144,7 +144,9 @@ export default function DashboardNavbar() {
                 <Link href="/dashboard/profile">Profile Settings</Link>
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={async () => {
+                onClick={async (event) => {
+                  event.stopPropagation();
+                  event.preventDefault();
                   await supabase.auth.signOut();
                   router.refresh();
                 }}
