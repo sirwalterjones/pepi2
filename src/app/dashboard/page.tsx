@@ -10,6 +10,8 @@ import { Agent, PepiBook } from "@/types/schema";
 import PendingRequestsList from "@/components/requests/PendingRequestsList";
 import TransactionList from "@/components/transactions/TransactionList";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import PendingCiPaymentsList from "@/components/ci-payments/PendingCiPaymentsList";
+import AdminDashboardActions from "@/components/dashboard/AdminDashboardActions";
 
 export const revalidate = 0; // Prevent caching for dynamic data
 
@@ -31,25 +33,27 @@ export default async function Dashboard() {
   let userRole = "user";
   let isAgent = false;
   let isAdmin = false;
+  let currentAgentData: Agent | null = null; // Variable to hold agent data
 
   console.log(`Dashboard Page: Checking agent role for user_id: ${user.id}`); // Log before agent check
-  const { data: agentData, error: agentError } = await supabase
+  const { data: agentDataResult, error: agentError } = await supabase
     .from("agents")
-    .select("role")
+    .select("*, role") // Fetch all agent data and role
     .eq("user_id", user.id)
     .single();
 
-  console.log("Dashboard Page: Agent query result", { agentData, agentError }); // Log agent query result
+  console.log("Dashboard Page: Agent query result", { agentDataResult, agentError }); // Log agent query result
 
   if (agentError && agentError.code !== 'PGRST116') { // Ignore error if it's just 'no rows found'
       console.error("Dashboard Page: Error fetching agent data:", agentError);
       // Decide if we should redirect or show an error message
   }
 
-  if (agentData) {
-    userRole = agentData.role;
+  if (agentDataResult) {
+    userRole = agentDataResult.role;
+    currentAgentData = agentDataResult as Agent; // Store the fetched agent data
     isAgent = true;
-    isAdmin = agentData.role === "admin";
+    isAdmin = agentDataResult.role === "admin";
     console.log(`Dashboard Page: Agent role found: ${userRole}`); // Log found role
   } else {
       console.log("Dashboard Page: No agent record found for user."); // Log if no agent found
@@ -101,7 +105,11 @@ export default async function Dashboard() {
              </p>
            </div>
         )}
-        <PendingRequestsList />
+        {/* Admin-specific cards in a grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <PendingRequestsList />
+          <PendingCiPaymentsList activeBookId={activeBook?.id || null} />
+        </div>
         <DashboardOverview />
         <TransactionList />
       </div>
@@ -141,6 +149,15 @@ export default async function Dashboard() {
                   Agent
                 </Badge>
               )}
+               {/* Render Admin Actions Button Area Here */}
+               {isAdmin && (
+                 <AdminDashboardActions 
+                    userId={user?.id || null}
+                    isAdmin={isAdmin}
+                    activeBook={activeBook}
+                    currentAgentData={currentAgentData}
+                  />
+               )}
             </div>
             <p className="text-muted-foreground">
               Welcome to the PEPI Money Tracker dashboard. Monitor fund

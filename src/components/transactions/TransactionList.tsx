@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "../../../supabase/client";
-import { Transaction, TransactionType, TransactionWithAgent, FundRequest } from "@/types/schema";
+import { Transaction, TransactionType, TransactionWithAgent, FundRequest, Agent } from "@/types/schema";
 import TransactionDetails from "./TransactionDetails";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
 import { Button } from "../ui/button";
@@ -50,6 +50,7 @@ import FundRequestForm from "../requests/FundRequestForm";
 import { PlusCircle } from "lucide-react";
 import { deleteFundRequestAction } from "@/app/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import CiPaymentForm from "../ci-payments/CiPaymentForm";
 
 // Define a type for the combined list items
 type TransactionListItem = (TransactionWithAgent & { itemType: 'transaction' }) | 
@@ -86,6 +87,8 @@ export default function TransactionList() {
   const [isRequestFormOpen, setIsRequestFormOpen] = useState(false);
   const [requestToEdit, setRequestToEdit] = useState<FundRequest | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [isCiPaymentFormOpen, setIsCiPaymentFormOpen] = useState(false);
+  const [currentAgentData, setCurrentAgentData] = useState<Agent | null>(null);
 
   // Fetch current user's agent ID and role
   useEffect(() => {
@@ -110,6 +113,19 @@ export default function TransactionList() {
           if (agentData) {
             setCurrentUserAgentId(agentData.id);
             setIsAdmin(agentData.role === "admin");
+
+            // Fetch full agent data for passing to forms
+            const { data: fullAgentData, error: fullAgentError } = await supabase
+              .from("agents")
+              .select("*")
+              .eq("user_id", user.id)
+              .single();
+
+            if (fullAgentError) {
+              console.error("Error fetching full agent details:", fullAgentError);
+            } else {
+              setCurrentAgentData(fullAgentData as Agent);
+            }
 
             // Create a map for quick lookup
             const newUserAgentMap: { [key: string]: boolean } = {};
