@@ -1257,3 +1257,58 @@ export async function getCiPaymentForPrintAction(paymentId: string): Promise<{ s
 
   return { success: true, data: typedPayment };
 }
+
+// Action to fetch approved CI Payments based on role and book
+export async function getApprovedCiPaymentsAction(bookId: string): Promise<{ success: boolean; data?: CiPayment[]; error?: string }> {
+  const supabase = await createClient();
+
+  // 1. Verify user authentication
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    console.error("[getApprovedCiPaymentsAction] Authentication error:", userError);
+    return { success: false, error: "Authentication required." };
+  }
+
+  if (!bookId) {
+    console.warn("[getApprovedCiPaymentsAction] No activeBookId provided.");
+    return { success: false, error: "Active PEPI Book ID is required." };
+  }
+
+  try {
+    // 2. Fetch approved payments for the specified book
+    // RLS policies will automatically filter based on the user's role (admin sees all, agent sees own)
+    const { data: payments, error } = await supabase
+      .from("ci_payments")
+      .select(`
+        *,
+        paying_agent:agents!ci_payments_paying_agent_id_fkey(name),
+        reviewer:agents!ci_payments_reviewed_by_fkey(name) 
+      `)
+      .eq("status", "approved")
+      .eq("book_id", bookId)
+      .order("created_at", { ascending: false }); // Show most recent first
+
+    if (error) {
+      console.error("[getApprovedCiPaymentsAction] Error fetching approved CI Payments:", error);
+      // Check for specific RLS errors if needed, though the policy should handle it
+      if (error.code === '42501') { // RLS violation
+           return { success: false, error: `Row Level Security prevented fetching payments. Ensure policies are correct. (${error.message})` };
+      }
+      return { success: false, error: `Failed to fetch approved payments: ${error.message}` };
+    }
+
+    // 3. Format and return data
+    const typedPayments = (payments || []).map(p => ({
+      ...p,
+      paying_agent: p.paying_agent as Agent | null,
+      reviewer: p.reviewer as Agent | null
+    })) as CiPayment[];
+
+    console.log(`[getApprovedCiPaymentsAction] Fetched ${typedPayments.length} approved payments for book ${bookId} for user ${user.id}`);
+    return { success: true, data: typedPayments };
+
+  } catch (err: any) {
+     console.error("[getApprovedCiPaymentsAction] Unexpected error:", err);
+     return { success: false, error: `An unexpected server error occurred: ${err.message}` };
+  }
+}

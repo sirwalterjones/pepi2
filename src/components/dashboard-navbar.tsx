@@ -74,6 +74,12 @@ export default function DashboardNavbar() {
       showFor: ["admin", "agent"],
     },
     {
+      name: "CI History",
+      href: "/dashboard/ci-history",
+      icon: <FileText className="h-5 w-5" />,
+      showFor: ["admin"],
+    },
+    {
       name: "PEPI Books",
       href: "/dashboard/pepi-books",
       icon: <FileText className="h-5 w-5" />,
@@ -91,7 +97,6 @@ export default function DashboardNavbar() {
       icon: <BarChart3 className="h-5 w-5" />,
       showFor: ["admin"],
     },
-
     {
       name: "Receipts",
       href: "/dashboard/receipts",
