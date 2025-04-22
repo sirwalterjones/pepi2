@@ -1323,3 +1323,59 @@ export async function getApprovedCiPaymentsAction(bookId: string): Promise<{ suc
      return { success: false, error: `An unexpected server error occurred: ${err.message}` };
   }
 }
+
+// Action to fetch CI payment history based on role (agent sees their own, admin sees all)
+export async function getCiPaymentHistoryAction(bookId: string, agentId: string | null = null): Promise<{ success: boolean; data?: CiPayment[]; error?: string }> {
+  const supabase = await createClient();
+
+  // 1. Verify user authentication
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    console.error("[getCiPaymentHistoryAction] Authentication error:", userError);
+    return { success: false, error: "Authentication required." };
+  }
+
+  if (!bookId) {
+    console.warn("[getCiPaymentHistoryAction] No book ID provided.");
+    return { success: false, error: "PEPI Book ID is required." };
+  }
+
+  try {
+    // Build query - if agentId is provided, filter by agent
+    let query = supabase
+      .from("ci_payments")
+      .select(`
+        *,
+        paying_agent:agents!ci_payments_paying_agent_id_fkey(name, badge_number),
+        reviewer:agents!ci_payments_reviewed_by_fkey(name)
+      `)
+      .eq("book_id", bookId)
+      .order("created_at", { ascending: false });
+    
+    // If agent ID is provided (non-admin view), filter to only show their payments
+    if (agentId) {
+      query = query.eq("paying_agent_id", agentId);
+    }
+
+    const { data: payments, error } = await query;
+
+    if (error) {
+      console.error("[getCiPaymentHistoryAction] Error fetching CI Payments:", error);
+      return { success: false, error: `Failed to fetch payments: ${error.message}` };
+    }
+
+    // Format and return data
+    const typedPayments = (payments || []).map(p => ({
+      ...p,
+      paying_agent: p.paying_agent as Agent | null,
+      reviewer: p.reviewer as Agent | null
+    })) as CiPayment[];
+
+    console.log(`[getCiPaymentHistoryAction] Fetched ${typedPayments.length} CI payments for book ${bookId}${agentId ? ` and agent ${agentId}` : ''}`);
+    return { success: true, data: typedPayments };
+
+  } catch (err: any) {
+    console.error("[getCiPaymentHistoryAction] Unexpected error:", err);
+    return { success: false, error: `An unexpected server error occurred: ${err.message}` };
+  }
+}

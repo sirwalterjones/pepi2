@@ -1,36 +1,36 @@
 "use client";
 
 import React from 'react';
-import CiPaymentsHistoryList from '@/components/ci-payments/CiPaymentsHistoryList';
-import { usePepiBooks } from '@/hooks/usePepiBooks'; // Assuming you have this hook
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { createClient } from '@/../supabase/server';
+import { redirect } from 'next/navigation';
+import AgentCiHistory from '@/components/ci-payments/AgentCiHistory';
 
-export default function CiHistoryPage() {
-    const { activeBook, loading: isBooksLoading } = usePepiBooks();
+export default async function CiHistoryPage() {
+  const supabase = await createClient();
+  
+  // Check authentication and get user
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    return redirect('/sign-in');
+  }
 
-    if (isBooksLoading) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Loading PEPI Book Data...</CardTitle>
-                </CardHeader>
-                <CardContent className="flex justify-center items-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </CardContent>
-            </Card>
-        );
-    }
+  // Get user's role
+  const { data: agentData } = await supabase
+    .from('agents')
+    .select('role, id')
+    .eq('user_id', user.id)
+    .single();
 
-    return (
-        <div className="container mx-auto py-6 px-4 md:px-6">
-            {/* 
-               You might want a more general PageHeader component here 
-               similar to other dashboard pages 
-            */}
-            <h1 className="text-3xl font-bold mb-6">CI Payments History</h1>
-            
-            <CiPaymentsHistoryList activeBookId={activeBook ? activeBook.id : null} />
-        </div>
-    );
+  if (!agentData) {
+    return redirect('/sign-in');
+  }
+
+  return (
+    <div className="container mx-auto py-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold tracking-tight">CI Payment History</h1>
+      </div>
+      <AgentCiHistory agentId={agentData.id} isAdmin={agentData.role === 'admin'} />
+    </div>
+  );
 } 
