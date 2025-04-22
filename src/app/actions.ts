@@ -1208,22 +1208,29 @@ export async function rejectCiPaymentAction(paymentId: string, rejectionReason: 
 
 // Action to fetch a specific CI Payment for printing (ensures it's approved)
 export async function getCiPaymentForPrintAction(paymentId: string): Promise<{ success: boolean; data?: CiPayment; error?: string }> {
+  console.log(`[getCiPaymentForPrintAction] Initiated for paymentId: ${paymentId}`); // Log start
   const supabase = await createClient();
 
   // 1. Verify user authentication (optional but good practice)
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Authentication required." };
+  const { data: { user }, error: authError } = await supabase.auth.getUser(); // Capture authError
+  if (authError || !user) {
+      console.error(`[getCiPaymentForPrintAction] Authentication error for paymentId ${paymentId}:`, authError);
+      return { success: false, error: "Authentication required." };
+  }
+  console.log(`[getCiPaymentForPrintAction] User ${user.id} authenticated for paymentId: ${paymentId}`);
 
   // Admins or potentially the agent who submitted might view/print?
   // For now, let's assume authenticated users with access via RLS can fetch.
   // RLS policy should ensure only authorized users can see the data.
 
   if (!paymentId) {
+    console.warn(`[getCiPaymentForPrintAction] No paymentId provided.`);
     return { success: false, error: "Payment ID is required." };
   }
 
   // 2. Fetch the payment details, including related agent/reviewer names
-  const { data: payment, error } = await supabase
+  console.log(`[getCiPaymentForPrintAction] Attempting to fetch payment details for ID: ${paymentId}`);
+  const { data: payment, error: fetchError } = await supabase // Capture fetchError
     .from("ci_payments")
     .select(`
       *,
@@ -1234,17 +1241,20 @@ export async function getCiPaymentForPrintAction(paymentId: string): Promise<{ s
     // .eq("status", "approved") // Optional: Ensure only approved can be fetched here, or rely on RLS/calling context
     .single();
 
-  if (error) {
-    console.error(`Error fetching CI Payment ${paymentId} for print:`, error);
-    return { success: false, error: "Failed to fetch CI Payment details." };
+  if (fetchError) {
+    console.error(`[getCiPaymentForPrintAction] Error fetching CI Payment ${paymentId} details:`, fetchError);
+    return { success: false, error: `Failed to fetch CI Payment details. Code: ${fetchError.code}` }; // Include error code
   }
 
   if (!payment) {
+     console.warn(`[getCiPaymentForPrintAction] CI Payment ${paymentId} not found.`);
      return { success: false, error: "CI Payment not found." };
   }
+  console.log(`[getCiPaymentForPrintAction] Successfully fetched payment ${paymentId}. Status: ${payment.status}`);
   
   // Optional: Add explicit check for approved status if not done in query/RLS
   if (payment.status !== 'approved') {
+      console.warn(`[getCiPaymentForPrintAction] Payment ${paymentId} is not approved (status: ${payment.status}).`);
       return { success: false, error: "This CI Payment has not been approved yet." };
   }
 
@@ -1255,6 +1265,7 @@ export async function getCiPaymentForPrintAction(paymentId: string): Promise<{ s
       reviewer: payment.reviewer as Agent | null
   } as CiPayment;
 
+  console.log(`[getCiPaymentForPrintAction] Returning success for paymentId: ${paymentId}`);
   return { success: true, data: typedPayment };
 }
 
