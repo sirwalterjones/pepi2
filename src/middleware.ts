@@ -5,6 +5,16 @@ import type { NextRequest } from "next/server";
 export async function middleware(req: NextRequest) {
   let res = NextResponse.next();
 
+  // --- Early exit for receipt path --- 
+  // Check if the path is the specific dynamic route we are debugging
+  // Regex to match /dashboard/ci-payments/ANY_ID/receipt
+  const isReceiptPath = /^\/dashboard\/ci-payments\/[^\/]+\/receipt$/.test(req.nextUrl.pathname);
+  if (isReceiptPath) {
+      console.log(`Middleware immediately passing through receipt path: ${req.nextUrl.pathname}`);
+      return res; // Return immediately, bypassing all auth checks for this path
+  }
+  // --- End early exit ---
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
