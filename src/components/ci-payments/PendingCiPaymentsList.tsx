@@ -161,11 +161,52 @@ export default function PendingCiPaymentsList({ activeBookId }: PendingCiPayment
     };
 
     const handleApproveSubmit = async () => {
-        if (!selectedPaymentForAction || !commanderSigRef.current || commanderSigRef.current.isEmpty()) {
-            toast({ title: "Error", description: "Commander signature is required.", variant: "destructive" });
+        if (!selectedPaymentForAction) {
+            toast({ title: "Error", description: "No payment selected for approval.", variant: "destructive" });
             return;
         }
-        const signatureData = commanderSigRef.current.getTrimmedCanvas().toDataURL('image/png');
+
+        // --- Revised Signature Retrieval Logic ---
+        let signatureData: string | undefined;
+        try {
+            if (!commanderSigRef || !commanderSigRef.current) {
+                throw new Error("Commander signature canvas is not available.");
+            }
+            if (typeof commanderSigRef.current.isEmpty === 'function' && commanderSigRef.current.isEmpty()) {
+                toast({ title: "Error", description: "Commander signature is required.", variant: "destructive" });
+                return; // Stop processing if required signature is empty
+            }
+            if (typeof commanderSigRef.current.getCanvas !== 'function') {
+                throw new Error("Internal error: Cannot access signature canvas.");
+            }
+
+            const canvas = commanderSigRef.current.getCanvas();
+            if (!(canvas instanceof HTMLCanvasElement)) {
+                 throw new Error("Internal error: Failed to get signature canvas element.");
+            }
+            if (typeof canvas.toDataURL !== 'function') {
+                 throw new Error("Internal error: Cannot export signature data.");
+            }
+
+            signatureData = canvas.toDataURL('image/png');
+
+            if (!signatureData) { // Double check if toDataURL somehow failed
+                throw new Error("Failed to generate signature image data.");
+            }
+
+        } catch (sigError: any) {
+            console.error("Error getting commander signature:", sigError);
+            toast({ 
+                 variant: "destructive",
+                 title: "Signature Error",
+                 description: sigError.message || "Could not read commander signature. Please try again.",
+             });
+             // Do not proceed with approval if signature failed
+            return; 
+        }
+        // --- End Revised Signature Retrieval Logic ---
+
+        // Proceed with approval now that signatureData is confirmed
         setProcessingId(selectedPaymentForAction.id);
         setError(null);
         try {
