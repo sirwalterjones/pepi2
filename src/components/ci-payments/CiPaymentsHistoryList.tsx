@@ -261,19 +261,19 @@ export default function CiPaymentsHistoryList({ activeBookId }: CiPaymentsHistor
 
             {/* Receipt Modal */}
             <Dialog open={isReceiptModalOpen} onOpenChange={setIsReceiptModalOpen}>
-                <DialogContent className="max-w-4xl">
-                    <DialogHeader>
+                <DialogContent className="max-w-[95vw] w-full md:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[80vw] h-[85vh] max-h-[85vh] p-0 overflow-auto">
+                    <DialogHeader className="px-6 pt-6 pb-2 sticky top-0 bg-background z-10 border-b">
                         <DialogTitle>CI Payment Receipt</DialogTitle>
                     </DialogHeader>
-                    <div className="print:p-0 print:m-0">
-                        {selectedPayment && <CiReceiptDisplay payment={selectedPayment} />}
+                    <div className="p-6 overflow-y-auto flex-grow print:p-0 print:m-0">
+                        {selectedPayment && <CiReceiptDisplay payment={selectedPayment} inModal={true} />}
                     </div>
-                    <DialogFooter>
-                        <Button onClick={handlePrintReceipt} className="mr-2">
+                    <DialogFooter className="px-6 py-4 sticky bottom-0 bg-background z-10 border-t flex flex-row justify-between sm:justify-end gap-2">
+                        <Button onClick={handlePrintReceipt} className="flex-shrink-0">
                             <Printer className="h-4 w-4 mr-1" /> Print Receipt
                         </Button>
                         <DialogClose asChild>
-                            <Button variant="outline">Close</Button>
+                            <Button variant="outline" className="flex-shrink-0">Close</Button>
                         </DialogClose>
                     </DialogFooter>
                 </DialogContent>

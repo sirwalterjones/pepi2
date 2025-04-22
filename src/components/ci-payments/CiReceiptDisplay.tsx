@@ -9,6 +9,7 @@ import PrintReceiptButton from '@/app/dashboard/ci-payments/[paymentId]/receipt/
 
 type CiReceiptDisplayProps = {
     payment: CiPayment;
+    inModal?: boolean; // New prop to adjust styling when in modal
 };
 
 // Helper function for consistent date formatting
@@ -34,7 +35,7 @@ const formatCurrency = (amount: number | null | undefined): string => {
     return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
 };
 
-export default function CiReceiptDisplay({ payment }: CiReceiptDisplayProps) {
+export default function CiReceiptDisplay({ payment, inModal = false }: CiReceiptDisplayProps) {
     if (!payment) {
         // Optional: Render a loading or error state if payment is somehow null/undefined
         return <p>Payment data is not available.</p>;
@@ -42,8 +43,8 @@ export default function CiReceiptDisplay({ payment }: CiReceiptDisplayProps) {
 
     // Basic Receipt Structure (Moved from page.tsx)
     return (
-        <div className="container mx-auto py-8 px-4 md:px-6 print:p-0">
-            <Card className="max-w-2xl mx-auto print:shadow-none print:border-none">
+        <div className={`container mx-auto ${inModal ? 'p-0' : 'py-8 px-4 md:px-6'} print:p-0`}>
+            <Card className={`${inModal ? 'shadow-none border-0' : 'max-w-2xl mx-auto'} print:shadow-none print:border-none`}>
                 <CardHeader className="text-center print:text-left">
                     <CardTitle className="text-2xl">Confidential Informant Payment Receipt</CardTitle>
                     <CardDescription>Receipt Number: {payment.receipt_number || 'N/A'}</CardDescription>
