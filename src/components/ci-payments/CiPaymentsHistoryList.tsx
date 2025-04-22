@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { getApprovedCiPaymentsAction } from '@/app/actions';
+import { getApprovedCiPaymentsAction, getCiPaymentForPrintAction } from '@/app/actions';
 import { CiPayment } from '@/types/schema';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { format, parseISO } from 'date-fns';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import Image from 'next/image'; // Use Next.js Image for potential optimization
+import CiReceiptDisplay from '@/components/ci-payments/CiReceiptDisplay';
 
 // Type definition for the signature to display
 type SignatureInfo = {
@@ -30,6 +31,9 @@ export default function CiPaymentsHistoryList({ activeBookId }: CiPaymentsHistor
     const [error, setError] = useState<string | null>(null);
     const [signatureToView, setSignatureToView] = useState<SignatureInfo | null>(null);
     const [isSignatureViewOpen, setIsSignatureViewOpen] = useState(false);
+    const [selectedPayment, setSelectedPayment] = useState<CiPayment | null>(null);
+    const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+    const [loadingReceipt, setLoadingReceipt] = useState(false);
 
     const fetchApprovedPayments = async () => {
         if (!activeBookId) {
@@ -90,6 +94,37 @@ export default function CiPaymentsHistoryList({ activeBookId }: CiPaymentsHistor
         } else {
              toast({ title: "Signature Info", description: `${title} is not available for this payment.` });
         }
+    };
+
+    // Function to view receipt in modal
+    const handleViewReceipt = async (paymentId: string) => {
+        setLoadingReceipt(true);
+        try {
+            const result = await getCiPaymentForPrintAction(paymentId);
+            if (result.success && result.data) {
+                setSelectedPayment(result.data);
+                setIsReceiptModalOpen(true);
+            } else {
+                toast({ 
+                    variant: "destructive", 
+                    title: "Error Loading Receipt", 
+                    description: result.error || "Failed to load receipt data." 
+                });
+            }
+        } catch (err: any) {
+            toast({ 
+                variant: "destructive", 
+                title: "Error", 
+                description: err.message || "An unexpected error occurred loading the receipt." 
+            });
+        } finally {
+            setLoadingReceipt(false);
+        }
+    };
+
+    // Function to print the receipt from the modal
+    const handlePrintReceipt = () => {
+        window.print();
     };
 
     if (loading) {
@@ -183,10 +218,14 @@ export default function CiPaymentsHistoryList({ activeBookId }: CiPaymentsHistor
                                 </div>
                                 {/* Action Button */}
                                 <div className="flex-shrink-0 pt-2 md:pt-0">
-                                    <Button variant="default" size="sm" asChild>
-                                        <Link href={`/dashboard/ci-payments/${payment.id}/receipt`}>
-                                            <Printer className="h-4 w-4 mr-1" /> View/Print Receipt
-                                        </Link>
+                                    <Button 
+                                        variant="default" 
+                                        size="sm" 
+                                        onClick={() => handleViewReceipt(payment.id)}
+                                        disabled={loadingReceipt}
+                                    >
+                                        {loadingReceipt ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Printer className="h-4 w-4 mr-1" />}
+                                        View/Print Receipt
                                     </Button>
                                 </div>
                             </div>
@@ -203,7 +242,6 @@ export default function CiPaymentsHistoryList({ activeBookId }: CiPaymentsHistor
                     </DialogHeader>
                     <div className="py-4 flex justify-center items-center">
                         {signatureToView?.dataUrl ? (
-                            // Use Next Image component for better performance if needed, but img is simpler
                             <img 
                                 src={signatureToView.dataUrl} 
                                 alt={signatureToView.title} 
@@ -214,6 +252,26 @@ export default function CiPaymentsHistoryList({ activeBookId }: CiPaymentsHistor
                         )}
                     </div>
                      <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline">Close</Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Receipt Modal */}
+            <Dialog open={isReceiptModalOpen} onOpenChange={setIsReceiptModalOpen}>
+                <DialogContent className="max-w-4xl">
+                    <DialogHeader>
+                        <DialogTitle>CI Payment Receipt</DialogTitle>
+                    </DialogHeader>
+                    <div className="print:p-0 print:m-0">
+                        {selectedPayment && <CiReceiptDisplay payment={selectedPayment} />}
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={handlePrintReceipt} className="mr-2">
+                            <Printer className="h-4 w-4 mr-1" /> Print Receipt
+                        </Button>
                         <DialogClose asChild>
                             <Button variant="outline">Close</Button>
                         </DialogClose>
