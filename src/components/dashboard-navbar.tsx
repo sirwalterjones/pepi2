@@ -114,11 +114,14 @@ export default function DashboardNavbar() {
           </Link>
           <div className="hidden md:flex items-center space-x-1 ml-6">
             {filteredNavItems.map((item) => {
-              const isActive = pathname === item.href;
+              const itemHref = (item.name === 'Dashboard' && userRole === 'agent') 
+                               ? '/dashboard/transactions' 
+                               : item.href;
+              const isActive = pathname === itemHref;
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={itemHref}
                   className={`flex items-center px-3 py-2 rounded-md text-sm font-medium ${
                     isActive
                       ? "bg-primary/10 text-primary"
@@ -160,11 +163,14 @@ export default function DashboardNavbar() {
       <div className="md:hidden container mx-auto px-4 py-2 overflow-x-auto">
         <div className="flex space-x-2">
           {filteredNavItems.map((item) => {
-            const isActive = pathname === item.href;
+            const itemHref = (item.name === 'Dashboard' && userRole === 'agent') 
+                             ? '/dashboard/transactions' 
+                             : item.href;
+            const isActive = pathname === itemHref;
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={itemHref}
                 className={`flex items-center px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
                   isActive
                     ? "bg-primary/10 text-primary"
