@@ -889,6 +889,7 @@ const ciPaymentSchema = z.object({
   amount_paid: z.number().positive({ message: "Amount must be positive" }),
   case_number: z.string().optional(),
   ci_signature: z.string().optional(), // Assuming base64 string or similar
+  paid_to: z.string().optional(), // Add paid_to here as well
   paying_agent_signature: z.string().optional(),
   witness_signature: z.string().optional(),
   paying_agent_printed_name: z.string().min(1, { message: "Paying agent's printed name is required" }),
@@ -933,16 +934,22 @@ export async function createCiPaymentAction(formData: CiPaymentFormData): Promis
 
   const validatedData = validationResult.data;
 
-  // 3. Determine Paying Agent ID
-  let payingAgentId = loggedInUserId;
-  if (userRole === 'admin' && validatedData.paying_agent_id) {
-    // Allow admin to specify agent, but validate it exists? (Optional for now)
-    payingAgentId = validatedData.paying_agent_id;
-  } else if (userRole === 'admin' && !validatedData.paying_agent_id) {
-     // If admin submits without selecting, assume they are the paying agent
-     payingAgentId = loggedInUserId;
-  } else if (userRole !== 'admin' && validatedData.paying_agent_id && validatedData.paying_agent_id !== loggedInUserId) {
-    return { success: false, error: "Agents can only submit payments for themselves." };
+  // 3. Determine Paying Agent ID (Revised Logic)
+  let payingAgentId: string;
+  if (userRole === 'admin') {
+    // Admin can specify an agent, or defaults to themselves if none selected
+    payingAgentId = validatedData.paying_agent_id || loggedInUserId;
+    console.log(`[CI Payment Action] Admin user (${loggedInUserId}) submitting. Paying Agent ID set to: ${payingAgentId}`);
+  } else {
+    // Agent MUST submit for themselves.
+    // Check if they tried to submit for someone else (paying_agent_id is present and different)
+    if (validatedData.paying_agent_id && validatedData.paying_agent_id !== loggedInUserId) {
+      console.warn(`[CI Payment Action] Agent user (${loggedInUserId}) attempt to submit for different agent (${validatedData.paying_agent_id}). Denying.`);
+      return { success: false, error: "Agents can only submit payments for themselves." };
+    }
+    // Otherwise, agent is submitting for themselves (paying_agent_id is undefined or matches)
+    payingAgentId = loggedInUserId;
+     console.log(`[CI Payment Action] Agent user (${loggedInUserId}) submitting for self. Paying Agent ID set to: ${payingAgentId}`);
   }
 
   // 4. Generate Receipt Number (Example: CI-YYYYMMDD-HHMMSS-RANDOM)
