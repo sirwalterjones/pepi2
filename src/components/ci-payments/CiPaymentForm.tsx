@@ -100,29 +100,86 @@ export default function CiPaymentForm({
     }
 
     const getSignatureData = (ref: React.RefObject<SignatureCanvas>): string | undefined => {
-        if (!ref.current || ref.current.isEmpty()) {
+        try {
+            // Add more checks: ensure ref.current exists and expected methods are functions
+            if (!ref.current || typeof ref.current.isEmpty !== 'function' || ref.current.isEmpty()) {
+                return undefined;
+            }
+            if (typeof ref.current.getTrimmedCanvas !== 'function') {
+                 console.error("getTrimmedCanvas method not found on signature ref", ref);
+                 toast({
+                     variant: "destructive",
+                     title: "Signature Component Error",
+                     description: "Internal error reading signature. Please try again.",
+                 });
+                 return undefined; // Indicate failure
+            }
+
+            const canvas = ref.current.getTrimmedCanvas();
+            
+            // Verify it returned a canvas
+            if (!(canvas instanceof HTMLCanvasElement)) {
+                 console.error("getTrimmedCanvas did not return a valid canvas", canvas);
+                 toast({
+                     variant: "destructive",
+                     title: "Signature Read Error",
+                     description: "Could not get signature image data. Please try again.",
+                 });
+                 return undefined; // Indicate failure
+            }
+            
+            return canvas.toDataURL('image/png');
+
+        } catch (error) {
+            console.error("Error getting signature data:", error);
+            toast({ 
+                 variant: "destructive",
+                 title: "Signature Error",
+                 description: "Could not read signature data. Please try clearing and signing again.",
+             });
+            // Re-throwing might be too disruptive, return undefined to indicate failure
+            // throw error; 
             return undefined;
         }
-        // Get signature as base64 PNG
-        return ref.current.getTrimmedCanvas().toDataURL('image/png');
     };
 
     const onSubmit = async (data: z.infer<typeof ciPaymentFormSchema>) => {
         setIsLoading(true);
         setError(null);
 
-        // Get signature data
-        const ciSignatureData = getSignatureData(ciSigRef);
-        const agentSignatureData = getSignatureData(agentSigRef);
-        const witnessSignatureData = getSignatureData(witnessSigRef);
+        let ciSignatureData: string | undefined;
+        let agentSignatureData: string | undefined;
+        let witnessSignatureData: string | undefined;
 
-        // Basic signature validation (optional, could enforce required signatures)
-        if (!agentSignatureData) {
+        // Wrap signature retrieval in try...catch
+        try {
+            ciSignatureData = getSignatureData(ciSigRef);
+            agentSignatureData = getSignatureData(agentSigRef);
+            witnessSignatureData = getSignatureData(witnessSigRef);
+            
+            // Add check here: If any required signature failed to read (returned undefined), stop.
+            if (agentSignatureData === undefined || ciSignatureData === undefined) {
+                // Specific error toasts are shown within getSignatureData
+                setError("Failed to read required signature data. Please clear and sign again.");
+                setIsLoading(false);
+                return;
+            }
+
+        } catch (sigError) { 
+             // This catch might not be needed if getSignatureData handles errors and returns undefined
+             console.error("Unexpected error during signature processing:", sigError);
+             setError("An unexpected error occurred while processing signatures."); 
+             setIsLoading(false);
+             return; 
+        }
+
+        // Basic signature validation (required signatures)
+        if (!agentSignatureData) { // Check if data is present (might be redundant after above check)
              setError("Paying Agent signature is required.");
              setIsLoading(false);
              return;
         }
-         if (!ciSignatureData) {
+         if (!ciSignatureData) { // Check if data is present
              setError("CI signature is required.");
              setIsLoading(false);
              return;
