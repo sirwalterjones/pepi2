@@ -467,7 +467,7 @@ export default function TransactionList() {
             </CardDescription>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            {isAdmin && (
+            {(isAdmin || !isAdmin) && (
                 <Button onClick={() => setIsFormOpen(true)}>
                     <Plus className="mr-2 h-4 w-4" />
                     New Transaction
