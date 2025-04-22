@@ -39,7 +39,7 @@ export default function AdminDashboardActions({
                         <PlusCircle className="mr-2 h-4 w-4" /> New CI Payment
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-3xl"> 
+                <DialogContent className="w-full max-w-xs sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-4 md:p-6">
                     <DialogHeader>
                         <DialogTitle>New CI Payment (Admin)</DialogTitle>
                         <DialogDescription>

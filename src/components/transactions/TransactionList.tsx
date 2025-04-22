@@ -467,27 +467,71 @@ export default function TransactionList() {
             </CardDescription>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <Button onClick={() => setIsFormOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Transaction
-            </Button>
+            {isAdmin && (
+                <Button onClick={() => setIsFormOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Transaction
+                </Button>
+            )}
             {!isAdmin && (
-               <Dialog open={isRequestFormOpen} onOpenChange={setIsRequestFormOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline">
-                     <PlusCircle className="mr-2 h-4 w-4" /> Request Funds
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px] w-full max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Request Additional Funds</DialogTitle>
-                    <DialogDescription>
-                      Submit a request for more funds. Enter the amount and reason below.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <FundRequestForm onSuccess={() => setIsRequestFormOpen(false)} />
-                </DialogContent>
-              </Dialog>
+              <>
+                 {/* Agent: Request Funds Button */}
+                 <Dialog open={isRequestFormOpen} onOpenChange={handleRequestFormOpenChange}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline">
+                         <PlusCircle className="mr-2 h-4 w-4" /> {requestToEdit ? "Edit Fund Request" : "Request Funds"}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>{requestToEdit ? 'Edit Fund Request' : 'Request Additional Funds'}</DialogTitle>
+                        <DialogDescription>
+                          {requestToEdit ? 'Update the details of your rejected request below.' : 'Submit a request for more funds. Enter the amount and reason below.'}
+                        </DialogDescription>
+                      </DialogHeader>
+                      {/* Pass initial data correctly */} 
+                      <FundRequestForm 
+                          initialData={requestToEdit || undefined} 
+                          onSuccess={() => {
+                              setIsRequestFormOpen(false);
+                              setRequestToEdit(null);
+                              fetchData(); 
+                          }} 
+                      />
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* Agent: New CI Payment Button */}
+                   {activeBook?.id && (
+                     <Dialog open={isCiPaymentFormOpen} onOpenChange={setIsCiPaymentFormOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="secondary">
+                                <PlusCircle className="mr-2 h-4 w-4" /> New CI Payment
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="w-full max-w-xs sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-4 md:p-6"> {/* Responsive Width */}
+                            <DialogHeader>
+                                <DialogTitle>New CI Payment</DialogTitle>
+                                <DialogDescription>
+                                    Fill out the form to record a Confidential Informant payment. It will be submitted for approval.
+                                </DialogDescription>
+                            </DialogHeader>
+                            {currentUserAgentId && activeBook && (
+                                <CiPaymentForm
+                                    userId={currentUserAgentId} 
+                                    userRole={'agent'}
+                                    activeBookId={activeBook.id}
+                                    agentData={currentAgentData} 
+                                    onFormSubmitSuccess={() => {
+                                        setIsCiPaymentFormOpen(false);
+                                        fetchData(); // Refetch data after submission
+                                    }}
+                                />
+                            )}
+                        </DialogContent>
+                    </Dialog>
+                   )}
+               </>
             )}
           </div>
         </div>
@@ -724,25 +768,6 @@ export default function TransactionList() {
           }}
         />
       )}
-
-      <Dialog open={isRequestFormOpen} onOpenChange={handleRequestFormOpenChange}>
-          <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                  <DialogTitle>{requestToEdit ? 'Edit Fund Request' : 'Request Additional Funds'}</DialogTitle>
-                  <DialogDescription>
-                      {requestToEdit ? 'Update the details of your rejected request below.' : 'Submit a request for more funds. Enter the amount and reason below.'}
-                  </DialogDescription>
-              </DialogHeader>
-              <FundRequestForm 
-                  initialData={requestToEdit || undefined} 
-                  onSuccess={() => {
-                      setIsRequestFormOpen(false);
-                      setRequestToEdit(null);
-                      fetchData();
-                  }} 
-              />
-          </DialogContent>
-      </Dialog>
     </Card>
   );
 }
