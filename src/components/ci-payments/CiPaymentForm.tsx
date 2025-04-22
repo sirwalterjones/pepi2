@@ -207,19 +207,31 @@ export default function CiPaymentForm({
         // Witness signature might be optional based on requirements
 
 
-        const formData: CiPaymentFormData = {
+        // Construct formData, initially excluding paying_agent_id unless admin
+        const formData: Partial<CiPaymentFormData> = {
             ...data,
             date: format(data.date, 'yyyy-MM-dd'), // Format date for DB
             paid_to: data.paid_to || undefined, // Use undefined instead of null for optional Zod field
-            paying_agent_id: userRole === 'admin' ? data.paying_agent_id || userId : userId, // Set agent ID based on role/selection
+            // Explicitly remove paying_agent_id from initial spread data
+            paying_agent_id: undefined,
             book_id: activeBookId,
             ci_signature: ciSignatureData,
             paying_agent_signature: agentSignatureData,
             witness_signature: witnessSignatureData,
         };
 
+        // Delete the potentially undefined key from the raw spread
+        delete formData.paying_agent_id;
+
+        // Conditionally set paying_agent_id ONLY for admins
+        if (userRole === 'admin') {
+            formData.paying_agent_id = data.paying_agent_id || userId; // Admin defaults to self if none selected
+        }
+        // For agents, the field remains absent, server will handle assignment
+
         try {
-            const result = await createCiPaymentAction(formData);
+            // Cast to expected type for the action. Server side handles agent assignment if field is absent.
+            const result = await createCiPaymentAction(formData as CiPaymentFormData);
             if (result.success) {
                 toast({
                     title: "Success",
