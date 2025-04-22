@@ -76,10 +76,21 @@ export async function middleware(req: NextRequest) {
 
   // Check if the request is for protected routes
   if (req.nextUrl.pathname.startsWith("/dashboard")) {
-    // If getUser() didn't return a user object, redirect to sign-in
+    // If getUser() didn't return a user object...
     if (!user) {
-       console.log(`Middleware redirecting to /sign-in (no user) for path: ${req.nextUrl.pathname}`);
-       return NextResponse.redirect(new URL("/sign-in", req.url));
+      // Check if the path is the specific dynamic route we are debugging
+      // Regex to match /dashboard/ci-payments/ANY_ID/receipt
+      const isReceiptPath = /^\/dashboard\/ci-payments\/[^\/]+\/receipt$/.test(req.nextUrl.pathname);
+
+      if (!isReceiptPath) {
+        // If it's NOT the receipt path, redirect as usual
+        console.log(`Middleware redirecting to /sign-in (no user) for path: ${req.nextUrl.pathname}`);
+        return NextResponse.redirect(new URL("/sign-in", req.url));
+      } else {
+        // If it IS the receipt path, log that we're skipping the redirect and let the page try to handle auth
+        console.log(`Middleware skipping auth redirect for receipt path: ${req.nextUrl.pathname}, letting page handle auth.`);
+        // Allow the request to proceed to the page component
+      }
     }
 
     // If this is the dashboard root, check role for agent redirect
