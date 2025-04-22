@@ -1,3 +1,4 @@
+// Ensure this file is treated as Server Actions
 "use server";
 
 import { encodedRedirect } from "@/utils/utils";
@@ -8,6 +9,7 @@ import { PepiBook } from "@/types/schema";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { type FundRequest } from "@/types/schema";
+import { CiPayment, Agent } from "@/types/schema";
 
 export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
@@ -878,4 +880,373 @@ export async function deleteFundRequestAction(requestId: string) {
     revalidatePath("/dashboard");
 
     return { success: true };
+}
+
+// Define the schema for CI Payment form data using Zod
+const ciPaymentSchema = z.object({
+  date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid date format" }),
+  paying_agent_id: z.string().uuid().optional(), // Optional: Admin might select this
+  amount_paid: z.number().positive({ message: "Amount must be positive" }),
+  case_number: z.string().optional(),
+  ci_signature: z.string().optional(), // Assuming base64 string or similar
+  paying_agent_signature: z.string().optional(),
+  witness_signature: z.string().optional(),
+  paying_agent_printed_name: z.string().min(1, { message: "Paying agent's printed name is required" }),
+  witness_printed_name: z.string().optional(),
+  pepi_receipt_number: z.string().optional(),
+  book_id: z.string().uuid({ message: "Active PEPI Book ID is required" }) // Ensure book_id is provided
+});
+
+export type CiPaymentFormData = z.infer<typeof ciPaymentSchema>;
+
+export async function createCiPaymentAction(formData: CiPaymentFormData): Promise<{ success: boolean; error?: string; data?: CiPayment }> {
+  const supabase = await createClient();
+
+  // 1. Get current user and role
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: "Authentication required." };
+  }
+
+  const { data: agentData, error: agentError } = await supabase
+    .from("agents")
+    .select("role, user_id")
+    .eq("user_id", user.id)
+    .single();
+
+  if (agentError || !agentData) {
+    console.error("Error fetching agent role:", agentError);
+    return { success: false, error: "Could not verify agent role." };
+  }
+
+  const userRole = agentData.role;
+  const loggedInUserId = agentData.user_id;
+
+  // 2. Validate input data
+  const validationResult = ciPaymentSchema.safeParse(formData);
+  if (!validationResult.success) {
+    console.error("CI Payment validation error:", validationResult.error.flatten());
+    // Concatenate all error messages
+    const errorMessages = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+    return { success: false, error: `Invalid form data: ${errorMessages}` };
+  }
+
+  const validatedData = validationResult.data;
+
+  // 3. Determine Paying Agent ID
+  let payingAgentId = loggedInUserId;
+  if (userRole === 'admin' && validatedData.paying_agent_id) {
+    // Allow admin to specify agent, but validate it exists? (Optional for now)
+    payingAgentId = validatedData.paying_agent_id;
+  } else if (userRole === 'admin' && !validatedData.paying_agent_id) {
+     // If admin submits without selecting, assume they are the paying agent
+     payingAgentId = loggedInUserId;
+  } else if (userRole !== 'admin' && validatedData.paying_agent_id && validatedData.paying_agent_id !== loggedInUserId) {
+    return { success: false, error: "Agents can only submit payments for themselves." };
+  }
+
+  // 4. Generate Receipt Number (Example: CI-YYYYMMDD-HHMMSS-RANDOM)
+  // Consider using a more robust method or sequence in production
+  const now = new Date();
+  const receiptNumber = `CI-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+
+  // 5. Prepare data for insertion
+  const paymentDataToInsert = {
+    date: validatedData.date,
+    paying_agent_id: payingAgentId,
+    amount_paid: validatedData.amount_paid,
+    case_number: validatedData.case_number,
+    ci_signature: validatedData.ci_signature,
+    paying_agent_signature: validatedData.paying_agent_signature,
+    witness_signature: validatedData.witness_signature,
+    paying_agent_printed_name: validatedData.paying_agent_printed_name,
+    witness_printed_name: validatedData.witness_printed_name,
+    receipt_number: receiptNumber,
+    pepi_receipt_number: validatedData.pepi_receipt_number,
+    status: 'pending', // Always pending initially
+    book_id: validatedData.book_id, // Ensure this comes from the form/context
+    // commander_signature, reviewed_by, reviewed_at, rejection_reason are null initially
+  };
+
+  // 6. Insert into database
+  const { data: newPayment, error: insertError } = await supabase
+    .from("ci_payments")
+    .insert(paymentDataToInsert)
+    .select()
+    .single();
+
+  if (insertError) {
+    console.error("Error inserting CI Payment:", insertError);
+     // Check for specific errors like unique constraint violation for receipt_number
+    if (insertError.code === '23505') { // Unique violation
+        return { success: false, error: `Database error: Failed to generate a unique receipt number. Please try again. (${insertError.message})` };
+    }
+    return { success: false, error: `Database error: ${insertError.message}` };
+  }
+
+  // 7. Revalidate paths
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/transactions"); // Assuming CI payments might appear here or trigger updates
+  // Add specific path for admin approval list if different
+
+  console.log("CI Payment created successfully:", newPayment);
+  return { success: true, data: newPayment as CiPayment }; // Cast might be needed depending on type definition
+}
+
+// Action to fetch all agents for selection (e.g., in admin forms)
+export async function getAgentsForSelectAction(): Promise<{ success: boolean; data?: { user_id: string; name: string }[]; error?: string }> {
+  const supabase = await createClient();
+
+  // Verify user is admin
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Authentication required." };
+
+  const { data: adminData, error: adminCheckError } = await supabase
+    .from("agents")
+    .select("role")
+    .eq("user_id", user.id)
+    .single();
+
+  if (adminCheckError || !adminData || adminData.role !== 'admin') {
+    console.error("Admin check failed for getAgentsForSelectAction:", adminCheckError);
+    return { success: false, error: "Admin privileges required." };
+  }
+
+  // Fetch agents
+  const { data: agents, error } = await supabase
+    .from("agents")
+    .select("user_id, name")
+    .order("name");
+
+  if (error) {
+    console.error("Error fetching agents for select:", error);
+    return { success: false, error: "Failed to fetch agents." };
+  }
+
+  return { success: true, data: agents || [] };
+}
+
+// Action to fetch pending CI Payments for admin review
+export async function getPendingCiPaymentsAction(bookId: string): Promise<{ success: boolean; data?: CiPayment[]; error?: string }> {
+  const supabase = await createClient();
+
+  // Verify user is admin
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Authentication required." };
+
+  const { data: adminData, error: adminCheckError } = await supabase
+    .from("agents")
+    .select("role")
+    .eq("user_id", user.id)
+    .single();
+
+  if (adminCheckError || !adminData || adminData.role !== 'admin') {
+    console.error("Admin check failed for getPendingCiPaymentsAction:", adminCheckError);
+    return { success: false, error: "Admin privileges required." };
+  }
+
+  if (!bookId) {
+    return { success: false, error: "Active PEPI Book ID is required." };
+  }
+
+  // Fetch pending payments for the specified book, joining with agent name
+  const { data: payments, error } = await supabase
+    .from("ci_payments")
+    .select(`
+      *,
+      paying_agent:agents!ci_payments_paying_agent_id_fkey(name)
+    `)
+    .eq("status", "pending")
+    .eq("book_id", bookId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching pending CI Payments:", error);
+    return { success: false, error: "Failed to fetch pending payments." };
+  }
+
+  // Explicitly cast to CiPayment[] ensuring paying_agent is handled
+  const typedPayments = (payments || []).map(p => ({ ...p, paying_agent: p.paying_agent as Agent | null })) as CiPayment[];
+
+  return { success: true, data: typedPayments };
+}
+
+// Action to approve a CI Payment
+export async function approveCiPaymentAction(paymentId: string, commanderSignature: string): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+
+  // Verify user is admin
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Authentication required." };
+
+  const { data: adminData, error: adminCheckError } = await supabase
+    .from("agents")
+    .select("role")
+    .eq("user_id", user.id)
+    .single();
+
+  if (adminCheckError || !adminData || adminData.role !== 'admin') {
+    console.error("Admin check failed for approveCiPaymentAction:", adminCheckError);
+    return { success: false, error: "Admin privileges required." };
+  }
+
+  if (!paymentId || !commanderSignature) {
+    return { success: false, error: "Payment ID and Commander Signature are required." };
+  }
+
+  // Fetch payment to ensure it's pending
+  const { data: payment, error: fetchError } = await supabase
+    .from("ci_payments")
+    .select("status")
+    .eq("id", paymentId)
+    .single();
+
+  if (fetchError || !payment) {
+    console.error("Error fetching CI Payment for approval:", fetchError);
+    return { success: false, error: "Payment not found." };
+  }
+
+  if (payment.status !== 'pending') {
+    return { success: false, error: "Payment has already been processed." };
+  }
+
+  // Update payment status
+  const { error: updateError } = await supabase
+    .from("ci_payments")
+    .update({
+      status: "approved",
+      reviewed_by: user.id,
+      reviewed_at: new Date().toISOString(),
+      commander_signature: commanderSignature,
+      rejection_reason: null // Clear any previous rejection reason if applicable (though shouldn't happen)
+    })
+    .eq("id", paymentId);
+
+  if (updateError) {
+    console.error("Error approving CI Payment:", updateError);
+    return { success: false, error: "Failed to approve payment." };
+  }
+
+  // Revalidate relevant paths
+  revalidatePath("/dashboard");
+  // Add specific path for admin approval list
+
+  console.log(`CI Payment ${paymentId} approved successfully.`);
+  return { success: true };
+}
+
+// Action to reject a CI Payment
+export async function rejectCiPaymentAction(paymentId: string, rejectionReason: string): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+
+  // Verify user is admin
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Authentication required." };
+
+  const { data: adminData, error: adminCheckError } = await supabase
+    .from("agents")
+    .select("role")
+    .eq("user_id", user.id)
+    .single();
+
+  if (adminCheckError || !adminData || adminData.role !== 'admin') {
+    console.error("Admin check failed for rejectCiPaymentAction:", adminCheckError);
+    return { success: false, error: "Admin privileges required." };
+  }
+
+  if (!paymentId || !rejectionReason) {
+    return { success: false, error: "Payment ID and Rejection Reason are required." };
+  }
+
+  // Fetch payment to ensure it's pending
+  const { data: payment, error: fetchError } = await supabase
+    .from("ci_payments")
+    .select("status")
+    .eq("id", paymentId)
+    .single();
+
+  if (fetchError || !payment) {
+    console.error("Error fetching CI Payment for rejection:", fetchError);
+    return { success: false, error: "Payment not found." };
+  }
+
+  if (payment.status !== 'pending') {
+    return { success: false, error: "Payment has already been processed." };
+  }
+
+  // Update payment status
+  const { error: updateError } = await supabase
+    .from("ci_payments")
+    .update({
+      status: "rejected",
+      reviewed_by: user.id,
+      reviewed_at: new Date().toISOString(),
+      rejection_reason: rejectionReason,
+      commander_signature: null // Clear commander signature on rejection
+    })
+    .eq("id", paymentId);
+
+  if (updateError) {
+    console.error("Error rejecting CI Payment:", updateError);
+    return { success: false, error: "Failed to reject payment." };
+  }
+
+  // Revalidate relevant paths
+  revalidatePath("/dashboard");
+  // Add specific path for admin approval list
+
+  console.log(`CI Payment ${paymentId} rejected successfully.`);
+  return { success: true };
+}
+
+// Action to fetch a specific CI Payment for printing (ensures it's approved)
+export async function getCiPaymentForPrintAction(paymentId: string): Promise<{ success: boolean; data?: CiPayment; error?: string }> {
+  const supabase = await createClient();
+
+  // 1. Verify user authentication (optional but good practice)
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Authentication required." };
+
+  // Admins or potentially the agent who submitted might view/print?
+  // For now, let's assume authenticated users with access via RLS can fetch.
+  // RLS policy should ensure only authorized users can see the data.
+
+  if (!paymentId) {
+    return { success: false, error: "Payment ID is required." };
+  }
+
+  // 2. Fetch the payment details, including related agent/reviewer names
+  const { data: payment, error } = await supabase
+    .from("ci_payments")
+    .select(`
+      *,
+      paying_agent:agents!ci_payments_paying_agent_id_fkey(name, badge_number),
+      reviewer:agents!ci_payments_reviewed_by_fkey(name)
+    `)
+    .eq("id", paymentId)
+    // .eq("status", "approved") // Optional: Ensure only approved can be fetched here, or rely on RLS/calling context
+    .single();
+
+  if (error) {
+    console.error(`Error fetching CI Payment ${paymentId} for print:`, error);
+    return { success: false, error: "Failed to fetch CI Payment details." };
+  }
+
+  if (!payment) {
+     return { success: false, error: "CI Payment not found." };
+  }
+  
+  // Optional: Add explicit check for approved status if not done in query/RLS
+  if (payment.status !== 'approved') {
+      return { success: false, error: "This CI Payment has not been approved yet." };
+  }
+
+  // Cast nested objects to ensure type safety
+  const typedPayment = {
+      ...payment,
+      paying_agent: payment.paying_agent as Agent | null,
+      reviewer: payment.reviewer as Agent | null
+  } as CiPayment;
+
+  return { success: true, data: typedPayment };
 }
