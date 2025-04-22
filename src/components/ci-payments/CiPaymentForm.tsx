@@ -234,13 +234,6 @@ export default function CiPaymentForm({
         }
     };
 
-    const signaturePadOptions = {
-         penColor: 'black',
-         backgroundColor: 'rgb(248 250 252)', // slate-50 or similar
-         minWidth: 1,
-         maxWidth: 2,
-    };
-
     return (
         // Add a wrapper div for scrolling if needed, adjust max height as necessary
         <div className="max-h-[85vh] overflow-y-auto pr-2 custom-scrollbar"> 
@@ -380,7 +373,7 @@ export default function CiPaymentForm({
                         <div className="space-y-2">
                             <Label htmlFor="ci_signature" className="block text-center">CI Signature <span className="text-red-500">*</span></Label>
                             <div className="border rounded-md bg-slate-50">
-                                <SignatureCanvas ref={ciSigRef} canvasProps={{ id: 'ci_signature', className: 'w-full h-32' }} {...signaturePadOptions} />
+                                <SignatureCanvas ref={ciSigRef} canvasProps={{ id: 'ci_signature', className: 'w-full h-32' }} />
                             </div>
                             <Button type="button" variant="outline" size="sm" onClick={() => clearSignature(ciSigRef)} className="w-full">Clear CI Sig</Button>
                         </div>
@@ -389,7 +382,7 @@ export default function CiPaymentForm({
                         <div className="space-y-2">
                             <Label htmlFor="agent_signature" className="block text-center">Paying Agent Signature <span className="text-red-500">*</span></Label>
                              <div className="border rounded-md bg-slate-50">
-                                 <SignatureCanvas ref={agentSigRef} canvasProps={{ id: 'agent_signature', className: 'w-full h-32' }} {...signaturePadOptions} />
+                                 <SignatureCanvas ref={agentSigRef} canvasProps={{ id: 'agent_signature', className: 'w-full h-32' }} />
                              </div>
                             <Button type="button" variant="outline" size="sm" onClick={() => clearSignature(agentSigRef)} className="w-full">Clear Agent Sig</Button>
                         </div>
@@ -398,7 +391,7 @@ export default function CiPaymentForm({
                         <div className="space-y-2">
                             <Label htmlFor="witness_signature" className="block text-center">Witness Signature (Optional)</Label>
                              <div className="border rounded-md bg-slate-50">
-                                 <SignatureCanvas ref={witnessSigRef} canvasProps={{ id: 'witness_signature', className: 'w-full h-32' }} {...signaturePadOptions} />
+                                 <SignatureCanvas ref={witnessSigRef} canvasProps={{ id: 'witness_signature', className: 'w-full h-32' }} />
                              </div>
                             <Button type="button" variant="outline" size="sm" onClick={() => clearSignature(witnessSigRef)} className="w-full">Clear Witness Sig</Button>
                          </div>
