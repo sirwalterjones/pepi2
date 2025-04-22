@@ -732,7 +732,7 @@ export default function TransactionDetails({
                       <div className="text-sm font-medium">Category</div>
                       {isEditing ? (
                           <Select
-                              value={editedTransaction.spending_category || ""}
+                              value={editedTransaction?.spending_category || ""}
                               onValueChange={(value) => setEditedTransaction({ ...editedTransaction, spending_category: value || null })}
                               required
                           >
@@ -746,7 +746,7 @@ export default function TransactionDetails({
                               </SelectContent>
                           </Select>
                       ) : (
-                          <div>{displayTransaction.spending_category || 'N/A'}</div>
+                          <div>{displayTransaction?.spending_category || 'N/A'}</div>
                       )}
                   </div>
 
@@ -755,14 +755,14 @@ export default function TransactionDetails({
                       <div className="text-sm font-medium">Case #</div>
                       {isEditing ? (
                           <Input
-                              value={editedTransaction.case_number || ''}
+                              value={editedTransaction?.case_number || ''}
                               onChange={(e) => setEditedTransaction({ ...editedTransaction, case_number: e.target.value })}
                               placeholder="Case Number"
                               className="mt-1"
-                              required={editedTransaction.spending_category === 'Evidence Purchase'}
+                              required={editedTransaction?.spending_category === 'Evidence Purchase'}
                           />
                       ) : (
-                          <div>{displayTransaction.case_number || 'N/A'}</div>
+                          <div>{displayTransaction?.case_number || 'N/A'}</div>
                       )}
                   </div>
 
@@ -771,32 +771,33 @@ export default function TransactionDetails({
                       <div className="text-sm font-medium">Paid To</div>
                       {isEditing ? (
                           <Input
-                              value={editedTransaction.paid_to || ''}
+                              value={editedTransaction?.paid_to || ''}
                               onChange={(e) => setEditedTransaction({ ...editedTransaction, paid_to: e.target.value })}
                               placeholder="Person/Vendor Name"
                               className="mt-1"
                           />
                       ) : (
-                          <div>{displayTransaction.paid_to || 'N/A'}</div>
+                          <div>{displayTransaction?.paid_to || 'N/A'}</div>
                       )}
                   </div>
 
                   {/* Fields conditional on Evidence Purchase category */}                  
-                  {(editedTransaction.spending_category === 'Evidence Purchase' || (!isEditing && displayTransaction.spending_category === 'Evidence Purchase')) && (
+                  {(editedTransaction?.spending_category === 'Evidence Purchase' ||
+                   (!isEditing && displayTransaction?.spending_category === 'Evidence Purchase')) && (
                        <>
                            {/* ECR Number */} 
                            <div>
                                <div className="text-sm font-medium">ECR #</div>
                                {isEditing ? (
                                    <Input
-                                       value={editedTransaction.ecr_number || ''}
+                                       value={editedTransaction?.ecr_number || ''}
                                        onChange={(e) => setEditedTransaction({ ...editedTransaction, ecr_number: e.target.value })}
                                        placeholder="ECR Number"
                                        className="mt-1"
-                                       required={editedTransaction.spending_category === 'Evidence Purchase'}
+                                       required={editedTransaction?.spending_category === 'Evidence Purchase'}
                                    />
                                ) : (
-                                   <div>{displayTransaction.ecr_number || 'N/A'}</div>
+                                   <div>{displayTransaction?.ecr_number || 'N/A'}</div>
                                )}
                            </div>
 
@@ -810,24 +811,24 @@ export default function TransactionDetails({
                                            variant={"outline"}
                                            className={cn(
                                                "w-full justify-start text-left font-normal mt-1",
-                                               !editedTransaction.date_to_evidence && "text-muted-foreground"
+                                               !editedTransaction?.date_to_evidence && "text-muted-foreground"
                                            )}
                                        >
                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                           {editedTransaction.date_to_evidence ? format(new Date(editedTransaction.date_to_evidence), "PPP") : <span>Pick a date</span>}
+                                           {editedTransaction?.date_to_evidence ? format(new Date(editedTransaction.date_to_evidence), "PPP") : <span>Pick a date</span>}
                                        </Button>
                                        </PopoverTrigger>
                                        <PopoverContent className="w-auto p-0">
                                        <Calendar
                                            mode="single"
-                                           selected={editedTransaction.date_to_evidence ? new Date(editedTransaction.date_to_evidence) : undefined}
+                                           selected={editedTransaction?.date_to_evidence ? new Date(editedTransaction.date_to_evidence) : undefined}
                                            onSelect={(date) => setEditedTransaction({ ...editedTransaction, date_to_evidence: date })}
                                            initialFocus
                                        />
                                        </PopoverContent>
                                    </Popover>
                                ) : (
-                                   <div>{displayTransaction.date_to_evidence ? formatDate(displayTransaction.date_to_evidence) : 'N/A'}</div>
+                                   <div>{displayTransaction?.date_to_evidence ? formatDate(displayTransaction.date_to_evidence) : 'N/A'}</div>
                                )}
                            </div>
                        </>
