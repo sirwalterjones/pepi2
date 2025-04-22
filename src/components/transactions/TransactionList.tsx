@@ -740,14 +740,7 @@ export default function TransactionList() {
         )}
       </CardContent>
       <CardFooter>
-        <Button
-          variant="outline"
-          className="ml-auto"
-          onClick={() => setIsFormOpen(true)}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          New Transaction
-        </Button>
+        {/* Footer can be empty or used for pagination later */}
       </CardFooter>
 
       <TransactionForm
