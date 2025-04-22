@@ -184,7 +184,7 @@ export default function CiPaymentsHistoryList({ activeBookId }: CiPaymentsHistor
                                 {/* Action Button */}
                                 <div className="flex-shrink-0 pt-2 md:pt-0">
                                     <Button variant="default" size="sm" asChild>
-                                        <Link href={`/dashboard/ci-payments/${payment.id}/receipt`} target="_blank" rel="noopener noreferrer">
+                                        <Link href={`/dashboard/ci-payments/${payment.id}/receipt`}>
                                             <Printer className="h-4 w-4 mr-1" /> View/Print Receipt
                                         </Link>
                                     </Button>
