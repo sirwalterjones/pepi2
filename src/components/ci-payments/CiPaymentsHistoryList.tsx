@@ -124,7 +124,16 @@ export default function CiPaymentsHistoryList({ activeBookId }: CiPaymentsHistor
 
     // Function to print the receipt from the modal
     const handlePrintReceipt = () => {
+        // Add a class to help with print styling
+        document.body.classList.add('printing-receipt');
+        
+        // Print the document
         window.print();
+        
+        // Remove the class after printing
+        setTimeout(() => {
+            document.body.classList.remove('printing-receipt');
+        }, 500);
     };
 
     if (loading) {
@@ -265,10 +274,10 @@ export default function CiPaymentsHistoryList({ activeBookId }: CiPaymentsHistor
                     <DialogHeader className="px-6 pt-6 pb-2 sticky top-0 bg-background z-10 border-b">
                         <DialogTitle>CI Payment Receipt</DialogTitle>
                     </DialogHeader>
-                    <div className="p-6 overflow-y-auto flex-grow print:p-0 print:m-0">
+                    <div className="p-6 overflow-y-auto flex-grow print:p-0 print:m-0 dialog-content">
                         {selectedPayment && <CiReceiptDisplay payment={selectedPayment} inModal={true} />}
                     </div>
-                    <DialogFooter className="px-6 py-4 sticky bottom-0 bg-background z-10 border-t flex flex-row justify-between sm:justify-end gap-2">
+                    <DialogFooter className="px-6 py-4 sticky bottom-0 bg-background z-10 border-t flex flex-row justify-between sm:justify-end gap-2 dialog-footer">
                         <Button onClick={handlePrintReceipt} className="flex-shrink-0">
                             <Printer className="h-4 w-4 mr-1" /> Print Receipt
                         </Button>
