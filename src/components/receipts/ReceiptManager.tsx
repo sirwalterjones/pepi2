@@ -118,32 +118,24 @@ export default function ReceiptManager() {
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from("transactions")
-        .select(
-          `
-          *,
-          agent:agents!transactions_agent_id_fkey(id, name, badge_number)
-        `,
-        )
-        .not("receipt_number", "is", null)
-        .order("created_at", { ascending: false });
+      let query = supabase.from("transactions").select(`
+        *,
+        agent:agents!transactions_agent_id_fkey ( id, name, badge_number )
+      `);
 
-      // If user is an agent (not admin), only show their receipts
-      if (userRole === "agent" && currentAgentId) {
+      if (userRole !== "admin" && currentAgentId) {
         query = query.eq("agent_id", currentAgentId);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) {
         console.error("Error fetching transactions:", error);
-        return;
+      } else {
+        setTransactions(data || []);
       }
-
-      setTransactions(data || []);
     } catch (error) {
-      console.error("Error fetching transactions:", error);
+      console.error("An error occurred:", error);
     } finally {
       setLoading(false);
     }
@@ -284,6 +276,37 @@ export default function ReceiptManager() {
                     <span class="label">Transaction Type:</span>
                     <span>${selectedReceipt.transaction_type.charAt(0).toUpperCase() + selectedReceipt.transaction_type.slice(1)}</span>
                   </div>
+                  
+                  <!-- Spending Specific Fields START -->
+                  ${selectedReceipt.transaction_type === 'spending' ? `
+                    ${selectedReceipt.spending_category ? `
+                      <div class="info-row">
+                        <span class="label">Category:</span>
+                        <span>${selectedReceipt.spending_category}</span>
+                      </div>` : ''}
+                    ${selectedReceipt.case_number ? `
+                      <div class="info-row">
+                        <span class="label">Case #:</span>
+                        <span>${selectedReceipt.case_number}</span>
+                      </div>` : ''}
+                    ${selectedReceipt.paid_to ? `
+                      <div class="info-row">
+                        <span class="label">Paid To:</span>
+                        <span>${selectedReceipt.paid_to}</span>
+                      </div>` : ''}
+                     ${selectedReceipt.ecr_number ? `
+                      <div class="info-row">
+                        <span class="label">ECR #:</span>
+                        <span>${selectedReceipt.ecr_number}</span>
+                      </div>` : ''}
+                     ${selectedReceipt.date_to_evidence ? `
+                      <div class="info-row">
+                        <span class="label">Date to Evidence:</span>
+                        <span>${formatDate(selectedReceipt.date_to_evidence)}</span>
+                      </div>` : ''}
+                  ` : ''}
+                  <!-- Spending Specific Fields END -->
+
                   ${
                     selectedReceipt.agent
                       ? `
