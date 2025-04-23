@@ -77,10 +77,11 @@ export default function MonthlyUnitReport() {
         }
     };
 
-    // Simple print handler
     const handlePrint = () => {
+        // Add class to body to trigger print styles
         document.body.classList.add('printing-unit-report');
         window.print();
+        // Remove class after print dialog is likely closed/cancelled
         setTimeout(() => document.body.classList.remove('printing-unit-report'), 500);
     }
 
@@ -148,7 +149,7 @@ export default function MonthlyUnitReport() {
     );
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 report-card-container"> {/* Added class for potential targeting */} 
             {/* Controls Section */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 hide-on-print">
                 <div className="w-full sm:w-auto sm:min-w-[200px]">
@@ -205,31 +206,38 @@ export default function MonthlyUnitReport() {
                  <p className="text-muted-foreground hide-on-print">Select a month and generate the report.</p>
             )}
             
-            {/* Print Styles (scoped if possible, or needs coordination with parent) */}
+            {/* Refined Print Styles */}
              <style jsx global>{`
                 @media print {
                     body.printing-unit-report {
-                        margin: 0;
-                        padding: 0;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background-color: white !important; 
                     }
-                    body.printing-unit-report .hide-on-print {
-                        display: none;
+                    /* Hide everything by default */
+                    body.printing-unit-report > * {
+                        display: none !important;
                     }
+                    /* Reveal only the specific report content */
                     body.printing-unit-report #unit-report-content-area {
-                        display: block;
+                        display: block !important;
+                        position: absolute; /* Use absolute to break out of hidden parents */
+                        left: 0;
+                        top: 0;
                         width: 100%;
-                        margin: 0;
-                        padding: 0;
-                        border: none;
-                        box-shadow: none;
+                        margin: 0 !important;
+                        padding: 1in !important; /* Add print margins */
+                        border: none !important;
+                        box-shadow: none !important;
                     }
-                     /* Ensure the card container itself is hidden */
-                    body.printing-unit-report .report-card-container > *:not(#unit-report-content-area) {
-                        display: none !important; 
-                    }
-                    body.printing-unit-report .report-card-container #unit-report-content-area {
-                         margin-top: -3rem !important; /* Adjust as needed to pull content up */
-                    }
+                    /* Ensure elements marked hide-on-print are hidden */
+                     body.printing-unit-report .hide-on-print {
+                        display: none !important;
+                     }
+                     /* Hide Vercel Toolbar if present */
+                     body.printing-unit-report [data-vercel-toolbar] {
+                         display: none !important;
+                     }
                 }
             `}</style>
         </div>
