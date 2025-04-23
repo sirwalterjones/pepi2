@@ -2070,14 +2070,14 @@ export async function deleteAgentAction(agentId: string): Promise<{ success: boo
     try {
         // 3. Clear references in dependent tables
         
-        // Clear references in fund_requests
-        console.log(`[deleteAgentAction] Clearing agent references in fund_requests for agent ${agentId}...`);
-        const { error: clearFundRequestsError } = await supabase
+        // Delete fund_requests associated with this agent (since agent_id can't be null)
+        console.log(`[deleteAgentAction] Deleting fund_requests for agent ${agentId}...`);
+        const { error: deleteFundRequestsError } = await supabase
             .from('fund_requests')
-            .update({ agent_id: null })
+            .delete()
             .eq('agent_id', agentId);
             
-        if (clearFundRequestsError) throw new Error(`Failed to clear fund_requests references: ${clearFundRequestsError.message}`);
+        if (deleteFundRequestsError) throw new Error(`Failed to delete fund_requests: ${deleteFundRequestsError.message}`);
         
         // Clear references in transactions (if any exist)
         console.log(`[deleteAgentAction] Clearing agent references in transactions for agent ${agentId}...`);
