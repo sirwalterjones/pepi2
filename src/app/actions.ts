@@ -2068,16 +2068,52 @@ export async function deleteAgentAction(agentId: string): Promise<{ success: boo
     }
 
     try {
-        // 3. Clear references in dependent tables
-        
-        // Delete fund_requests associated with this agent (since agent_id can't be null)
-        console.log(`[deleteAgentAction] Deleting fund_requests for agent ${agentId}...`);
-        const { error: deleteFundRequestsError } = await supabase
+        // First check if there are fund requests associated with this agent
+        const { data: fundRequests, error: checkError } = await supabase
             .from('fund_requests')
-            .delete()
+            .select('id, status')
             .eq('agent_id', agentId);
             
-        if (deleteFundRequestsError) throw new Error(`Failed to delete fund_requests: ${deleteFundRequestsError.message}`);
+        if (checkError) {
+            console.error(`[deleteAgentAction] Error checking fund requests: ${checkError.message}`);
+            return { success: false, error: `Failed to check for fund requests: ${checkError.message}` };
+        }
+        
+        if (fundRequests && fundRequests.length > 0) {
+            console.log(`[deleteAgentAction] Found ${fundRequests.length} fund requests for agent ${agentId}. Statuses: ${fundRequests.map(r => r.status).join(', ')}`);
+            
+            // Delete each fund request individually to ensure they're all removed
+            for (const request of fundRequests) {
+                console.log(`[deleteAgentAction] Deleting fund request ${request.id}...`);
+                const { error: deleteRequestError } = await supabase
+                    .from('fund_requests')
+                    .delete()
+                    .eq('id', request.id);
+                    
+                if (deleteRequestError) {
+                    console.error(`[deleteAgentAction] Failed to delete fund request ${request.id}: ${deleteRequestError.message}`);
+                    return { success: false, error: `Failed to delete fund request ${request.id}: ${deleteRequestError.message}` };
+                }
+            }
+            
+            console.log(`[deleteAgentAction] Successfully deleted ${fundRequests.length} fund requests for agent ${agentId}`);
+        }
+        
+        // Verify all fund requests were deleted
+        const { data: remainingRequests, error: verifyError } = await supabase
+            .from('fund_requests')
+            .select('id')
+            .eq('agent_id', agentId);
+            
+        if (verifyError) {
+            console.error(`[deleteAgentAction] Error verifying fund request deletion: ${verifyError.message}`);
+            return { success: false, error: `Failed to verify fund request deletion: ${verifyError.message}` };
+        }
+        
+        if (remainingRequests && remainingRequests.length > 0) {
+            console.error(`[deleteAgentAction] There are still ${remainingRequests.length} fund requests linked to agent ${agentId}`);
+            return { success: false, error: `There are still ${remainingRequests.length} fund requests linked to this agent that could not be deleted.` };
+        }
         
         // Clear references in transactions (if any exist)
         console.log(`[deleteAgentAction] Clearing agent references in transactions for agent ${agentId}...`);
@@ -2086,7 +2122,10 @@ export async function deleteAgentAction(agentId: string): Promise<{ success: boo
             .update({ agent_id: null })
             .eq('agent_id', agentId);
             
-        if (clearTransactionsError) throw new Error(`Failed to clear transactions references: ${clearTransactionsError.message}`);
+        if (clearTransactionsError) {
+            console.error(`[deleteAgentAction] Failed to clear transactions references: ${clearTransactionsError.message}`);
+            return { success: false, error: `Failed to clear transactions references: ${clearTransactionsError.message}` };
+        }
         
         // Clear references in ci_payments (if any exist)
         console.log(`[deleteAgentAction] Clearing agent references in ci_payments for agent ${agentId}...`);
@@ -2095,16 +2134,36 @@ export async function deleteAgentAction(agentId: string): Promise<{ success: boo
             .update({ paying_agent_id: null })
             .eq('paying_agent_id', agentId);
             
-        if (clearCiPaymentsError) throw new Error(`Failed to clear ci_payments references: ${clearCiPaymentsError.message}`);
+        if (clearCiPaymentsError) {
+            console.error(`[deleteAgentAction] Failed to clear ci_payments references: ${clearCiPaymentsError.message}`);
+            return { success: false, error: `Failed to clear ci_payments references: ${clearCiPaymentsError.message}` };
+        }
+        
+        // Check if there are any other tables referencing this agent
+        // Execute a raw query to get all tables that have foreign keys to the agents table
+        console.log(`[deleteAgentAction] Attempting to delete agent ${agentId}...`);
         
         // 4. Now delete the agent
-        console.log(`[deleteAgentAction] Deleting agent ${agentId}...`);
         const { error: deleteError } = await supabase
             .from("agents")
             .delete()
             .eq("id", agentId);
             
-        if (deleteError) throw new Error(`Failed to delete agent: ${deleteError.message}`);
+        if (deleteError) {
+            console.error(`[deleteAgentAction] Failed to delete agent: ${deleteError.message}`);
+            
+            // Try to get more information about what might still be referencing this agent
+            const { data: checkRemainingFR } = await supabase
+                .from('fund_requests')
+                .select('count')
+                .eq('agent_id', agentId);
+            
+            if (checkRemainingFR && checkRemainingFR.length > 0) {
+                console.error(`[deleteAgentAction] Found ${checkRemainingFR[0].count} fund requests still linked to agent ${agentId}`);
+            }
+            
+            return { success: false, error: `Failed to delete agent: ${deleteError.message}` };
+        }
 
         console.log(`[deleteAgentAction] Successfully deleted agent ${agentId} (${targetAgent.name})`);
         return { success: true, message: `Successfully deleted agent ${targetAgent.name}.` };
