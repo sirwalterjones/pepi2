@@ -1872,7 +1872,7 @@ export async function getMonthlyUnitReportAction(
                 case 'spending':
                     totalExpenditures += amount;
                     break;
-                case 'agent_return':
+                case 'return': // Changed from 'agent_return'
                     totalAgentReturns += amount;
                     break;
                 // Add other transaction types if they affect totals
@@ -1881,7 +1881,7 @@ export async function getMonthlyUnitReportAction(
 
         const totals: MonthlyUnitReportTotals = {
             totalAgentIssues,
-            totalAgentReturns,
+            totalAgentReturns, // Calculated using 'return'
             totalExpenditures,
             totalAdditionalUnitIssue
         };

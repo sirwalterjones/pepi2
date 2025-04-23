@@ -125,7 +125,7 @@ export default function MonthlyUnitReport() {
                              let typeVariant: "default" | "secondary" | "destructive" | "outline" = "outline";
                              if (tx.transaction_type === 'issuance') typeVariant = 'default';
                              if (tx.transaction_type === 'spending') typeVariant = 'destructive';
-                             if (tx.transaction_type === 'agent_return') typeVariant = 'secondary';
+                             if (tx.transaction_type === 'return') typeVariant = 'secondary';
                              const statusVariant = tx.status === 'approved' ? 'default' : 'secondary';
 
                             return (
