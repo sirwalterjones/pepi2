@@ -1652,6 +1652,7 @@ export async function getMonthlyPepiMemoDataAction(
             for (const key in filters) {
                 if (key === 'lt') query = query.lt(dateColumn, filters[key]);
                 else if (key === 'gte') query = query.gte(dateColumn, filters[key]);
+                else if (key === 'lte') query = query.lte(dateColumn, filters[key]); // <<< Added condition for lte
                 else if (key === 'description' && typeof filters[key] === 'string' && filters[key].includes('%')) {
                      query = query.like(key, filters[key]);
                 }
@@ -1659,9 +1660,10 @@ export async function getMonthlyPepiMemoDataAction(
             }
             const { data, error, count } = await query;
             if (error) {
-                console.error(`Error fetching sum from ${table} for ${column}:`, error);
+                console.error(`Error fetching sum from ${table} for ${column} with filters ${JSON.stringify(filters)}:`, error);
                 throw new Error(`Database error fetching sum from ${table}: ${error.message}`);
             }
+            // Explicitly type 'row' to resolve the implicit 'any' error
             return data?.reduce((acc, row: { [key: string]: any }) => acc + (row[column] || 0), 0) || 0;
         };
 
