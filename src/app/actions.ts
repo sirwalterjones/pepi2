@@ -1970,6 +1970,31 @@ export async function resetActivePepiBookAction(): Promise<{ success: boolean; m
         // 3. Delete associated records (order might matter depending on constraints)
         // It's often safer to delete records referencing transactions/payments first.
         
+        // First check if any fund_requests reference transactions through transaction_id
+        console.log(`[resetActivePepiBookAction] Checking for fund_requests with transaction references...`);
+        const { data: linkedRequests, error: checkError } = await supabase
+            .from('fund_requests')
+            .select('id, transaction_id')
+            .eq('pepi_book_id', bookId)
+            .not('transaction_id', 'is', null);
+            
+        if (checkError) throw new Error(`Failed to check fund_requests references: ${checkError.message}`);
+        
+        // If fund requests have transaction_id references, we need to clear these first
+        if (linkedRequests && linkedRequests.length > 0) {
+            console.log(`[resetActivePepiBookAction] Found ${linkedRequests.length} fund requests with transaction references to clear`);
+            
+            // Update fund_requests to remove transaction_id references
+            const { error: clearError } = await supabase
+                .from('fund_requests')
+                .update({ transaction_id: null })
+                .eq('pepi_book_id', bookId)
+                .not('transaction_id', 'is', null);
+                
+            if (clearError) throw new Error(`Failed to clear transaction references: ${clearError.message}`);
+            console.log(`[resetActivePepiBookAction] Cleared transaction references from fund requests`);
+        }
+        
         console.log(`[resetActivePepiBookAction] Deleting CI Payments for book ${bookId}...`);
         const { error: ciDeleteError } = await supabase
             .from('ci_payments')
