@@ -1379,3 +1379,72 @@ export async function getCiPaymentHistoryAction(bookId: string, agentId: string 
     return { success: false, error: `An unexpected server error occurred: ${err.message}` };
   }
 }
+
+// Action to update user profile information
+export async function updateUserProfileAction(data: {
+  agentId: string;
+  name: string;
+  badge_number: string;
+  // Add password fields if needed
+}): Promise<{ success: boolean; error?: string }> {
+  "use server";
+  const supabase = await createClient();
+
+  // 1. Verify user authentication
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    console.error("[updateUserProfileAction] Authentication error:", authError);
+    return { success: false, error: "Authentication required." };
+  }
+
+  // 2. Verify the logged-in user matches the agent being updated
+  const { data: agentData, error: agentCheckError } = await supabase
+    .from("agents")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("id", data.agentId)
+    .single();
+
+  if (agentCheckError || !agentData) {
+    console.error("[updateUserProfileAction] Agent verification failed:", agentCheckError);
+    return { success: false, error: "Verification failed. You can only update your own profile." };
+  }
+
+  // 3. Update the agents table
+  const { error: updateAgentError } = await supabase
+    .from("agents")
+    .update({
+      name: data.name,
+      badge_number: data.badge_number,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", data.agentId);
+
+  if (updateAgentError) {
+    console.error("[updateUserProfileAction] Error updating agents table:", updateAgentError);
+    return { success: false, error: `Failed to update profile details: ${updateAgentError.message}` };
+  }
+
+  // Optional: Update auth.users metadata if needed (like name)
+  // Be cautious with this, ensure data consistency
+  const { error: updateAuthError } = await supabase.auth.updateUser({
+      data: { full_name: data.name } // Make sure your auth schema supports this
+  });
+
+  if (updateAuthError) {
+      console.warn("[updateUserProfileAction] Failed to update auth user metadata:", updateAuthError);
+      // Don't necessarily fail the whole operation, but log it
+  }
+
+  // Optional: Handle password change logic here if implemented
+  // This would involve verifying the current password and then calling supabase.auth.updateUser({ password: newPassword })
+
+  console.log(`[updateUserProfileAction] Profile updated successfully for agent ${data.agentId}`);
+
+  // Revalidate relevant paths
+  revalidatePath("/dashboard/profile");
+  // Revalidate navbar if it displays the user's name
+  revalidatePath("/dashboard"); 
+
+  return { success: true };
+}
