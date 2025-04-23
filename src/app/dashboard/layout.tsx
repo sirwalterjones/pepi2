@@ -1,4 +1,5 @@
 import DashboardNavbar from "@/components/dashboard-navbar";
+import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
   children,
@@ -7,7 +8,9 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="min-h-screen flex flex-col">
-      <DashboardNavbar />
+      <div className="hide-on-print">
+        <DashboardNavbar />
+      </div>
       <main className="flex-1">{children}</main>
     </div>
   );

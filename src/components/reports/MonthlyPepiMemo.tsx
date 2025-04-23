@@ -33,8 +33,6 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
                 <span className="font-bold">FROM:</span>
                 <span className="flex items-center justify-between">
                     <span>{data.commanderName}, Commander</span>
-                     {/* Placeholder for Signature - maybe leave space */}
-                    <span className="italic text-gray-400 print:hidden">(Signature Area)</span>
                 </span>
                 <span className="font-bold">DATE:</span><span>{data.memoDate}</span>
                 <span className="font-bold">RE:</span><span>PEPI for {data.monthName} {data.bookYear}</span>
