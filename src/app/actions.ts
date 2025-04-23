@@ -1297,7 +1297,7 @@ export async function getApprovedCiPaymentsAction(bookId: string): Promise<{ suc
       `)
       .eq("status", "approved")
       .eq("book_id", bookId)
-      .order("created_at", { ascending: false }); // Show most recent first
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("[getApprovedCiPaymentsAction] Error fetching approved CI Payments:", error);
@@ -1560,4 +1560,182 @@ export async function updateCiPaymentAction(
 
   console.log(`[updateCiPaymentAction] CI Payment ${paymentId} updated successfully.`);
   return { success: true, data: updatedPayment as CiPayment };
+}
+
+// =============================================
+// Report Actions
+// =============================================
+
+export type MonthlyPepiMemoData = {
+    bookYear: number;
+    monthName: string; // e.g., "March"
+    memoDate: string; // Formatted date string for memo generation date
+    reconciliationDate: string; // Formatted date string for reconciliation reference
+    commanderName: string;
+    beginningBalance: number;
+    totalAgentIssues: number;
+    totalAgentReturns: number;
+    totalExpenditures: number;
+    totalAdditionalUnitIssue: number;
+    cashOnHand: number; // Calculated based on narrative logic if possible, otherwise ending balance
+    endingBalance: number;
+    ytdExpenditures: number;
+};
+
+/**
+ * Fetches and calculates data needed for the monthly PEPI reconciliation memo.
+ * @param bookId - The ID of the PEPI book.
+ * @param month - The month to generate the report for (1-12).
+ */
+export async function getMonthlyPepiMemoDataAction(
+    bookId: string, 
+    month: number
+): Promise<{ success: boolean; data?: MonthlyPepiMemoData; error?: string }> {
+    "use server";
+    const supabase = await createClient();
+    
+    // 1. Verify user (must be admin/commander)
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+        return { success: false, error: "Authentication required." };
+    }
+    const { data: agentData, error: agentError } = await supabase
+        .from("agents")
+        .select("id, name, role")
+        .eq("user_id", user.id)
+        .single();
+
+    if (agentError || !agentData) {
+        return { success: false, error: "Could not verify agent details." };
+    }
+    if (agentData.role !== 'admin') {
+        return { success: false, error: "Permission denied. Only admins/commanders can generate this report." };
+    }
+    const commanderName = agentData.name;
+
+    // 2. Fetch PEPI Book details (including start_date)
+    const { data: bookData, error: bookError } = await supabase
+        .from('pepi_books')
+        .select('year, initial_funding, created_at') // Use created_at as implicit start if start_date doesn't exist
+        .eq('id', bookId)
+        .single();
+
+    if (bookError || !bookData) {
+        console.error(`[getMonthlyPepiMemoDataAction] Error fetching book ${bookId}:`, bookError);
+        return { success: false, error: `Failed to fetch PEPI Book details: ${bookError?.message}` };
+    }
+    const bookYear = bookData.year;
+    const bookStartDateISO = new Date(bookData.created_at).toISOString(); // Book starts when created
+
+    // 3. Determine date range for the selected month
+    const year = bookYear;
+    if (month < 1 || month > 12) {
+        return { success: false, error: "Invalid month selected." };
+    }
+    const monthStartDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0)); // Start of the month (UTC)
+    const monthEndDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999)); // End of the month (UTC)
+    const monthStartDateISO = monthStartDate.toISOString();
+    const monthEndDateISO = monthEndDate.toISOString();
+    const monthName = monthStartDate.toLocaleString('default', { month: 'long', timeZone: 'UTC' });
+    const memoDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const reconciliationDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    console.log(`[getMonthlyPepiMemoDataAction] Calculating for Book: ${bookId}, Month: ${monthName} ${year} (${monthStartDateISO} to ${monthEndDateISO})`);
+
+    try {
+        // --- Calculation Logic --- 
+
+        // Function to fetch sum of amounts based on criteria
+        const fetchSum = async (table: string, column: string, filters: Record<string, any>, dateColumn: string = 'created_at') => {
+            let query = supabase.from(table).select(`${column}, ${dateColumn}`, { count: 'exact', head: false })
+            for (const key in filters) {
+                if (key === 'lt') query = query.lt(dateColumn, filters[key]);
+                else if (key === 'gte') query = query.gte(dateColumn, filters[key]);
+                else if (key === 'description' && typeof filters[key] === 'string' && filters[key].includes('%')) {
+                     query = query.like(key, filters[key]);
+                }
+                else query = query.eq(key, filters[key]);
+            }
+            const { data, error, count } = await query;
+            if (error) {
+                console.error(`Error fetching sum from ${table} for ${column}:`, error);
+                throw new Error(`Database error fetching sum from ${table}: ${error.message}`);
+            }
+            return data?.reduce((acc, row: { [key: string]: any }) => acc + (row[column] || 0), 0) || 0;
+        };
+
+        // 4. Calculate Beginning Balance (Start with initial funding, add/subtract transactions before month start)
+        let runningBalance = bookData.initial_funding || 0;
+        console.log(`[getMonthlyPepiMemoDataAction] Initial Funding: ${runningBalance}`);
+        
+        // Add approved fund additions before month start (using description filter)
+        const bbAddFunds = await fetchSum('transactions', 'amount', { pepi_book_id: bookId, transaction_type: 'issuance', status: 'approved', description: 'Add funds', lt: monthStartDateISO });
+        runningBalance += bbAddFunds;
+        console.log(`[getMonthlyPepiMemoDataAction] + Beginning Balance Add Funds: ${bbAddFunds}`);
+        
+        // Add agent returns before month start
+        const bbAgentReturns = await fetchSum('transactions', 'amount', { pepi_book_id: bookId, transaction_type: 'agent_return', status: 'approved', lt: monthStartDateISO });
+        runningBalance += bbAgentReturns;
+        console.log(`[getMonthlyPepiMemoDataAction] + Beginning Balance Agent Returns: ${bbAgentReturns}`);
+        
+        // Subtract approved fund requests before month start (using LIKE on description)
+        const bbAgentIssues = await fetchSum('transactions', 'amount', { pepi_book_id: bookId, transaction_type: 'issuance', status: 'approved', description: '%Approved fund request%', lt: monthStartDateISO }); 
+        runningBalance -= bbAgentIssues;
+        console.log(`[getMonthlyPepiMemoDataAction] - Beginning Balance Agent Issues: ${bbAgentIssues}`);
+        
+        // Subtract approved CI payments before month start (using reviewed_at)
+        const bbExpenditures = await fetchSum('ci_payments', 'amount_paid', { book_id: bookId, status: 'approved', lt: monthStartDateISO }, 'reviewed_at');
+        runningBalance -= bbExpenditures;
+        console.log(`[getMonthlyPepiMemoDataAction] - Beginning Balance Expenditures: ${bbExpenditures}`);
+        
+        const beginningBalance = runningBalance;
+        console.log(`[getMonthlyPepiMemoDataAction] Final Beginning Balance Calculated: ${beginningBalance}`);
+
+        // 5. Calculate Monthly Totals (within monthStartDateISO and monthEndDateISO)
+        const monthlyFiltersBase = { pepi_book_id: bookId, gte: monthStartDateISO, lte: monthEndDateISO };
+        const monthlyFiltersBaseCIR = { book_id: bookId, status: 'approved', gte: monthStartDateISO, lte: monthEndDateISO }; // For CI Payments reviewed_at
+        
+        const totalAgentIssues = await fetchSum('transactions', 'amount', { ...monthlyFiltersBase, transaction_type: 'issuance', status: 'approved', description: '%Approved fund request%' });
+        const totalAgentReturns = await fetchSum('transactions', 'amount', { ...monthlyFiltersBase, transaction_type: 'agent_return', status: 'approved' });
+        const totalExpenditures = await fetchSum('ci_payments', 'amount_paid', monthlyFiltersBaseCIR, 'reviewed_at');
+        const totalAdditionalUnitIssue = await fetchSum('transactions', 'amount', { ...monthlyFiltersBase, transaction_type: 'issuance', status: 'approved', description: 'Add funds' });
+
+        console.log(`[getMonthlyPepiMemoDataAction] Monthly Totals: Issues=${totalAgentIssues}, Returns=${totalAgentReturns}, Expenditures=${totalExpenditures}, AddFunds=${totalAdditionalUnitIssue}`);
+
+        // 6. Calculate Ending Balance
+        const endingBalance = beginningBalance + totalAdditionalUnitIssue + totalAgentReturns - totalAgentIssues - totalExpenditures;
+        console.log(`[getMonthlyPepiMemoDataAction] Ending Balance Calculated: ${endingBalance}`);
+
+        // 7. Calculate Cash On Hand (Matches Ending Balance with current logic)
+        const cashOnHand = endingBalance;
+
+        // 8. Calculate YTD Expenditures (Sum of approved ci_payments from book start up to monthEndDateISO)
+        const ytdExpenditures = await fetchSum('ci_payments', 'amount_paid', { book_id: bookId, status: 'approved', gte: bookStartDateISO, lte: monthEndDateISO }, 'reviewed_at');
+        console.log(`[getMonthlyPepiMemoDataAction] YTD Expenditures Calculated: ${ytdExpenditures}`);
+
+        console.log('[getMonthlyPepiMemoDataAction] All calculations complete.');
+
+        // 9. Prepare result data
+        const memoData: MonthlyPepiMemoData = {
+            bookYear,
+            monthName,
+            memoDate,
+            reconciliationDate,
+            commanderName,
+            beginningBalance,
+            totalAgentIssues,
+            totalAgentReturns,
+            totalExpenditures,
+            totalAdditionalUnitIssue,
+            cashOnHand,
+            endingBalance,
+            ytdExpenditures,
+        };
+
+        return { success: true, data: memoData };
+
+    } catch (error: any) {
+        console.error(`[getMonthlyPepiMemoDataAction] Unexpected error calculating memo data for Book ${bookId}, Month ${month}:`, error);
+        return { success: false, error: `An unexpected error occurred during calculation: ${error.message}` };
+    }
 }
