@@ -1709,9 +1709,19 @@ export async function getMonthlyPepiMemoDataAction(
         // 7. Calculate Cash On Hand (Matches Ending Balance with current logic)
         const cashOnHand = endingBalance;
 
-        // 8. Calculate YTD Expenditures (Sum of approved ci_payments from book start up to monthEndDateISO)
-        const ytdExpenditures = await fetchSum('ci_payments', 'amount_paid', { book_id: bookId, status: 'approved', gte: bookStartDateISO, lte: monthEndDateISO }, 'reviewed_at');
-        console.log(`[getMonthlyPepiMemoDataAction] YTD Expenditures Calculated: ${ytdExpenditures}`);
+        // 8. Calculate YTD Expenditures (Sum of approved 'spending' transactions)
+        // Fetch sum of approved transactions with type 'spending' from book start up to month end date.
+        const ytdExpenditures = await fetchSum('transactions', 'amount', 
+            { 
+                pepi_book_id: bookId, 
+                transaction_type: 'spending', 
+                status: 'approved', 
+                gte: bookStartDateISO, 
+                lte: monthEndDateISO 
+            },
+            'created_at' // Use transaction creation/approval date for YTD calculation
+        );
+        console.log(`[getMonthlyPepiMemoDataAction] Total YTD Expenditures (Spending Transactions) Calculated: ${ytdExpenditures}`);
 
         console.log('[getMonthlyPepiMemoDataAction] All calculations complete.');
 
@@ -1723,13 +1733,13 @@ export async function getMonthlyPepiMemoDataAction(
             reconciliationDate,
             commanderName,
             beginningBalance,
-            totalAgentIssues,
-            totalAgentReturns,
-            totalExpenditures,
-            totalAdditionalUnitIssue,
-            cashOnHand,
-            endingBalance,
-            ytdExpenditures,
+            totalAgentIssues,       // Monthly Agent Issues
+            totalAgentReturns,      // Monthly Agent Returns
+            totalExpenditures,      // Monthly Expenditures (Based on CI Payments)
+            totalAdditionalUnitIssue, // Monthly Added Funds
+            cashOnHand,             // Calculated
+            endingBalance,          // Calculated
+            ytdExpenditures,        // Corrected YTD Expenditures (Based on Spending Transactions)
         };
 
         return { success: true, data: memoData };
