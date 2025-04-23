@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Printer } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 // Import the memo display component (will create this next)
-// import MonthlyPepiMemo from '@/components/reports/MonthlyPepiMemo';
+import MonthlyPepiMemo from '@/components/reports/MonthlyPepiMemo';
 
 export default function CbMemoReportPage() {
     const { activeBook } = usePepiBooks();
@@ -150,11 +150,7 @@ export default function CbMemoReportPage() {
                      <p className="text-center text-muted-foreground py-10">Select a month and click "Generate Memo" to view the report.</p>
                 )}
                 {memoData && (
-                    // <MonthlyPepiMemo data={memoData} />
-                    <pre className='text-xs bg-gray-100 p-4 rounded overflow-auto'>
-                        {/* Placeholder until MonthlyPepiMemo component is built */} 
-                        {JSON.stringify(memoData, null, 2)}
-                    </pre>
+                    <MonthlyPepiMemo data={memoData} />
                 )}
             </div>
 
