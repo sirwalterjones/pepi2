@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 // April 23, 2025 - Testing deployment flow from Cursor to Vercel
 import { createClient } from '@/../supabase/client';
@@ -20,8 +22,6 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
 import { resetActivePepiBookAction } from '@/app/actions';
 import { useRouter } from 'next/navigation';
-
-'use client';
 
 export default function ProfilePage() {
   console.log("[Profile Page] Component Rendered");
