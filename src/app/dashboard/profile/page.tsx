@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation';
 'use client';
 
 export default function ProfilePage() {
+  console.log("[Profile Page] Component Rendered");
   const supabase = createClient();
   const router = useRouter();
 
@@ -36,32 +37,42 @@ export default function ProfilePage() {
 
   React.useEffect(() => {
     const fetchAgent = async () => {
-      setIsLoadingAgent(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/sign-in');
-        return;
-      }
-      console.log("[Profile Page] Fetched User ID:", user.id);
+      try {
+        setIsLoadingAgent(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          router.push('/sign-in');
+          return;
+        }
+        console.log("[Profile Page] Fetched User ID:", user.id);
 
-      const { data, error } = await supabase
-        .from('agents')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+        const { data, error } = await supabase
+          .from('agents')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
 
-      if (error || !data) {
-        console.error("Profile Page: Failed to fetch agent data for user " + user.id, error);
-        toast({
-            title: "Error",
-            description: "Could not load your profile data. Please try again.",
-            variant: "destructive",
-        });
-      } else {
-        console.log("[Profile Page] Fetched Agent Data:", data);
-        setAgentData(data as Agent);
+        if (error || !data) {
+          console.error("Profile Page: Failed to fetch agent data for user " + user.id, error);
+          toast({
+              title: "Error",
+              description: "Could not load your profile data. Please try again.",
+              variant: "destructive",
+          });
+        } else {
+          console.log("[Profile Page] Fetched Agent Data:", data);
+          setAgentData(data as Agent);
+        }
+        setIsLoadingAgent(false);
+      } catch (error) {
+         console.error("[Profile Page] Error fetching agent data:", error);
+         toast({
+             title: "Error Loading Profile",
+             description: "Could not load your profile data. Please check the console or contact support.",
+             variant: "destructive",
+         });
+         setIsLoadingAgent(false);
       }
-      setIsLoadingAgent(false);
     };
 
     fetchAgent();
