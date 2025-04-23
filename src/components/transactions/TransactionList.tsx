@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createClient } from "../../../supabase/client";
 import { Transaction, TransactionType, TransactionWithAgent, FundRequest, Agent } from "@/types/schema";
 import TransactionDetails from "./TransactionDetails";
@@ -320,69 +320,61 @@ export default function TransactionList() {
     });
   };
 
-  // Update balance calculation to only use transactions
-  const calculateAgentBalance = () => {
+  // Calculate balances using useMemo
+  const agentBalance = useMemo(() => {
     if (!currentUserAgentId || !transactions.length) return 0;
-
     let balance = 0;
-    transactions.forEach((transaction: TransactionWithAgent) => { // Use original transactions state
+    transactions.forEach((transaction) => {
       if (
         transaction.agent_id === currentUserAgentId &&
-        transaction.status === "approved" // <-- Only count approved transactions
+        transaction.status === "approved"
       ) {
         if (transaction.transaction_type === "issuance") {
           balance += transaction.amount;
         } else if (transaction.transaction_type === "spending") {
           balance -= transaction.amount;
         } else if (transaction.transaction_type === "return") {
-          // Assuming return decreases agent balance
           balance -= transaction.amount;
         }
       }
     });
-
     return balance;
-  };
+  }, [transactions, currentUserAgentId]);
 
-  // Calculate PEPI book's running balance (for admin view)
-  const calculatePepiBookBalance = () => {
-    if (!activeBook) return 0;
+  const pepiBookBalance = useMemo(() => {
+    if (!activeBook || !transactions) return 0; // Added !transactions check
 
-    let currentBalance = 0; // Start from zero
+    let currentBalance = 0;
     console.log(`[calculatePepiBookBalance] Starting calculation for Book ID: ${activeBook.id}`);
     console.log(`[calculatePepiBookBalance] Total transactions fetched: ${transactions.length}`);
 
-    // Find initial funding transaction amount
     const initialFundingTx = transactions.find(tx => 
         tx.pepi_book_id === activeBook.id &&
         tx.transaction_type === 'issuance' &&
         tx.status === 'approved' &&
-        (tx.description?.toLowerCase().includes("initial funding") || tx.agent_id === null) && // Heuristic for initial/added
-        !tx.description?.toLowerCase().includes("approved fund request") // Exclude request approvals
+        (tx.description?.toLowerCase().includes("initial funding") || tx.agent_id === null) &&
+        !tx.description?.toLowerCase().includes("approved fund request")
     );
+
     if (initialFundingTx) {
-        currentBalance = initialFundingTx.amount; // Start with initial/added funds
+        currentBalance = initialFundingTx.amount;
         console.log(`  [calculatePepiBookBalance] Initial Funding/Added Tx ID: ${initialFundingTx.id.substring(0,8)}, Amount: ${initialFundingTx.amount}, Starting Balance: ${currentBalance}`);
     } else {
-        // Fallback if specific initial funding not found (might use starting_amount, but transaction based is better)
-        // currentBalance = activeBook.starting_amount || 0;
-        console.log(`  [calculatePepiBookBalance] WARNING: Could not identify a specific initial funding transaction. Starting balance 0.`);
+        // Fallback: Use the book's starting amount if initial TX not found
+        currentBalance = activeBook.starting_amount || 0;
+        console.log(`  [calculatePepiBookBalance] WARNING: Could not identify a specific initial funding transaction. Starting balance from book: ${currentBalance}`);
     }
     
-    // Process other relevant approved transactions
-    transactions.forEach((transaction: TransactionWithAgent) => {
-        // Skip the initial funding transaction we already processed
+    transactions.forEach((transaction) => {
         if (transaction.id === initialFundingTx?.id) return;
-        
-        // Ensure the transaction belongs to the active book and is approved
         if (
             transaction.pepi_book_id === activeBook.id &&
             transaction.status === "approved"
         ) {
             let balanceChange = 0;
             let applied = false;
-            if (transaction.transaction_type === "issuance" && transaction.agent_id === null && !transaction.description?.toLowerCase().includes("approved fund request")) {
-                 // Count manual fund additions (issuance with no agent_id)
+            // Consider ALL issuances without an agent as additions to book balance
+            if (transaction.transaction_type === "issuance" && transaction.agent_id === null) {
                  balanceChange = transaction.amount;
                  currentBalance += balanceChange;
                  applied = true;
@@ -395,20 +387,15 @@ export default function TransactionList() {
                 currentBalance += balanceChange;
                 applied = true;
             }
-            // Log the effect of this transaction if applied
             if (applied) {
                 console.log(`  [calculatePepiBookBalance] Applied Tx ID: ${transaction.id.substring(0,8)}, Type: ${transaction.transaction_type}, Change: ${balanceChange}, New Balance: ${currentBalance}`);
             }
-            // Issuances to agents (transaction.transaction_type === "issuance" && transaction.agent_id !== null) are ignored here
-        } 
+        }
     });
 
     console.log(`[calculatePepiBookBalance] Final Calculated Balance: ${currentBalance}`);
     return currentBalance;
-  };
-
-  const pepiBookBalance = calculatePepiBookBalance(); // Calculate once
-  const agentBalance = calculateAgentBalance();
+  }, [transactions, activeBook]); // Depend on transactions and activeBook
 
   // Function to handle opening the edit form
   const handleEditRequest = (request: FundRequest) => {
