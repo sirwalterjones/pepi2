@@ -80,3 +80,32 @@ export type TransactionWithAgentAndBook = Transaction & {
 export type PepiBookWithTransactions = PepiBook & {
   transactions: Transaction[];
 };
+
+// Type definition for CI Payments based on the database table
+export type CiPayment = {
+  id: string; // uuid
+  created_at: string; // timestamp with time zone
+  date: string; // date
+  paying_agent_id: string; // uuid, FK to agents(user_id)
+  amount_paid: number; // numeric(10, 2)
+  case_number?: string | null; // text
+  paid_to?: string | null; // text - Added Field
+  ci_signature?: string | null; // text (base64 or path)
+  paying_agent_signature?: string | null; // text (base64 or path)
+  paying_agent_printed_name: string; // text
+  witness_signature?: string | null; // text (base64 or path)
+  witness_printed_name?: string | null; // text
+  receipt_number?: string | null; // text, unique
+  pepi_receipt_number?: string | null; // text
+  status: 'pending' | 'approved' | 'rejected'; // text
+  commander_signature?: string | null; // text (base64 or path)
+  reviewed_by?: string | null; // uuid, FK to agents(user_id)
+  reviewed_at?: string | null; // timestamp with time zone
+  rejection_reason?: string | null; // text
+  book_id: string; // uuid, FK to pepi_books(id)
+
+  // Optional related data (if fetching with joins)
+  paying_agent?: Agent | null;
+  reviewer?: Agent | null;
+  pepi_book?: PepiBook | null;
+};

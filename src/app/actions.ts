@@ -1914,3 +1914,97 @@ export async function getMonthlyUnitReportAction(
     // Ensure all paths return a value explicitly, although the catch block should handle errors
     // return { success: false, error: "An unexpected situation occurred." }; // Could add this, but catch should cover it
 }
+
+// =============================================
+// Admin Actions
+// =============================================
+
+/**
+ * Resets the currently active PEPI Book by deleting all associated transactions,
+ * fund requests, and CI payments. Requires admin privileges.
+ */
+export async function resetActivePepiBookAction(): Promise<{ success: boolean; message?: string; error?: string }> {
+    "use server";
+    const supabase = await createClient();
+
+    // 1. Verify user is an admin
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+        return { success: false, error: "Authentication required." };
+    }
+    const { data: agentData, error: agentError } = await supabase
+        .from("agents")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+    if (agentError || !agentData || agentData.role !== 'admin') {
+        return { success: false, error: "Permission denied. Only admins can perform this action." };
+    }
+
+    // 2. Find the *single* active PEPI Book
+    const { data: activeBooks, error: bookError } = await supabase
+        .from('pepi_books')
+        .select('id, year')
+        .eq('is_active', true)
+        .eq('is_closed', false); // Ensure it's not closed either
+
+    if (bookError) {
+        console.error("[resetActivePepiBookAction] Error fetching active book:", bookError);
+        return { success: false, error: `Database error fetching active book: ${bookError.message}` };
+    }
+    if (!activeBooks || activeBooks.length === 0) {
+        return { success: false, error: "No active PEPI Book found to reset." };
+    }
+    if (activeBooks.length > 1) {
+        console.error("[resetActivePepiBookAction] Found multiple active PEPI Books:", activeBooks);
+        return { success: false, error: "Consistency error: Multiple active PEPI Books found. Cannot proceed." };
+    }
+    const activeBook = activeBooks[0];
+    const bookId = activeBook.id;
+    const bookYear = activeBook.year;
+
+    console.log(`[resetActivePepiBookAction] Initiating reset for active PEPI Book ID: ${bookId} (Year: ${bookYear})`);
+
+    try {
+        // 3. Delete associated records (order might matter depending on constraints)
+        // It's often safer to delete records referencing transactions/payments first.
+        
+        console.log(`[resetActivePepiBookAction] Deleting CI Payments for book ${bookId}...`);
+        const { error: ciDeleteError } = await supabase
+            .from('ci_payments')
+            .delete()
+            .eq('book_id', bookId);
+        if (ciDeleteError) throw new Error(`Failed to delete CI Payments: ${ciDeleteError.message}`);
+        console.log(`[resetActivePepiBookAction] CI Payments deleted.`);
+
+        console.log(`[resetActivePepiBookAction] Deleting Fund Requests for book ${bookId}...`);
+        const { error: frDeleteError } = await supabase
+            .from('fund_requests')
+            .delete()
+            .eq('pepi_book_id', bookId);
+        if (frDeleteError) throw new Error(`Failed to delete Fund Requests: ${frDeleteError.message}`);
+        console.log(`[resetActivePepiBookAction] Fund Requests deleted.`);
+        
+        console.log(`[resetActivePepiBookAction] Deleting Transactions for book ${bookId}...`);
+        const { error: txDeleteError } = await supabase
+            .from('transactions')
+            .delete()
+            .eq('pepi_book_id', bookId);
+        if (txDeleteError) throw new Error(`Failed to delete Transactions: ${txDeleteError.message}`);
+        console.log(`[resetActivePepiBookAction] Transactions deleted.`);
+
+        // Note: We don't update the pepi_books table itself. The balance is reset by removing transactions.
+
+        // 4. Revalidate relevant paths
+        revalidatePath("/dashboard", "layout"); // Revalidate all dashboard pages
+        // Consider more specific paths if needed: /dashboard/transactions, /dashboard/reports, etc.
+
+        console.log(`[resetActivePepiBookAction] Successfully reset PEPI Book ID: ${bookId} (Year: ${bookYear})`);
+        return { success: true, message: `Successfully reset PEPI Book for ${bookYear}. All transactions deleted.` };
+
+    } catch (error: any) {
+        console.error(`[resetActivePepiBookAction] Error during reset for Book ${bookId}:`, error);
+        return { success: false, error: `An unexpected error occurred during reset: ${error.message}` };
+    }
+}
