@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getCiPaymentHistoryAction, getCiPaymentForPrintAction } from '@/app/actions';
 import { CiPayment, Agent } from '@/types/schema';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Loader2, FileSignature, Printer, Edit } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Badge, type VariantProps } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge';
+import type { BadgeProps } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import Image from 'next/image';
@@ -62,7 +63,7 @@ export default function AgentCiHistory({ agentId, isAdmin }: AgentCiHistoryProps
         fetchAgentData();
     }, [agentId, toast]);
 
-    const fetchPayments = async () => {
+    const fetchPayments = useCallback(async () => {
         if (!activeBook?.id) {
             setPayments([]);
             setLoading(false);
@@ -96,11 +97,11 @@ export default function AgentCiHistory({ agentId, isAdmin }: AgentCiHistoryProps
         } finally {
             setLoading(false);
         }
-    };
+    }, [activeBook?.id, isAdmin, agentId, toast]);
 
     useEffect(() => {
         fetchPayments();
-    }, [activeBook?.id, agentId, isAdmin, fetchPayments]);
+    }, [fetchPayments]);
 
     const formatCurrency = (amount: number | null | undefined) => {
         if (amount === null || amount === undefined) return "N/A";
@@ -165,9 +166,9 @@ export default function AgentCiHistory({ agentId, isAdmin }: AgentCiHistoryProps
         return payment.paying_agent_id === agentId;
     };
 
-    const getStatusVariant = (status: string | null | undefined): VariantProps<typeof badgeVariants>["variant"] => {
+    const getStatusVariant = (status: string | null | undefined): BadgeProps['variant'] => {
         switch (status?.toLowerCase()) {
-            case 'approved': return 'success';
+            case 'approved': return 'default';
             case 'rejected': return 'destructive';
             case 'pending': return 'secondary';
             default: return 'outline';
