@@ -42,6 +42,7 @@ export default function ProfilePage() {
         router.push('/sign-in');
         return;
       }
+      console.log("[Profile Page] Fetched User ID:", user.id);
 
       const { data, error } = await supabase
         .from('agents')
@@ -57,6 +58,7 @@ export default function ProfilePage() {
             variant: "destructive",
         });
       } else {
+        console.log("[Profile Page] Fetched Agent Data:", data);
         setAgentData(data as Agent);
       }
       setIsLoadingAgent(false);
