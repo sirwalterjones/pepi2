@@ -39,20 +39,12 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
                 <span className="font-bold">DATE:</span><span>{data.memoDate}</span>
                 <span className="font-bold">RE:</span><span>PEPI for {data.monthName} {data.bookYear}</span>
 
-                {/* Agency Logo Placeholder */}
-                 {/* Optional: Replace with actual Image component if logo exists */}
-                 <div className="absolute top-0 right-0 h-16 w-16 border border-dashed border-gray-400 flex items-center justify-center text-gray-400 text-xs print:hidden">
-                     Logo Area
-                 </div>
-                 {/* Example using Next Image (if logo is in /public/logo.png): */}
-                 {
-                 /*
-                 <div className="absolute top-0 right-0 h-16 w-16 print:block hidden">
-                     <Image src="/logo.png" alt="Agency Logo" width={64} height={64} />
-                 </div>
-                 */}
-                 
-
+                {/* CMANS Text Block */}
+                <div className="absolute top-0 right-0 flex items-center justify-center p-1">
+                    <span className="font-bold text-2xl text-black tracking-wider">
+                        CMANS
+                    </span>
+                </div>
             </div>
 
             {/* Narrative Body */}
