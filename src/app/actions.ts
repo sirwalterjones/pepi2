@@ -1613,19 +1613,20 @@ export async function getMonthlyPepiMemoDataAction(
     }
     const commanderName = agentData.name;
 
-    // 2. Fetch PEPI Book details (including start_date)
+    // 2. Fetch PEPI Book details (using correct column name)
     const { data: bookData, error: bookError } = await supabase
         .from('pepi_books')
-        .select('year, initial_funding, created_at') // Use created_at as implicit start if start_date doesn't exist
+        .select('year, starting_amount, created_at') // Changed initial_funding to starting_amount
         .eq('id', bookId)
         .single();
 
     if (bookError || !bookData) {
         console.error(`[getMonthlyPepiMemoDataAction] Error fetching book ${bookId}:`, bookError);
-        return { success: false, error: `Failed to fetch PEPI Book details: ${bookError?.message}` };
+        // Make error message more specific about the column if possible, but the original error is good
+        return { success: false, error: `Failed to fetch PEPI Book details: ${bookError?.message}` }; 
     }
     const bookYear = bookData.year;
-    const bookStartDateISO = new Date(bookData.created_at).toISOString(); // Book starts when created
+    const bookStartDateISO = new Date(bookData.created_at).toISOString();
 
     // 3. Determine date range for the selected month
     const year = bookYear;
@@ -1664,9 +1665,9 @@ export async function getMonthlyPepiMemoDataAction(
             return data?.reduce((acc, row: { [key: string]: any }) => acc + (row[column] || 0), 0) || 0;
         };
 
-        // 4. Calculate Beginning Balance (Start with initial funding, add/subtract transactions before month start)
-        let runningBalance = bookData.initial_funding || 0;
-        console.log(`[getMonthlyPepiMemoDataAction] Initial Funding: ${runningBalance}`);
+        // 4. Calculate Beginning Balance (Start with correct starting_amount)
+        let runningBalance = bookData.starting_amount || 0; // Use starting_amount here
+        console.log(`[getMonthlyPepiMemoDataAction] Initial Funding (starting_amount): ${runningBalance}`);
         
         // Add approved fund additions before month start (using description filter)
         const bbAddFunds = await fetchSum('transactions', 'amount', { pepi_book_id: bookId, transaction_type: 'issuance', status: 'approved', description: 'Add funds', lt: monthStartDateISO });
