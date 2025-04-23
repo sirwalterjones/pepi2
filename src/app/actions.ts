@@ -2068,107 +2068,138 @@ export async function deleteAgentAction(agentId: string): Promise<{ success: boo
     }
 
     try {
-        // Use a direct SQL query to find ALL fund requests for this agent
-        // This will help us diagnose if there are any hidden/invisible requests
-        console.log(`[deleteAgentAction] Running diagnostic query for agent ${agentId}`);
-        const { data: diagData, error: diagError } = await supabase
-            .rpc('list_fund_requests_by_agent', { agent_id_param: agentId });
-            
-        if (diagError) {
-            console.error(`[deleteAgentAction] Diagnostic query error: ${diagError.message}`);
-            
-            // Fallback to a raw SQL query to see ALL fund requests for this agent
-            const { data: rawData, error: rawError } = await supabase
-                .from('fund_requests')
-                .select('*')
-                .eq('agent_id', agentId);
-                
-            if (rawError) {
-                console.error(`[deleteAgentAction] Raw query error: ${rawError.message}`);
-            } else {
-                console.log(`[deleteAgentAction] Found ${rawData?.length || 0} fund requests via raw query:`, 
-                    rawData?.map((r: any) => ({ id: r.id, status: r.status })));
-            }
-        } else {
-            console.log(`[deleteAgentAction] Found ${diagData?.length || 0} fund requests via diagnostic query:`, 
-                diagData?.map((r: any) => ({ id: r.id, status: r.status })));
-        }
+        // DIRECT APPROACH - Without using custom functions
         
-        // Delete fund requests using raw SQL for maximum effectiveness
-        console.log(`[deleteAgentAction] Using direct SQL to delete fund requests for agent ${agentId}`);
-        const { error: deleteFRError } = await supabase
-            .rpc('delete_agent_fund_requests', { agent_id_param: agentId });
-            
-        if (deleteFRError) {
-            console.error(`[deleteAgentAction] Error in direct SQL deletion: ${deleteFRError.message}`);
-            return { success: false, error: `Failed to delete fund requests via direct SQL: ${deleteFRError.message}` };
-        }
-        
-        console.log(`[deleteAgentAction] Verify fund requests deletion for agent ${agentId}`);
-        const { data: verifyData, error: verifyError } = await supabase
+        // First get all fund requests for this agent
+        console.log(`[deleteAgentAction] Checking for fund requests for agent ${agentId}`);
+        const { data: fundRequests, error: checkError } = await supabase
             .from('fund_requests')
             .select('id')
             .eq('agent_id', agentId);
             
-        if (verifyError) {
-            console.error(`[deleteAgentAction] Verification error: ${verifyError.message}`);
-        } else if (verifyData && verifyData.length > 0) {
-            console.error(`[deleteAgentAction] Still found ${verifyData.length} fund requests after deletion attempt!`);
-            return { success: false, error: `Failed to delete all fund requests. ${verifyData.length} remain.` };
-        } else {
-            console.log(`[deleteAgentAction] All fund requests successfully deleted for agent ${agentId}`);
+        if (checkError) {
+            console.error(`[deleteAgentAction] Error checking fund requests: ${checkError.message}`);
+            return { success: false, error: `Failed to check fund requests: ${checkError.message}` };
+        }
+        
+        if (fundRequests && fundRequests.length > 0) {
+            console.log(`[deleteAgentAction] Found ${fundRequests.length} fund requests to remove`);
+            
+            // Get related transactions first to break the relationship
+            for (const request of fundRequests) {
+                // First find if this request has a transaction
+                const { data: requestData, error: requestError } = await supabase
+                    .from('fund_requests')
+                    .select('transaction_id')
+                    .eq('id', request.id)
+                    .single();
+                    
+                if (requestError) {
+                    console.error(`[deleteAgentAction] Error checking request ${request.id}: ${requestError.message}`);
+                    continue;
+                }
+                
+                if (requestData.transaction_id) {
+                    console.log(`[deleteAgentAction] Request ${request.id} has transaction ${requestData.transaction_id}, clearing reference`);
+                    
+                    // Clear the transaction_id reference
+                    const { error: clearRefError } = await supabase
+                        .from('fund_requests')
+                        .update({ transaction_id: null })
+                        .eq('id', request.id);
+                        
+                    if (clearRefError) {
+                        console.error(`[deleteAgentAction] Failed to clear transaction reference: ${clearRefError.message}`);
+                        return { success: false, error: `Failed to clear transaction reference: ${clearRefError.message}` };
+                    }
+                }
+                
+                // Now delete the fund request
+                console.log(`[deleteAgentAction] Deleting fund request ${request.id}`);
+                const { error: deleteRequestError } = await supabase
+                    .from('fund_requests')
+                    .delete()
+                    .eq('id', request.id);
+                    
+                if (deleteRequestError) {
+                    console.error(`[deleteAgentAction] Failed to delete request ${request.id}: ${deleteRequestError.message}`);
+                    return { success: false, error: `Failed to delete request ${request.id}: ${deleteRequestError.message}` };
+                }
+            }
+            
+            // Verify all fund requests were deleted
+            const { data: verifyRequests, error: verifyError } = await supabase
+                .from('fund_requests')
+                .select('id')
+                .eq('agent_id', agentId);
+                
+            if (verifyError) {
+                console.error(`[deleteAgentAction] Error verifying fund request deletion: ${verifyError.message}`);
+                return { success: false, error: `Failed to verify fund request deletion: ${verifyError.message}` };
+            }
+            
+            if (verifyRequests && verifyRequests.length > 0) {
+                console.error(`[deleteAgentAction] Still found ${verifyRequests.length} fund requests after deletion!`);
+                return { success: false, error: `Failed to delete all fund requests - ${verifyRequests.length} remain.` };
+            }
         }
         
         // Clear references in transactions
         console.log(`[deleteAgentAction] Clearing transaction references for agent ${agentId}`);
         const { error: txError } = await supabase
-            .rpc('clear_agent_transactions', { agent_id_param: agentId });
+            .from('transactions')
+            .update({ agent_id: null })
+            .eq('agent_id', agentId);
             
         if (txError) {
-            console.error(`[deleteAgentAction] Transaction clearing error: ${txError.message}`);
-            // Continue anyway, as this might not be critical
+            console.error(`[deleteAgentAction] Error clearing transaction references: ${txError.message}`);
+            return { success: false, error: `Failed to clear transaction references: ${txError.message}` };
         }
         
         // Clear references in CI payments
         console.log(`[deleteAgentAction] Clearing CI payment references for agent ${agentId}`);
         const { error: ciError } = await supabase
-            .rpc('clear_agent_ci_payments', { agent_id_param: agentId });
+            .from('ci_payments')
+            .update({ paying_agent_id: null })
+            .eq('paying_agent_id', agentId);
             
         if (ciError) {
-            console.error(`[deleteAgentAction] CI payment clearing error: ${ciError.message}`);
-            // Continue anyway, as this might not be critical
+            console.error(`[deleteAgentAction] Error clearing CI payment references: ${ciError.message}`);
+            return { success: false, error: `Failed to clear CI payment references: ${ciError.message}` };
         }
         
-        // Try a direct approach to delete the agent
-        console.log(`[deleteAgentAction] Attempting to delete agent ${agentId} via direct SQL`);
-        const { error: deleteAgentError } = await supabase
-            .rpc('delete_agent', { agent_id_param: agentId });
+        // Now try to delete the agent
+        console.log(`[deleteAgentAction] Attempting to delete agent ${agentId}`);
+        const { error: deleteError } = await supabase
+            .from("agents")
+            .delete()
+            .eq("id", agentId);
             
-        if (deleteAgentError) {
-            console.error(`[deleteAgentAction] Failed to delete agent via direct SQL: ${deleteAgentError.message}`);
+        if (deleteError) {
+            console.error(`[deleteAgentAction] Failed to delete agent: ${deleteError.message}`);
             
-            // Fall back to standard method
-            console.log(`[deleteAgentAction] Falling back to standard deletion for agent ${agentId}`);
-            const { error: fallbackError } = await supabase
-                .from("agents")
-                .delete()
-                .eq("id", agentId);
-                
-            if (fallbackError) {
-                console.error(`[deleteAgentAction] Fallback deletion failed: ${fallbackError.message}`);
-                
-                // Last attempt - run a diagnostic query to see what's still preventing deletion
-                const { data: finalDiagData, error: finalDiagError } = await supabase
-                    .rpc('check_agent_constraints', { agent_id_param: agentId });
+            // Check what might still be referencing this agent
+            const checkTables = async (table: string, column: string) => {
+                const { data, error } = await supabase
+                    .from(table)
+                    .select('id')
+                    .eq(column, agentId);
                     
-                if (finalDiagError) {
-                    console.error(`[deleteAgentAction] Final diagnostic error: ${finalDiagError.message}`);
-                } else {
-                    console.log(`[deleteAgentAction] Final diagnostic results:`, finalDiagData);
+                if (error) {
+                    console.error(`[deleteAgentAction] Error checking ${table}: ${error.message}`);
+                    return 'error';
                 }
                 
-                return { success: false, error: `Failed to delete agent after multiple attempts: ${fallbackError.message}` };
-            }
+                return data?.length || 0;
+            };
+            
+            const frCount = await checkTables('fund_requests', 'agent_id');
+            const txCount = await checkTables('transactions', 'agent_id');
+            const ciCount = await checkTables('ci_payments', 'paying_agent_id');
+            
+            console.error(`[deleteAgentAction] Constraints check: fund_requests=${frCount}, transactions=${txCount}, ci_payments=${ciCount}`);
+            
+            return { success: false, error: `Failed to delete agent: ${deleteError.message}` };
         }
 
         console.log(`[deleteAgentAction] Successfully deleted agent ${agentId} (${targetAgent.name})`);
