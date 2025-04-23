@@ -8,7 +8,7 @@ import { createClient } from "../../supabase/server";
 import { PepiBook } from "@/types/schema";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { type FundRequest } from "@/types/schema";
+import { type FundRequest, type Transaction } from "@/types/schema"; // Import Transaction
 import { CiPayment, Agent } from "@/types/schema";
 
 export const signUpAction = async (formData: FormData) => {
@@ -1745,5 +1745,108 @@ export async function getMonthlyPepiMemoDataAction(
     } catch (error: any) {
         console.error(`[getMonthlyPepiMemoDataAction] Unexpected error calculating memo data for Book ${bookId}, Month ${month}:`, error);
         return { success: false, error: `An unexpected error occurred during calculation: ${error.message}` };
+    }
+}
+
+// Type for individual transaction row in the unit report
+export type MonthlyUnitReportTransaction = Pick<Transaction, 
+    'id' | 'created_at' | 'transaction_type' | 'amount' | 'description' | 'receipt_number' | 'status' | 'agent_id' 
+> & { 
+    agent_name?: string | null; // Include agent name if joined
+};
+
+// Type for the complete report data
+export type MonthlyUnitReportData = MonthlyUnitReportTransaction[];
+
+/**
+ * Fetches all transactions for a given PEPI Book and month for the monthly unit report.
+ * @param bookId - The ID of the PEPI book.
+ * @param month - The month to generate the report for (1-12).
+ */
+export async function getMonthlyUnitReportAction(
+    bookId: string, 
+    month: number
+): Promise<{ success: boolean; data?: MonthlyUnitReportData; error?: string }> {
+    "use server";
+    const supabase = await createClient();
+    
+    // 1. Verify user is an admin
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+        return { success: false, error: "Authentication required." };
+    }
+    const { data: agentData, error: agentError } = await supabase
+        .from("agents")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+    if (agentError || !agentData || agentData.role !== 'admin') {
+        return { success: false, error: "Permission denied. Only admins can generate this report." };
+    }
+
+    // 2. Fetch PEPI Book year
+    const { data: bookData, error: bookError } = await supabase
+        .from('pepi_books')
+        .select('year')
+        .eq('id', bookId)
+        .single();
+
+    if (bookError || !bookData) {
+        console.error(`[getMonthlyUnitReportAction] Error fetching book ${bookId}:`, bookError);
+        return { success: false, error: `Failed to fetch PEPI Book details: ${bookError?.message}` };
+    }
+    const bookYear = bookData.year;
+
+    // 3. Determine date range for the selected month
+    if (month < 1 || month > 12) {
+        return { success: false, error: "Invalid month selected." };
+    }
+    const startDate = new Date(Date.UTC(bookYear, month - 1, 1, 0, 0, 0, 0));
+    const endDate = new Date(Date.UTC(bookYear, month, 0, 23, 59, 59, 999));
+    const startDateISO = startDate.toISOString();
+    const endDateISO = endDate.toISOString();
+    const monthName = startDate.toLocaleString('default', { month: 'long', timeZone: 'UTC' });
+
+    console.log(`[getMonthlyUnitReportAction] Fetching transactions for Book: ${bookId}, Month: ${monthName} ${bookYear}`);
+
+    try {
+        // 4. Fetch all transactions within the date range for the book, joining agent name
+        const { data: transactions, error: fetchError } = await supabase
+            .from('transactions')
+            .select(`
+                id,
+                created_at,
+                transaction_type,
+                amount,
+                description,
+                receipt_number,
+                status,
+                agent_id,
+                agent:agents ( name ) 
+            `)
+            .eq('pepi_book_id', bookId)
+            .gte('created_at', startDateISO)
+            .lte('created_at', endDateISO)
+            .order('created_at', { ascending: true });
+
+        if (fetchError) {
+            console.error(`[getMonthlyUnitReportAction] Error fetching transactions:`, fetchError);
+            throw new Error(`Database error fetching transactions: ${fetchError.message}`);
+        }
+
+        // 5. Format data (extract agent name from potential array)
+        const reportData: MonthlyUnitReportData = (transactions || []).map((tx: any) => ({ // Use any temporarily for mapping flexibility
+            ...tx,
+            // Access the first element of the joined agent array if it exists
+            agent_name: tx.agent && Array.isArray(tx.agent) && tx.agent.length > 0 ? tx.agent[0]?.name : null 
+        }));
+
+        console.log(`[getMonthlyUnitReportAction] Fetched ${reportData.length} transactions.`);
+        return { success: true, data: reportData };
+
+    } catch (error: any) {
+        console.error(`[getMonthlyUnitReportAction] Unexpected error for Book ${bookId}, Month ${month}:`, error);
+        return { success: false, error: `An unexpected error occurred: ${error.message}` };
     }
 }

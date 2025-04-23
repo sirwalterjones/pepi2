@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "../../../../supabase/server";
 import ReportGenerator from "@/components/reports/ReportGenerator";
 import AgentMonthlyReport from "@/components/reports/AgentMonthlyReport";
+import MonthlyUnitReport from "@/components/reports/MonthlyUnitReport";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,7 @@ export default async function ReportsPage() {
           </p>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex flex-col space-y-8">
           <Card>
             <CardHeader>
               <CardTitle>Custom Transaction Report</CardTitle>
@@ -74,9 +75,7 @@ export default async function ReportsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Link href="/dashboard/monthly-report" passHref>
-                <Button>View Monthly Unit Report</Button>
-              </Link>
+              <MonthlyUnitReport />
             </CardContent>
           </Card>
         </div>
