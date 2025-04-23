@@ -13,14 +13,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { createCiPaymentAction, getAgentsForSelectAction, CiPaymentFormData } from '@/app/actions'; // Assuming path
 import { Agent } from '@/types/schema'; // Assuming path
 import { useToast } from '@/components/ui/use-toast'; // Import useToast
 
 // Zod schema mirroring the one in actions.ts, potentially reused or imported
 const ciPaymentFormSchema = z.object({
-    date: z.date({ required_error: "Date is required." }),
+    date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Date is required." }),
     paying_agent_id: z.string().uuid().optional(), // Handled based on role
     amount_paid: z.coerce.number().positive({ message: "Amount must be positive" }),
     paid_to: z.string().trim().optional(), // Added Paid To field
@@ -207,30 +207,25 @@ export default function CiPaymentForm({
         // Witness signature might be optional based on requirements
 
 
-        // Construct formData, initially excluding paying_agent_id unless admin
+        // Construct formData, ensuring date is a string
         const formData: Partial<CiPaymentFormData> = {
             ...data,
-            date: format(data.date, 'yyyy-MM-dd'), // Format date for DB
-            paid_to: data.paid_to || undefined, // Use undefined instead of null for optional Zod field
-            // Explicitly remove paying_agent_id from initial spread data
-            paying_agent_id: undefined,
+            date: data.date, // Date is already a string from the form validation
+            paid_to: data.paid_to || undefined, 
+            paying_agent_id: undefined, // Remove initially
             book_id: activeBookId,
             ci_signature: ciSignatureData,
             paying_agent_signature: agentSignatureData,
             witness_signature: witnessSignatureData,
         };
 
-        // Delete the potentially undefined key from the raw spread
-        delete formData.paying_agent_id;
-
-        // Conditionally set paying_agent_id ONLY for admins
+        // Conditionally set paying_agent_id for admins
         if (userRole === 'admin') {
-            formData.paying_agent_id = data.paying_agent_id || userId; // Admin defaults to self if none selected
+            formData.paying_agent_id = data.paying_agent_id || userId; 
         }
-        // For agents, the field remains absent, server will handle assignment
 
         try {
-            // Cast to expected type for the action. Server side handles agent assignment if field is absent.
+            // Cast to expected type for the action
             const result = await createCiPaymentAction(formData as CiPaymentFormData);
             if (result.success) {
                 toast({
@@ -250,7 +245,7 @@ export default function CiPaymentForm({
                     description: result.error || 'An unknown error occurred.',
                 });
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error("Submission error:", err);
             const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
             setError(message);
@@ -274,7 +269,7 @@ export default function CiPaymentForm({
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                       {/* Date Picker */}
                       <div className="space-y-2">
-                          <Label htmlFor="date">Date</Label>
+                          <Label htmlFor="date">Date <span className="text-red-500">*</span></Label>
                           <Controller
                               name="date"
                               control={control}
@@ -295,15 +290,15 @@ export default function CiPaymentForm({
                                       <PopoverContent className="w-auto p-0">
                                           <Calendar
                                               mode="single"
-                                              selected={field.value}
-                                              onSelect={field.onChange}
+                                              selected={field.value ? parseISO(field.value) : undefined}
+                                              onSelect={(date) => field.onChange(date ? date.toISOString() : '')}
                                               initialFocus
                                           />
                                       </PopoverContent>
                                   </Popover>
                               )}
                           />
-                          {errors.date && <p className="text-sm text-red-600">{errors.date.message}</p>}
+                          {errors.date && <p className="text-sm text-destructive">{errors.date.message}</p>}
                       </div>
 
                        {/* Paying Agent Select (Admin Only) */}
@@ -348,49 +343,49 @@ export default function CiPaymentForm({
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Amount Paid */}
                     <div className="space-y-2">
-                        <Label htmlFor="amount_paid">Amount Paid</Label>
+                        <Label htmlFor="amount_paid">Amount Paid <span className="text-red-500">*</span></Label>
                         <Input id="amount_paid" type="number" step="0.01" {...register('amount_paid')} placeholder="e.g., 100.00" />
-                        {errors.amount_paid && <p className="text-sm text-red-600">{errors.amount_paid.message}</p>}
+                        {errors.amount_paid && <p className="text-sm text-destructive">{errors.amount_paid.message}</p>}
                     </div>
 
                    {/* Paid To */}
                    <div className="space-y-2">
-                       <Label htmlFor="paid_to">Paid To (Optional)</Label>
+                       <Label htmlFor="paid_to">Paid To</Label>
                        <Input id="paid_to" {...register('paid_to')} placeholder="Name of person/entity paid" />
                        {/* No error shown for optional field unless specific validation added */}
                    </div>
 
                    {/* Case Number */}
                    <div className="space-y-2">
-                       <Label htmlFor="case_number">Case # (Optional)</Label>
+                       <Label htmlFor="case_number">Case #</Label>
                        <Input id="case_number" {...register('case_number')} placeholder="Enter case number" />
-                       {errors.case_number && <p className="text-sm text-red-600">{errors.case_number.message}</p>}
+                       {errors.case_number && <p className="text-sm text-destructive">{errors.case_number.message}</p>}
                    </div>
 
                    {/* PEPI Rec # */}
                    <div className="space-y-2">
-                       <Label htmlFor="pepi_receipt_number">PEPI Rec # (Optional)</Label>
+                       <Label htmlFor="pepi_receipt_number">PEPI Rec #</Label>
                        <Input id="pepi_receipt_number" {...register('pepi_receipt_number')} placeholder="Associated PEPI receipt number"/>
-                       {errors.pepi_receipt_number && <p className="text-sm text-red-600">{errors.pepi_receipt_number.message}</p>}
+                       {errors.pepi_receipt_number && <p className="text-sm text-destructive">{errors.pepi_receipt_number.message}</p>}
                    </div>
                    
                     {/* Paying Agent Printed Name */}
                     <div className="space-y-2">
-                        <Label htmlFor="paying_agent_printed_name">Paying Agent Printed Name</Label>
+                        <Label htmlFor="paying_agent_printed_name">Paying Agent Printed Name <span className="text-red-500">*</span></Label>
                         <Input
                             id="paying_agent_printed_name"
                             {...register('paying_agent_printed_name')}
                             readOnly={userRole !== 'admin'} // Agent name read-only unless admin changes selection
                             placeholder={userRole === 'admin' ? 'Select agent above' : ''}
                         />
-                        {errors.paying_agent_printed_name && <p className="text-sm text-red-600">{errors.paying_agent_printed_name?.message}</p>}
+                        {errors.paying_agent_printed_name && <p className="text-sm text-destructive">{errors.paying_agent_printed_name?.message}</p>}
                     </div>
 
                     {/* Witness Printed Name */}
                     <div className="space-y-2">
-                        <Label htmlFor="witness_printed_name">Witness Printed Name (Optional)</Label>
+                        <Label htmlFor="witness_printed_name">Witness Printed Name</Label>
                         <Input id="witness_printed_name" {...register('witness_printed_name')} />
-                        {errors.witness_printed_name && <p className="text-sm text-red-600">{errors.witness_printed_name?.message}</p>}
+                        {errors.witness_printed_name && <p className="text-sm text-destructive">{errors.witness_printed_name?.message}</p>}
                     </div>
                  </div>
 
@@ -419,7 +414,7 @@ export default function CiPaymentForm({
 
                         {/* Witness Signature */}
                         <div className="space-y-2">
-                            <Label htmlFor="witness_signature" className="block text-center">Witness Signature (Optional)</Label>
+                            <Label htmlFor="witness_signature" className="block text-center">Witness Signature</Label>
                              <div className="border rounded-md bg-slate-50">
                                  <SignatureCanvas ref={witnessSigRef} canvasProps={{ id: 'witness_signature', className: 'w-full h-32' }} />
                              </div>
@@ -428,13 +423,13 @@ export default function CiPaymentForm({
                     </div>
                      {/* Combined Error Check for Signatures */}
                      {(error && (error.includes("signature is required") || error.includes("Failed to read required signature data"))) &&
-                         <p className="text-sm text-red-600 text-center pt-2">{error}</p>
+                         <p className="text-sm text-destructive text-center pt-2">{error}</p>
                      }
                 </div>
 
                 {/* General Error Message */}
                 {error && !(error.includes("signature is required") || error.includes("Failed to read required signature data")) &&
-                     <p className="text-sm text-red-600 pt-2">Error: {error}</p>
+                     <p className="text-sm text-destructive pt-2">Error: {error}</p>
                  }
 
 
