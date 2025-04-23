@@ -2,13 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePepiBooks } from '@/hooks/usePepiBooks';
-import { getMonthlyPepiMemoDataAction, MonthlyPepiMemoData } from '@/app/actions';
+import { getMonthlyPepiMemoDataAction, MonthlyPepiMemoData, getAgentsForSelectAction } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Printer } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Loader2, Printer, CalendarIcon } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-// Import the memo display component (will create this next)
 import MonthlyPepiMemo from '@/components/reports/MonthlyPepiMemo';
+import { cn } from '@/lib/utils';
+import { format } from "date-fns";
+
+// Define type for fetched admin agents
+type AdminAgent = { user_id: string; name: string };
 
 export default function CbMemoReportPage() {
     const { activeBook } = usePepiBooks();
@@ -16,8 +22,39 @@ export default function CbMemoReportPage() {
     const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
     const [memoData, setMemoData] = useState<MonthlyPepiMemoData | null>(null);
     const [loading, setLoading] = useState(false);
+    const [loadingAdmins, setLoadingAdmins] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [availableMonths, setAvailableMonths] = useState<{ value: number; label: string }[]>([]);
+    
+    // State for new controls
+    const [adminAgents, setAdminAgents] = useState<AdminAgent[]>([]);
+    const [selectedCommanderName, setSelectedCommanderName] = useState<string | null>(null);
+    const [selectedMemoDate, setSelectedMemoDate] = useState<Date | undefined>(new Date()); // Default to today
+
+    // Fetch admin agents
+    useEffect(() => {
+        const fetchAdmins = async () => {
+            setLoadingAdmins(true);
+            try {
+                const result = await getAgentsForSelectAction();
+                if (result.success && result.data) {
+                    // Assuming the action fetches ALL agents, filter for admins if necessary
+                    // If the action only returns admins, this filter is redundant
+                    // const admins = result.data.filter(agent => agent.role === 'admin'); 
+                    setAdminAgents(result.data || []);
+                } else {
+                    toast({ variant: 'destructive', title: 'Error', description: 'Failed to load list of commanders.' });
+                    setAdminAgents([]);
+                }
+            } catch (e) {
+                 toast({ variant: 'destructive', title: 'Error', description: 'Failed to load list of commanders.' });
+                 setAdminAgents([]);
+            } finally {
+                 setLoadingAdmins(false);
+            }
+        };
+        fetchAdmins();
+    }, [toast]);
 
     useEffect(() => {
         // Populate available months when active book changes
@@ -49,8 +86,8 @@ export default function CbMemoReportPage() {
     }, [activeBook]);
 
     const handleGenerateMemo = async () => {
-        if (!activeBook || selectedMonth === null) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Please select an active PEPI Book and a month.' });
+        if (!activeBook || selectedMonth === null || !selectedCommanderName || !selectedMemoDate) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Please select Book, Month, Commander, and Memo Date.' });
             return;
         }
 
@@ -59,7 +96,13 @@ export default function CbMemoReportPage() {
         setMemoData(null);
 
         try {
-            const result = await getMonthlyPepiMemoDataAction(activeBook.id, selectedMonth);
+            // Pass selected commander name and memo date (as ISO string)
+            const result = await getMonthlyPepiMemoDataAction(
+                activeBook.id, 
+                selectedMonth, 
+                selectedCommanderName, 
+                selectedMemoDate.toISOString()
+            );
             if (result.success && result.data) {
                 setMemoData(result.data);
             } else {
@@ -88,54 +131,114 @@ export default function CbMemoReportPage() {
 
     return (
         <div className="space-y-6 p-4 md:p-6">
-            <h1 className="text-2xl font-semibold">Monthly PEPI Reconciliation Memo (CB Memo)</h1>
-            
-            {!activeBook ? (
-                <p className="text-muted-foreground">Please select an active PEPI Book first.</p>
-            ) : (
-                <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
-                    <div className='flex-1'>
-                         <label htmlFor="month-select" className="block text-sm font-medium text-gray-700 mb-1">Select Month</label>
-                        <Select 
-                            value={selectedMonth !== null ? String(selectedMonth) : ''} 
-                            onValueChange={(value) => setSelectedMonth(value ? Number(value) : null)}
-                            disabled={loading}
-                        >
-                            <SelectTrigger id="month-select" className="w-full sm:w-[250px]">
-                                <SelectValue placeholder="Select a month..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableMonths.map(month => (
-                                    <SelectItem key={month.value} value={String(month.value)}>
-                                        {month.label}
-                                    </SelectItem>
-                                ))}
-                                {availableMonths.length === 0 && <p className="p-4 text-sm text-muted-foreground">No months available for this book yet.</p>}
-                            </SelectContent>
-                        </Select>
+            {/* Wrap title and controls in a div to hide on print */}
+            <div className="hide-on-print">
+                <h1 className="text-2xl font-semibold">Monthly PEPI Reconciliation Memo (CB Memo)</h1>
+                
+                {!activeBook ? (
+                    <p className="text-muted-foreground mt-4">Please select an active PEPI Book first.</p>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 items-end gap-4 mt-4">
+                        {/* Month Select */}
+                        <div className='flex-col'>
+                             <label htmlFor="month-select" className="block text-sm font-medium text-gray-700 mb-1">Select Month</label>
+                            <Select 
+                                value={selectedMonth !== null ? String(selectedMonth) : ''} 
+                                onValueChange={(value) => setSelectedMonth(value ? Number(value) : null)}
+                                disabled={loading}
+                            >
+                                <SelectTrigger id="month-select">
+                                    <SelectValue placeholder="Select a month..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableMonths.map(month => (
+                                        <SelectItem key={month.value} value={String(month.value)}>
+                                            {month.label}
+                                        </SelectItem>
+                                    ))}
+                                    {availableMonths.length === 0 && <p className="p-4 text-sm text-muted-foreground">No months available for this book yet.</p>}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        
+                        {/* Commander Select */}
+                         <div className='flex-col'>
+                             <label htmlFor="commander-select" className="block text-sm font-medium text-gray-700 mb-1">Select Commander</label>
+                            <Select 
+                                value={selectedCommanderName || ''} 
+                                onValueChange={(value) => setSelectedCommanderName(value || null)}
+                                disabled={loading || loadingAdmins}
+                            >
+                                <SelectTrigger id="commander-select">
+                                    <SelectValue placeholder={loadingAdmins ? "Loading..." : "Select commander..."} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {adminAgents.map(agent => (
+                                        <SelectItem key={agent.user_id} value={agent.name}>
+                                            {agent.name}
+                                        </SelectItem>
+                                    ))}
+                                    {adminAgents.length === 0 && !loadingAdmins && <p className="p-4 text-sm text-muted-foreground">No commanders found.</p>}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Date Picker */}
+                         <div className='flex-col'>
+                             <label htmlFor="memo-date-picker" className="block text-sm font-medium text-gray-700 mb-1">Select Memo Date</label>
+                            <Popover>
+                                <PopoverTrigger asChild id="memo-date-picker">
+                                    <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-full justify-start text-left font-normal",
+                                            !selectedMemoDate && "text-muted-foreground"
+                                        )}
+                                        disabled={loading}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {selectedMemoDate ? format(selectedMemoDate, "PPP") : <span>Pick a date</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                    <Calendar
+                                        mode="single"
+                                        selected={selectedMemoDate}
+                                        onSelect={setSelectedMemoDate}
+                                        initialFocus
+                                        disabled={(date) => date < new Date("1900-01-01")}
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                         </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-col sm:flex-row gap-2 lg:col-start-4 justify-end">
+                            <Button 
+                                onClick={handleGenerateMemo}
+                                disabled={loading || !selectedMonth || !selectedCommanderName || !selectedMemoDate}
+                                className='w-full sm:w-auto'
+                            >
+                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Generate Memo
+                            </Button>
+                            <Button 
+                                variant="outline"
+                                onClick={handlePrint}
+                                disabled={loading || !memoData}
+                                className='w-full sm:w-auto'
+                            >
+                                <Printer className="mr-2 h-4 w-4" />
+                                Print Memo
+                            </Button>
+                        </div>
                     </div>
-                    <Button 
-                        onClick={handleGenerateMemo}
-                        disabled={loading || selectedMonth === null}
-                        className='w-full sm:w-auto'
-                    >
-                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Generate Memo
-                    </Button>
-                    <Button 
-                        variant="outline"
-                        onClick={handlePrint}
-                        disabled={loading || !memoData}
-                        className='w-full sm:w-auto'
-                    >
-                        <Printer className="mr-2 h-4 w-4" />
-                        Print Memo
-                    </Button>
-                </div>
-            )}
+                )}
+            </div>
+            {/* End of hide-on-print section */}
 
             {error && (
-                <p className="text-red-600">Error: {error}</p>
+                <p className="text-red-600 hide-on-print">Error: {error}</p> // Also hide error messages on print
             )}
 
             {/* Memo Display Area */}
