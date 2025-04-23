@@ -24,7 +24,7 @@ export default async function ProfilePage() {
   // Or show an error. Redirecting to sign-in might be confusing, maybe dashboard?
   // Let's redirect to sign-in for now, assuming agent record is mandatory.
   if (agentError || !agentData) {
-     console.error(\`Profile Page: Failed to fetch agent data for user \${user.id}\`, agentError);
+     console.error("Profile Page: Failed to fetch agent data for user " + user.id, agentError);
     return redirect('/sign-in'); // Or handle this error more gracefully
   }
 
