@@ -14,8 +14,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
-import { createCiPaymentAction, getAgentsForSelectAction, CiPaymentFormData } from '@/app/actions'; // Assuming path
-import { Agent } from '@/types/schema'; // Assuming path
+import { createCiPaymentAction, getAgentsForSelectAction, updateCiPaymentAction, CiPaymentFormData } from '@/app/actions'; // Add updateCiPaymentAction
+import { Agent, CiPayment } from '@/types/schema'; // Add CiPayment import
 import { useToast } from '@/components/ui/use-toast'; // Import useToast
 
 // Zod schema mirroring the one in actions.ts, potentially reused or imported
@@ -36,6 +36,7 @@ type CiPaymentFormProps = {
     userId: string;
     userRole: 'admin' | 'agent';
     activeBookId: string;
+    initialData?: CiPayment | null; // Existing prop for editing
     onFormSubmitSuccess?: () => void; // Optional callback for closing modal/sheet
     agentData?: Agent | null; // Pass logged-in agent's data if available
 };
@@ -44,6 +45,7 @@ export default function CiPaymentForm({
     userId,
     userRole,
     activeBookId,
+    initialData, // Use this prop
     onFormSubmitSuccess,
     agentData
 }: CiPaymentFormProps) {
@@ -51,22 +53,49 @@ export default function CiPaymentForm({
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [availableAgents, setAvailableAgents] = useState<{ user_id: string; name: string }[]>([]);
+    const isEditing = !!initialData; // Determine if we are in edit mode
 
     // Signature Pad Refs
     const ciSigRef = useRef<SignatureCanvas>(null);
     const agentSigRef = useRef<SignatureCanvas>(null);
     const witnessSigRef = useRef<SignatureCanvas>(null);
 
-    const { register, handleSubmit, control, formState: { errors }, setValue, reset } = useForm<z.infer<typeof ciPaymentFormSchema>>({
+    const { register, handleSubmit, control, formState: { errors }, setValue, reset, watch } = useForm<z.infer<typeof ciPaymentFormSchema>>({
         resolver: zodResolver(ciPaymentFormSchema),
+        // Set default values based on initialData if editing
         defaultValues: {
-            paying_agent_printed_name: agentData?.name || '', // Pre-fill if agent data is available
-            case_number: '',
-            witness_printed_name: '',
-            pepi_receipt_number: '',
-            paid_to: '', // Added default
+            date: initialData?.date ? initialData.date : undefined,
+            amount_paid: initialData?.amount_paid || undefined,
+            paid_to: initialData?.paid_to || '',
+            case_number: initialData?.case_number || '',
+            paying_agent_printed_name: initialData?.paying_agent_printed_name || agentData?.name || '',
+            witness_printed_name: initialData?.witness_printed_name || '',
+            pepi_receipt_number: initialData?.pepi_receipt_number || '',
+            paying_agent_id: initialData?.paying_agent_id || undefined, // Pre-fill if editing
         },
     });
+
+    // Effect to reset form when initialData changes (e.g., modal opens with new data)
+    useEffect(() => {
+        if (initialData) {
+            reset({
+                date: initialData.date ? initialData.date : undefined,
+                amount_paid: initialData.amount_paid || undefined,
+                paid_to: initialData.paid_to || '',
+                case_number: initialData.case_number || '',
+                paying_agent_printed_name: initialData.paying_agent_printed_name || agentData?.name || '',
+                witness_printed_name: initialData.witness_printed_name || '',
+                pepi_receipt_number: initialData.pepi_receipt_number || '',
+                paying_agent_id: initialData.paying_agent_id || undefined,
+            });
+            // TODO: Pre-load signatures if possible/desired? This is tricky.
+             ciSigRef.current?.clear(); // Clear pads when editing
+             agentSigRef.current?.clear();
+             witnessSigRef.current?.clear();
+        } else {
+             reset(); // Reset to defaults if creating new
+        }
+    }, [initialData, reset, agentData]);
 
     // Fetch agents if user is admin
     useEffect(() => {
@@ -167,83 +196,79 @@ export default function CiPaymentForm({
         setIsLoading(true);
         setError(null);
 
-        let ciSignatureData: string | undefined;
-        let agentSignatureData: string | undefined;
-        let witnessSignatureData: string | undefined;
+        // Signatures need to be re-captured for edits unless pre-loading is implemented
+        let ciSignatureData = getSignatureData(ciSigRef);
+        let agentSignatureData = getSignatureData(agentSigRef);
+        let witnessSignatureData = getSignatureData(witnessSigRef);
 
-        // Wrap signature retrieval in try...catch
-        try {
-            ciSignatureData = getSignatureData(ciSigRef);
-            agentSignatureData = getSignatureData(agentSigRef);
-            witnessSignatureData = getSignatureData(witnessSigRef);
-            
-            // Add check here: If any required signature failed to read (returned undefined), stop.
-            if (agentSignatureData === undefined || ciSignatureData === undefined) {
-                // Specific error toasts are shown within getSignatureData
-                setError("Failed to read required signature data. Please clear and sign again.");
-                setIsLoading(false);
-                return;
+        // Validation for required signatures (might differ for edit vs create?)
+        // For edit, maybe allow submitting without changing optional signatures?
+        // Keep basic required check for now.
+        if (!agentSignatureData) {
+            // If editing, use existing signature if not re-signed?
+            if (isEditing && initialData?.paying_agent_signature) {
+                 agentSignatureData = initialData.paying_agent_signature;
+            } else {
+                 setError("Paying Agent signature is required.");
+                 setIsLoading(false);
+                 return;
             }
-
-        } catch (sigError) { 
-             // This catch might not be needed if getSignatureData handles errors and returns undefined
-             console.error("Unexpected error during signature processing:", sigError);
-             setError("An unexpected error occurred while processing signatures."); 
-             setIsLoading(false);
-             return; 
         }
-
-        // Basic signature validation (required signatures)
-        if (!agentSignatureData) { // Check if data is present (might be redundant after above check)
-             setError("Paying Agent signature is required.");
-             setIsLoading(false);
-             return;
+        if (!ciSignatureData) {
+             if (isEditing && initialData?.ci_signature) {
+                 ciSignatureData = initialData.ci_signature;
+             } else {
+                 setError("CI signature is required.");
+                 setIsLoading(false);
+                 return;
+            }
         }
-         if (!ciSignatureData) { // Check if data is present
-             setError("CI signature is required.");
-             setIsLoading(false);
-             return;
-        }
-        // Witness signature might be optional based on requirements
+        // Handle optional witness signature
+         if (!witnessSignatureData && isEditing && initialData?.witness_signature) {
+             witnessSignatureData = initialData.witness_signature; // Use existing if not re-signed
+         }
 
-
-        // Construct formData, ensuring date is a string
         const formData: Partial<CiPaymentFormData> = {
             ...data,
-            date: data.date, // Date is already a string from the form validation
+            date: data.date, 
             paid_to: data.paid_to || undefined, 
             paying_agent_id: undefined, // Remove initially
             book_id: activeBookId,
+            // Pass the determined signatures
             ci_signature: ciSignatureData,
             paying_agent_signature: agentSignatureData,
-            witness_signature: witnessSignatureData,
+            witness_signature: witnessSignatureData, 
         };
 
-        // Conditionally set paying_agent_id for admins
         if (userRole === 'admin') {
             formData.paying_agent_id = data.paying_agent_id || userId; 
         }
 
         try {
-            // Cast to expected type for the action
-            const result = await createCiPaymentAction(formData as CiPaymentFormData);
+            let result;
+            if (isEditing && initialData) {
+                // Call update action
+                 console.log("Calling update action with:", { paymentId: initialData.id, formData });
+                result = await updateCiPaymentAction(initialData.id, formData as CiPaymentFormData);
+            } else {
+                // Call create action
+                console.log("Calling create action with:", formData);
+                result = await createCiPaymentAction(formData as CiPaymentFormData);
+            }
+
             if (result.success) {
                 toast({
                     title: "Success",
-                    description: "CI Payment submitted successfully.",
+                    description: `CI Payment ${isEditing ? 'updated' : 'submitted'} successfully.`,
                 });
-                reset(); // Reset form fields
+                reset(); 
                 ciSigRef.current?.clear();
                 agentSigRef.current?.clear();
                 witnessSigRef.current?.clear();
-                onFormSubmitSuccess?.(); // Call callback if provided
+                onFormSubmitSuccess?.(); 
             } else {
                 setError(result.error || 'An unknown error occurred.');
-                toast({
-                    variant: "destructive",
-                    title: "Submission Failed",
-                    description: result.error || 'An unknown error occurred.',
-                });
+                toast({ variant: "destructive", title: "Submission Failed", description: result.error || 'An unknown error occurred.' });
             }
         } catch (err: any) {
             console.error("Submission error:", err);
@@ -436,7 +461,7 @@ export default function CiPaymentForm({
                 {/* Submit Button */}
                  <div className="pt-4">
                      <Button type="submit" disabled={isLoading} className="w-full">
-                         {isLoading ? 'Submitting...' : 'Submit CI Payment'}
+                         {isLoading ? 'Submitting...' : (isEditing ? 'Update CI Payment' : 'Submit CI Payment')}
                      </Button>
                  </div>
             </form>

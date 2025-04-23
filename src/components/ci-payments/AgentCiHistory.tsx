@@ -2,17 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { getCiPaymentHistoryAction, getCiPaymentForPrintAction } from '@/app/actions';
-import { CiPayment } from '@/types/schema';
+import { CiPayment, Agent } from '@/types/schema';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
-import { Loader2, FileSignature, Printer } from 'lucide-react';
+import { Loader2, FileSignature, Printer, Edit } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type VariantProps } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import Image from 'next/image';
 import CiReceiptDisplay from '@/components/ci-payments/CiReceiptDisplay';
+import CiPaymentForm from '@/components/ci-payments/CiPaymentForm';
 import { usePepiBooks } from '@/hooks/usePepiBooks';
+import { createClient } from '@/../supabase/client';
+import { badgeVariants } from '@/components/ui/badge';
 
 type SignatureInfo = {
     title: string;
@@ -32,9 +35,32 @@ export default function AgentCiHistory({ agentId, isAdmin }: AgentCiHistoryProps
     const [error, setError] = useState<string | null>(null);
     const [signatureToView, setSignatureToView] = useState<SignatureInfo | null>(null);
     const [isSignatureViewOpen, setIsSignatureViewOpen] = useState(false);
-    const [selectedPayment, setSelectedPayment] = useState<CiPayment | null>(null);
+    const [selectedPaymentForReceipt, setSelectedPaymentForReceipt] = useState<CiPayment | null>(null);
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [loadingReceipt, setLoadingReceipt] = useState(false);
+    const [paymentToEdit, setPaymentToEdit] = useState<CiPayment | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [currentAgentFullData, setCurrentAgentFullData] = useState<Agent | null>(null);
+
+    useEffect(() => {
+        const fetchAgentData = async () => {
+             if (agentId) {
+                 const supabase = createClient();
+                 const { data, error } = await supabase
+                     .from('agents')
+                     .select('*')
+                     .eq('id', agentId)
+                     .single();
+                 if (error) {
+                     console.error("Error fetching logged-in agent data:", error);
+                     toast({ variant: "destructive", title: "Error", description: "Could not load your agent details." });
+                 } else {
+                     setCurrentAgentFullData(data as Agent);
+                 }
+             }
+        };
+        fetchAgentData();
+    }, [agentId, toast]);
 
     const fetchPayments = async () => {
         if (!activeBook?.id) {
@@ -74,9 +100,10 @@ export default function AgentCiHistory({ agentId, isAdmin }: AgentCiHistoryProps
 
     useEffect(() => {
         fetchPayments();
-    }, [activeBook?.id, agentId, isAdmin]);
+    }, [activeBook?.id, agentId, isAdmin, fetchPayments]);
 
-    const formatCurrency = (amount: number) => {
+    const formatCurrency = (amount: number | null | undefined) => {
+        if (amount === null || amount === undefined) return "N/A";
         return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
     };
 
@@ -96,33 +123,24 @@ export default function AgentCiHistory({ agentId, isAdmin }: AgentCiHistoryProps
         }
     };
 
-    // Function to view receipt in modal
-    const handleViewReceipt = async (paymentId: string) => {
+    const handleViewReceipt = async (payment: CiPayment) => {
         setLoadingReceipt(true);
-        try {
-            const result = await getCiPaymentForPrintAction(paymentId);
-            if (result.success && result.data) {
-                setSelectedPayment(result.data);
-                setIsReceiptModalOpen(true);
-            } else {
-                toast({ 
-                    variant: "destructive", 
-                    title: "Error Loading Receipt", 
-                    description: result.error || "Failed to load receipt data." 
-                });
-            }
-        } catch (err: any) {
-            toast({ 
-                variant: "destructive", 
-                title: "Error", 
-                description: err.message || "An unexpected error occurred loading the receipt." 
-            });
-        } finally {
-            setLoadingReceipt(false);
-        }
+        setSelectedPaymentForReceipt(payment);
+        setIsReceiptModalOpen(true);
+        setLoadingReceipt(false);
     };
 
-    // Function to open the signature view dialog
+    const handleOpenEditModal = (payment: CiPayment) => {
+        setPaymentToEdit(payment);
+        setIsEditModalOpen(true);
+    };
+
+    const handleFormSuccess = () => {
+        setIsEditModalOpen(false);
+        setPaymentToEdit(null);
+        fetchPayments();
+    };
+
     const handleViewSignature = (title: string, dataUrl: string | null | undefined) => {
         if (dataUrl) {
             setSignatureToView({ title, dataUrl });
@@ -132,18 +150,28 @@ export default function AgentCiHistory({ agentId, isAdmin }: AgentCiHistoryProps
         }
     };
 
-    // Function to print the receipt from the modal
     const handlePrintReceipt = () => {
-        // Add a class to help with print styling
         document.body.classList.add('printing-receipt');
         
-        // Print the document
         window.print();
         
-        // Remove the class after printing
         setTimeout(() => {
             document.body.classList.remove('printing-receipt');
         }, 500);
+    };
+
+    const canEditPayment = (payment: CiPayment): boolean => {
+        if (isAdmin) return true;
+        return payment.paying_agent_id === agentId;
+    };
+
+    const getStatusVariant = (status: string | null | undefined): VariantProps<typeof badgeVariants>["variant"] => {
+        switch (status?.toLowerCase()) {
+            case 'approved': return 'success';
+            case 'rejected': return 'destructive';
+            case 'pending': return 'secondary';
+            default: return 'outline';
+        }
     };
 
     if (loading) {
@@ -193,7 +221,7 @@ export default function AgentCiHistory({ agentId, isAdmin }: AgentCiHistoryProps
         <Card>
             <CardHeader>
                 <CardTitle>{isAdmin ? "All CI Payments" : "My CI Payments"} ({payments.length})</CardTitle>
-                <CardDescription>History of {isAdmin ? "" : "your"} Confidential Informant payments for this book.</CardDescription>
+                <CardDescription>History of {isAdmin ? "all" : "your"} Confidential Informant payments for this book.</CardDescription>
             </CardHeader>
             <CardContent>
                 {payments.length === 0 ? (
@@ -203,14 +231,16 @@ export default function AgentCiHistory({ agentId, isAdmin }: AgentCiHistoryProps
                         {payments.map((payment) => (
                             <div key={payment.id} className="border p-4 rounded-lg flex flex-col md:flex-row justify-between items-start gap-4">
                                 <div className="flex-1 space-y-2">
-                                    {/* Payment Details */}
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                                         <span className="font-medium">Receipt: {payment.receipt_number || 'N/A'}</span>
-                                        <Badge variant={payment.status === 'approved' ? 'outline' : 'secondary'}>
-                                            Status: {payment.status === 'approved' ? 'Approved' : 'Pending'}
+                                        <Badge variant={getStatusVariant(payment.status)}>
+                                            Status: {payment.status}
                                         </Badge>
                                         {payment.status === 'approved' && payment.reviewer?.name && (
-                                            <Badge variant="secondary">By: {payment.reviewer.name}</Badge>
+                                            <Badge variant="secondary">Approved By: {payment.reviewer.name}</Badge>
+                                        )}
+                                         {payment.status === 'rejected' && payment.reviewer?.name && (
+                                            <Badge variant="secondary">Rejected By: {payment.reviewer.name}</Badge>
                                         )}
                                     </div>
                                     <p className="text-lg font-semibold">Amount: {formatCurrency(payment.amount_paid)}</p>
@@ -220,8 +250,12 @@ export default function AgentCiHistory({ agentId, isAdmin }: AgentCiHistoryProps
                                     {payment.pepi_receipt_number && <p className="text-sm">PEPI Rec #: {payment.pepi_receipt_number}</p>}
                                     <p className="text-xs text-muted-foreground">Payment Date: {formatDate(payment.date)}</p>
                                     {payment.witness_printed_name && <p className="text-xs text-muted-foreground">Witness: {payment.witness_printed_name}</p>}
+                                    {payment.status === 'rejected' && payment.rejection_reason && (
+                                        <div className="mt-1 p-2 text-xs bg-red-100 border border-red-200 text-red-800 rounded">
+                                            <strong>Rejection Reason:</strong> {payment.rejection_reason}
+                                        </div>
+                                    )}
 
-                                    {/* Signature Links/Badges */}
                                     <div className="flex gap-2 flex-wrap text-xs pt-2">
                                         <Badge variant="outline" className="cursor-pointer hover:bg-muted" onClick={() => handleViewSignature('CI Signature', payment.ci_signature)}>
                                             CI Sig <FileSignature className='inline h-3 w-3 ml-1' />
@@ -241,12 +275,20 @@ export default function AgentCiHistory({ agentId, isAdmin }: AgentCiHistoryProps
                                         }
                                     </div>
                                 </div>
-                                {/* Action Button */}
-                                <div className="flex-shrink-0 pt-2 md:pt-0">
+                                <div className="flex-shrink-0 pt-2 md:pt-0 flex flex-col sm:flex-row gap-2">
+                                    {canEditPayment(payment) && (
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            onClick={() => handleOpenEditModal(payment)}
+                                        >
+                                            <Edit className="h-4 w-4 mr-1" /> Edit
+                                        </Button>
+                                    )}
                                     <Button 
                                         variant="default" 
                                         size="sm" 
-                                        onClick={() => handleViewReceipt(payment.id)}
+                                        onClick={() => handleViewReceipt(payment)}
                                         disabled={loadingReceipt}
                                     >
                                         {loadingReceipt ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Printer className="h-4 w-4 mr-1" />}
@@ -259,7 +301,6 @@ export default function AgentCiHistory({ agentId, isAdmin }: AgentCiHistoryProps
                 )}
             </CardContent>
 
-            {/* Signature View Dialog */}
             <Dialog open={isSignatureViewOpen} onOpenChange={setIsSignatureViewOpen}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
@@ -284,14 +325,13 @@ export default function AgentCiHistory({ agentId, isAdmin }: AgentCiHistoryProps
                 </DialogContent>
             </Dialog>
 
-            {/* Receipt Modal */}
             <Dialog open={isReceiptModalOpen} onOpenChange={setIsReceiptModalOpen}>
                 <DialogContent className="max-w-[95vw] w-full md:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[80vw] h-[85vh] max-h-[85vh] p-0 overflow-auto">
                     <DialogHeader className="px-6 pt-6 pb-2 sticky top-0 bg-background z-10 border-b">
                         <DialogTitle>CI Payment Receipt</DialogTitle>
                     </DialogHeader>
                     <div className="p-6 overflow-y-auto flex-grow print:p-0 print:m-0 dialog-content">
-                        {selectedPayment && <CiReceiptDisplay payment={selectedPayment} inModal={true} />}
+                        {selectedPaymentForReceipt && <CiReceiptDisplay payment={selectedPaymentForReceipt} inModal={true} />}
                     </div>
                     <DialogFooter className="px-6 py-4 sticky bottom-0 bg-background z-10 border-t flex flex-row justify-between sm:justify-end gap-2 dialog-footer">
                         <Button onClick={handlePrintReceipt} className="flex-shrink-0">
@@ -301,6 +341,30 @@ export default function AgentCiHistory({ agentId, isAdmin }: AgentCiHistoryProps
                             <Button variant="outline" className="flex-shrink-0">Close</Button>
                         </DialogClose>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                <DialogContent className="w-[95vw] sm:max-w-lg md:max-w-xl lg:max-w-3xl max-h-[90vh] p-0">
+                    <DialogHeader className="p-4 md:p-6 pb-0">
+                        <DialogTitle>Edit CI Payment</DialogTitle>
+                        <DialogDescription>
+                            Update the details for this Confidential Informant payment.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {paymentToEdit && currentAgentFullData && activeBook?.id && (
+                        <CiPaymentForm
+                           userId={agentId}
+                           userRole={isAdmin ? 'admin' : 'agent'}
+                           activeBookId={activeBook.id}
+                           agentData={currentAgentFullData}
+                           initialData={paymentToEdit}
+                           onFormSubmitSuccess={handleFormSuccess}
+                       />
+                    )}
+                    {(!paymentToEdit || !currentAgentFullData || !activeBook?.id) && (
+                        <div className="p-6 text-center text-muted-foreground">Loading form data...</div>
+                    )}
                 </DialogContent>
             </Dialog>
         </Card>

@@ -1448,3 +1448,116 @@ export async function updateUserProfileAction(data: {
 
   return { success: true };
 }
+
+// Action to update an existing CI Payment
+export async function updateCiPaymentAction(
+  paymentId: string,
+  formData: CiPaymentFormData // Use the same Zod schema type
+): Promise<{ success: boolean; error?: string; data?: CiPayment }> {
+  "use server";
+  const supabase = await createClient();
+
+  // 1. Get current user and role
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: "Authentication required." };
+  }
+
+  const { data: agentData, error: agentError } = await supabase
+    .from("agents")
+    .select("id, role")
+    .eq("user_id", user.id)
+    .single();
+
+  if (agentError || !agentData) {
+    console.error("[updateCiPaymentAction] Error fetching agent role:", agentError);
+    return { success: false, error: "Could not verify agent role." };
+  }
+
+  const userRole = agentData.role;
+  const loggedInAgentId = agentData.id;
+
+  // 2. Fetch the existing payment to verify ownership and status (if needed)
+  const { data: existingPayment, error: fetchError } = await supabase
+    .from("ci_payments")
+    .select("id, paying_agent_id, status")
+    .eq("id", paymentId)
+    .single();
+
+  if (fetchError || !existingPayment) {
+    console.error(`[updateCiPaymentAction] Failed to find payment ${paymentId} to update:`, fetchError);
+    return { success: false, error: "CI Payment not found." };
+  }
+
+  // 3. Authorization Check
+  if (userRole !== 'admin' && existingPayment.paying_agent_id !== loggedInAgentId) {
+    console.warn(`[updateCiPaymentAction] Agent ${loggedInAgentId} attempted to update payment ${paymentId} owned by ${existingPayment.paying_agent_id}.`);
+    return { success: false, error: "You do not have permission to edit this payment." };
+  }
+
+  // Optional: Add status check if edits are restricted (e.g., only pending/rejected)
+  // if (existingPayment.status === 'approved' && userRole !== 'admin') {
+  //   return { success: false, error: "Approved payments cannot be edited by agents." };
+  // }
+
+  // 4. Validate incoming data (already validated by form, but good practice)
+  const validationResult = ciPaymentSchema.safeParse(formData);
+  if (!validationResult.success) {
+    console.error("[updateCiPaymentAction] Invalid data received:", validationResult.error.flatten());
+    const errorMessages = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+    return { success: false, error: `Invalid form data: ${errorMessages}` };
+  }
+  const validatedData = validationResult.data;
+
+   // 5. Determine Paying Agent ID for update (Admin might change it)
+   let payingAgentIdToUpdate: string;
+   if (userRole === 'admin') {
+       // Admin can specify an agent or it defaults to the logged-in admin if `paying_agent_id` is missing from form data
+       payingAgentIdToUpdate = validatedData.paying_agent_id || loggedInAgentId;
+   } else {
+       // Agent cannot change the paying agent, it remains who originally submitted
+       payingAgentIdToUpdate = existingPayment.paying_agent_id;
+   }
+
+  // 6. Prepare data for update (excluding fields that shouldn't change like receipt_number, created_at)
+  const paymentDataToUpdate = {
+    date: validatedData.date,
+    paying_agent_id: payingAgentIdToUpdate, // Use determined ID
+    amount_paid: validatedData.amount_paid,
+    case_number: validatedData.case_number,
+    paid_to: validatedData.paid_to,
+    ci_signature: validatedData.ci_signature,
+    paying_agent_signature: validatedData.paying_agent_signature,
+    witness_signature: validatedData.witness_signature,
+    paying_agent_printed_name: validatedData.paying_agent_printed_name,
+    witness_printed_name: validatedData.witness_printed_name,
+    pepi_receipt_number: validatedData.pepi_receipt_number,
+    // IMPORTANT: If status needs to reset on edit (e.g., back to pending), add it here:
+    // status: 'pending',
+    // reviewed_by: null, // Clear approval fields if status resets
+    // reviewed_at: null,
+    // commander_signature: null,
+    // rejection_reason: null, 
+    updated_at: new Date().toISOString(),
+  };
+
+  // 7. Update in database
+  const { data: updatedPayment, error: updateError } = await supabase
+    .from("ci_payments")
+    .update(paymentDataToUpdate)
+    .eq("id", paymentId)
+    .select()
+    .single();
+
+  if (updateError) {
+    console.error(`[updateCiPaymentAction] Error updating CI Payment ${paymentId}:`, updateError);
+    return { success: false, error: `Database error: ${updateError.message}` };
+  }
+
+  // 8. Revalidate paths
+  revalidatePath("/dashboard/ci-history");
+  revalidatePath("/dashboard"); 
+
+  console.log(`[updateCiPaymentAction] CI Payment ${paymentId} updated successfully.`);
+  return { success: true, data: updatedPayment as CiPayment };
+}
