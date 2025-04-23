@@ -1752,16 +1752,26 @@ export async function getMonthlyPepiMemoDataAction(
 export type MonthlyUnitReportTransaction = Pick<Transaction, 
     'id' | 'created_at' | 'transaction_type' | 'amount' | 'description' | 'receipt_number' | 'status' | 'agent_id' 
 > & { 
-    agent_name?: string | null; // Include agent name if joined
+    agent_name?: string | null; 
 };
 
-// Type for the complete report data
-export type MonthlyUnitReportData = MonthlyUnitReportTransaction[];
+// Type for the calculated monthly totals
+export type MonthlyUnitReportTotals = {
+    totalAgentIssues: number;
+    totalAgentReturns: number;
+    totalExpenditures: number;
+    totalAdditionalUnitIssue: number;
+    // Add netChange or other summary fields if needed
+};
+
+// Type for the complete report data (totals + transactions)
+export type MonthlyUnitReportData = {
+    totals: MonthlyUnitReportTotals;
+    transactions: MonthlyUnitReportTransaction[];
+};
 
 /**
- * Fetches all transactions for a given PEPI Book and month for the monthly unit report.
- * @param bookId - The ID of the PEPI book.
- * @param month - The month to generate the report for (1-12).
+ * Fetches all transactions and calculates totals for a given PEPI Book and month.
  */
 export async function getMonthlyUnitReportAction(
     bookId: string, 
@@ -1808,11 +1818,11 @@ export async function getMonthlyUnitReportAction(
     const endDateISO = endDate.toISOString();
     const monthName = startDate.toLocaleString('default', { month: 'long', timeZone: 'UTC' });
 
-    console.log(`[getMonthlyUnitReportAction] Fetching transactions for Book: ${bookId}, Month: ${monthName} ${bookYear}`);
+    console.log(`[getMonthlyUnitReportAction] Fetching transactions and calculating totals for Book: ${bookId}, Month: ${monthName} ${bookYear}`);
 
     try {
-        // 4. Fetch all transactions within the date range for the book, joining agent name
-        const { data: transactions, error: fetchError } = await supabase
+        // 4. Fetch all transactions within the date range 
+        const { data: fetchedTransactions, error: fetchError } = await supabase
             .from('transactions')
             .select(`
                 id,
@@ -1831,22 +1841,76 @@ export async function getMonthlyUnitReportAction(
             .order('created_at', { ascending: true });
 
         if (fetchError) {
-            console.error(`[getMonthlyUnitReportAction] Error fetching transactions:`, fetchError);
-            throw new Error(`Database error fetching transactions: ${fetchError.message}`);
+             console.error(`[getMonthlyUnitReportAction] Error fetching transactions:`, fetchError);
+             throw new Error(`Database error fetching transactions: ${fetchError.message}`);
         }
 
-        // 5. Format data (extract agent name from potential array)
-        const reportData: MonthlyUnitReportData = (transactions || []).map((tx: any) => ({ // Use any temporarily for mapping flexibility
-            ...tx,
-            // Access the first element of the joined agent array if it exists
+        const transactions = fetchedTransactions || [];
+
+        // 5. Calculate Monthly Totals from fetched transactions
+        let totalAgentIssues = 0;
+        let totalAgentReturns = 0;
+        let totalExpenditures = 0;
+        let totalAdditionalUnitIssue = 0;
+
+        for (const tx of transactions) {
+             // Only count approved transactions towards totals
+            if (tx.status !== 'approved') continue;
+
+            const amount = tx.amount || 0;
+            switch (tx.transaction_type) {
+                case 'issuance':
+                    // Distinguish between agent issue and added funds based on description
+                    if (tx.description?.toLowerCase().includes('approved fund request')) {
+                        totalAgentIssues += amount;
+                    } else if (tx.description?.toLowerCase().includes('add funds')) { // Or match exact description if known
+                        totalAdditionalUnitIssue += amount;
+                    } else if (tx.description?.toLowerCase().includes('initial funding')) {
+                        // Usually handled by beginning balance, but include if needed
+                    } // Add other issuance types if necessary
+                    break;
+                case 'spending':
+                    totalExpenditures += amount;
+                    break;
+                case 'agent_return':
+                    totalAgentReturns += amount;
+                    break;
+                // Add other transaction types if they affect totals
+            }
+        }
+
+        const totals: MonthlyUnitReportTotals = {
+            totalAgentIssues,
+            totalAgentReturns,
+            totalExpenditures,
+            totalAdditionalUnitIssue
+        };
+
+        // 6. Format transaction list data (extract agent name)
+        const transactionList: MonthlyUnitReportTransaction[] = transactions.map((tx: any) => ({
+            id: tx.id,
+            created_at: tx.created_at,
+            transaction_type: tx.transaction_type,
+            amount: tx.amount,
+            description: tx.description,
+            receipt_number: tx.receipt_number,
+            status: tx.status,
+            agent_id: tx.agent_id,
             agent_name: tx.agent && Array.isArray(tx.agent) && tx.agent.length > 0 ? tx.agent[0]?.name : null 
         }));
 
-        console.log(`[getMonthlyUnitReportAction] Fetched ${reportData.length} transactions.`);
+        const reportData: MonthlyUnitReportData = {
+            totals,
+            transactions: transactionList
+        }
+
+        console.log(`[getMonthlyUnitReportAction] Fetched ${transactionList.length} transactions. Totals:`, totals);
         return { success: true, data: reportData };
 
     } catch (error: any) {
         console.error(`[getMonthlyUnitReportAction] Unexpected error for Book ${bookId}, Month ${month}:`, error);
         return { success: false, error: `An unexpected error occurred: ${error.message}` };
     }
+    // Ensure all paths return a value explicitly, although the catch block should handle errors
+    // return { success: false, error: "An unexpected situation occurred." }; // Could add this, but catch should cover it
 }
