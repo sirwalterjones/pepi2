@@ -3,6 +3,9 @@ import { createClient } from "../../../../supabase/server";
 import ReportGenerator from "@/components/reports/ReportGenerator";
 import AgentMonthlyReport from "@/components/reports/AgentMonthlyReport";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Link from "next/link";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export default async function ReportsPage() {
   const supabase = await createClient();
@@ -33,8 +36,21 @@ export default async function ReportsPage() {
             <TabsTrigger value="monthly-report">Monthly Report</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="custom" className="mt-6">
+          <TabsContent value="custom" className="mt-6 space-y-6">
             <ReportGenerator />
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly Reconciliation Memo (CB Memo)</CardTitle>
+                <CardDescription>
+                  Generate the official monthly PEPI fund reconciliation memorandum for the selected month.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link href="/dashboard/reports/custom/cb-memo" passHref>
+                  <Button>Generate CB Memo</Button>
+                </Link>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="monthly" className="mt-6">
@@ -43,18 +59,19 @@ export default async function ReportsPage() {
 
           <TabsContent value="monthly-report" className="mt-6">
             <div className="flex flex-col gap-4">
-              <div className="bg-white p-6 rounded-lg border shadow-sm">
-                <h2 className="text-xl font-semibold mb-4">Monthly Report</h2>
-                <p className="text-muted-foreground mb-4">
-                  View the current month's transaction report.
-                </p>
-                <a
-                  href="/dashboard/monthly-report"
-                  className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
-                >
-                  View Monthly Report
-                </a>
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Monthly Report</CardTitle>
+                  <CardDescription>
+                    View the current month's transaction report.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href="/dashboard/monthly-report" passHref>
+                    <Button>View Monthly Report</Button>
+                  </Link>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
         </Tabs>
