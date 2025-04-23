@@ -2033,3 +2033,84 @@ export async function resetActivePepiBookAction(): Promise<{ success: boolean; m
         return { success: false, error: `An unexpected error occurred during reset: ${error.message}` };
     }
 }
+
+/**
+ * Safely deletes an agent by first clearing references in dependent tables
+ */
+export async function deleteAgentAction(agentId: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    "use server";
+    const supabase = await createClient();
+
+    // 1. Verify user is an admin
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+        return { success: false, error: "Authentication required." };
+    }
+    const { data: agentData, error: agentError } = await supabase
+        .from("agents")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+    if (agentError || !agentData || agentData.role !== 'admin') {
+        return { success: false, error: "Permission denied. Only admins can delete agents." };
+    }
+
+    // 2. Verify the agent exists
+    const { data: targetAgent, error: fetchError } = await supabase
+        .from("agents")
+        .select("name")
+        .eq("id", agentId)
+        .single();
+        
+    if (fetchError || !targetAgent) {
+        return { success: false, error: "Agent not found." };
+    }
+
+    try {
+        // 3. Clear references in dependent tables
+        
+        // Clear references in fund_requests
+        console.log(`[deleteAgentAction] Clearing agent references in fund_requests for agent ${agentId}...`);
+        const { error: clearFundRequestsError } = await supabase
+            .from('fund_requests')
+            .update({ agent_id: null })
+            .eq('agent_id', agentId);
+            
+        if (clearFundRequestsError) throw new Error(`Failed to clear fund_requests references: ${clearFundRequestsError.message}`);
+        
+        // Clear references in transactions (if any exist)
+        console.log(`[deleteAgentAction] Clearing agent references in transactions for agent ${agentId}...`);
+        const { error: clearTransactionsError } = await supabase
+            .from('transactions')
+            .update({ agent_id: null })
+            .eq('agent_id', agentId);
+            
+        if (clearTransactionsError) throw new Error(`Failed to clear transactions references: ${clearTransactionsError.message}`);
+        
+        // Clear references in ci_payments (if any exist)
+        console.log(`[deleteAgentAction] Clearing agent references in ci_payments for agent ${agentId}...`);
+        const { error: clearCiPaymentsError } = await supabase
+            .from('ci_payments')
+            .update({ paying_agent_id: null })
+            .eq('paying_agent_id', agentId);
+            
+        if (clearCiPaymentsError) throw new Error(`Failed to clear ci_payments references: ${clearCiPaymentsError.message}`);
+        
+        // 4. Now delete the agent
+        console.log(`[deleteAgentAction] Deleting agent ${agentId}...`);
+        const { error: deleteError } = await supabase
+            .from("agents")
+            .delete()
+            .eq("id", agentId);
+            
+        if (deleteError) throw new Error(`Failed to delete agent: ${deleteError.message}`);
+
+        console.log(`[deleteAgentAction] Successfully deleted agent ${agentId} (${targetAgent.name})`);
+        return { success: true, message: `Successfully deleted agent ${targetAgent.name}.` };
+        
+    } catch (error: any) {
+        console.error(`[deleteAgentAction] Error deleting agent ${agentId}:`, error);
+        return { success: false, error: `An unexpected error occurred: ${error.message}` };
+    }
+}
