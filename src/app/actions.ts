@@ -1696,33 +1696,43 @@ export async function getMonthlyPepiMemoDataAction(
 
         // 5. Calculate Monthly Totals (within monthStartDateISO and monthEndDateISO)
         const monthlyFiltersBase = { pepi_book_id: bookId, gte: monthStartDateISO, lte: monthEndDateISO };
-        const monthlyFiltersBaseCIR = { book_id: bookId, status: 'approved', gte: monthStartDateISO, lte: monthEndDateISO }; // For CI Payments reviewed_at
+        const monthlyFiltersBaseApproved = { ...monthlyFiltersBase, status: 'approved' }; // Base for approved transactions
         
-        const totalAgentIssues = await fetchSum('transactions', 'amount', { ...monthlyFiltersBase, transaction_type: 'issuance', status: 'approved', description: '%Approved fund request%' });
-        const totalAgentReturns = await fetchSum('transactions', 'amount', { ...monthlyFiltersBase, transaction_type: 'agent_return', status: 'approved' });
-        const totalExpenditures = await fetchSum('ci_payments', 'amount_paid', monthlyFiltersBaseCIR, 'reviewed_at');
-        const totalAdditionalUnitIssue = await fetchSum('transactions', 'amount', { ...monthlyFiltersBase, transaction_type: 'issuance', status: 'approved', description: 'Add funds' });
+        // Monthly Agent Issues (Approved fund request transactions)
+        const totalAgentIssues = await fetchSum('transactions', 'amount', { ...monthlyFiltersBaseApproved, transaction_type: 'issuance', description: '%Approved fund request%' });
+        
+        // Monthly Agent Returns (Approved agent_return transactions)
+        const totalAgentReturns = await fetchSum('transactions', 'amount', { ...monthlyFiltersBaseApproved, transaction_type: 'agent_return' });
+        
+        // Monthly Expenditures (Approved 'spending' transactions for the specific month)
+        const totalExpenditures = await fetchSum('transactions', 'amount', 
+            { ...monthlyFiltersBaseApproved, transaction_type: 'spending' }, 
+            'created_at' // Use transaction date for monthly expenditure timing
+        );
+        
+        // Monthly Additional Funds (Approved 'issuance' transactions with specific description)
+        const totalAdditionalUnitIssue = await fetchSum('transactions', 'amount', { ...monthlyFiltersBaseApproved, transaction_type: 'issuance', description: 'Add funds' });
 
         console.log(`[getMonthlyPepiMemoDataAction] Monthly Totals: Issues=${totalAgentIssues}, Returns=${totalAgentReturns}, Expenditures=${totalExpenditures}, AddFunds=${totalAdditionalUnitIssue}`);
 
         // 6. Calculate Ending Balance
+        // Uses the corrected monthly totalExpenditures
         const endingBalance = beginningBalance + totalAdditionalUnitIssue + totalAgentReturns - totalAgentIssues - totalExpenditures;
         console.log(`[getMonthlyPepiMemoDataAction] Ending Balance Calculated: ${endingBalance}`);
 
         // 7. Calculate Cash On Hand (Matches Ending Balance with current logic)
-        const cashOnHand = endingBalance;
+        const cashOnHand = endingBalance; // Still reflects ending balance based on calculations
 
-        // 8. Calculate YTD Expenditures (Sum of approved 'spending' transactions)
-        // Fetch sum of approved transactions with type 'spending' from book start up to month end date.
+        // 8. Calculate YTD Expenditures (Sum of approved 'spending' transactions up to month end)
         const ytdExpenditures = await fetchSum('transactions', 'amount', 
             { 
                 pepi_book_id: bookId, 
                 transaction_type: 'spending', 
                 status: 'approved', 
-                gte: bookStartDateISO, 
-                lte: monthEndDateISO 
+                gte: bookStartDateISO, // From book start
+                lte: monthEndDateISO  // To month end
             },
-            'created_at' // Use transaction creation/approval date for YTD calculation
+            'created_at'
         );
         console.log(`[getMonthlyPepiMemoDataAction] Total YTD Expenditures (Spending Transactions) Calculated: ${ytdExpenditures}`);
 
@@ -1736,13 +1746,13 @@ export async function getMonthlyPepiMemoDataAction(
             reconciliationDate,
             commanderName,
             beginningBalance,
-            totalAgentIssues,       // Monthly Agent Issues
-            totalAgentReturns,      // Monthly Agent Returns
-            totalExpenditures,      // Monthly Expenditures (Based on CI Payments)
-            totalAdditionalUnitIssue, // Monthly Added Funds
-            cashOnHand,             // Calculated
-            endingBalance,          // Calculated
-            ytdExpenditures,        // Corrected YTD Expenditures (Based on Spending Transactions)
+            totalAgentIssues,       
+            totalAgentReturns,      
+            totalExpenditures,      // Corrected Monthly Expenditures
+            totalAdditionalUnitIssue, 
+            cashOnHand,             
+            endingBalance,          
+            ytdExpenditures,        
         };
 
         return { success: true, data: memoData };
