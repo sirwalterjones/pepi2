@@ -346,26 +346,28 @@ export default function AgentCiHistory({ agentId, isAdmin }: AgentCiHistoryProps
             </Dialog>
 
             <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-                <DialogContent className="w-[95vw] sm:max-w-lg md:max-w-xl lg:max-w-3xl max-h-[90vh] p-0">
-                    <DialogHeader className="p-4 md:p-6 pb-0">
+                <DialogContent className="w-[95vw] sm:max-w-lg md:max-w-xl lg:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+                    <DialogHeader className="pt-4 px-4 md:pt-6 md:px-6 pb-2 border-b flex-shrink-0">
                         <DialogTitle>Edit CI Payment</DialogTitle>
                         <DialogDescription>
                             Update the details for this Confidential Informant payment.
                         </DialogDescription>
                     </DialogHeader>
-                    {paymentToEdit && currentAgentFullData && activeBook?.id && (
-                        <CiPaymentForm
-                           userId={agentId}
-                           userRole={isAdmin ? 'admin' : 'agent'}
-                           activeBookId={activeBook.id}
-                           agentData={currentAgentFullData}
-                           initialData={paymentToEdit}
-                           onFormSubmitSuccess={handleFormSuccess}
-                       />
-                    )}
-                    {(!paymentToEdit || !currentAgentFullData || !activeBook?.id) && (
-                        <div className="p-6 text-center text-muted-foreground">Loading form data...</div>
-                    )}
+                    <div className="flex-grow overflow-y-auto p-4 md:p-6">
+                        {paymentToEdit && currentAgentFullData && activeBook?.id && (
+                            <CiPaymentForm
+                               userId={agentId}
+                               userRole={isAdmin ? 'admin' : 'agent'}
+                               activeBookId={activeBook.id}
+                               agentData={currentAgentFullData}
+                               initialData={paymentToEdit}
+                               onFormSubmitSuccess={handleFormSuccess}
+                           />
+                        )}
+                        {(!paymentToEdit || !currentAgentFullData || !activeBook?.id) && (
+                            <div className="p-6 text-center text-muted-foreground">Loading form data...</div>
+                        )}
+                    </div>
                 </DialogContent>
             </Dialog>
         </Card>

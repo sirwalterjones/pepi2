@@ -6,6 +6,7 @@ import MonthlyUnitReport from "@/components/reports/MonthlyUnitReport";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export default async function ReportsPage() {
   const supabase = await createClient();
@@ -21,7 +22,7 @@ export default async function ReportsPage() {
   return (
     <main className="w-full">
       <div className="container mx-auto px-4 py-8 flex flex-col gap-8">
-        <header className="flex flex-col gap-4">
+        <header className="flex flex-col gap-4 hide-on-print">
           <h1 className="text-3xl font-bold">Reports</h1>
           <p className="text-muted-foreground">
             Generate and view various financial reports for documentation and auditing.
@@ -29,7 +30,7 @@ export default async function ReportsPage() {
         </header>
 
         <div className="flex flex-col space-y-8">
-          <Card>
+          <Card className="hide-on-print">
             <CardHeader>
               <CardTitle>Custom Transaction Report</CardTitle>
               <CardDescription>
@@ -41,7 +42,7 @@ export default async function ReportsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hide-on-print">
             <CardHeader>
               <CardTitle>Monthly Reconciliation Memo (CB Memo)</CardTitle>
               <CardDescription>
@@ -55,7 +56,7 @@ export default async function ReportsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hide-on-print">
             <CardHeader>
               <CardTitle>Monthly Agent Report</CardTitle>
               <CardDescription>
@@ -67,8 +68,8 @@ export default async function ReportsPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
+          <Card className="report-card-container">
+            <CardHeader className="hide-on-print">
               <CardTitle>Monthly Unit Report</CardTitle>
               <CardDescription>
                 View the consolidated transaction report for the unit for a selected month.

@@ -78,10 +78,8 @@ export default function MonthlyUnitReport() {
     };
 
     const handlePrint = () => {
-        // Add class to body to trigger print styles
         document.body.classList.add('printing-unit-report');
         window.print();
-        // Remove class after print dialog is likely closed/cancelled
         setTimeout(() => document.body.classList.remove('printing-unit-report'), 500);
     }
 
@@ -149,8 +147,8 @@ export default function MonthlyUnitReport() {
     );
 
     return (
-        <div className="space-y-4 report-card-container"> {/* Added class for potential targeting */} 
-            {/* Controls Section */}
+        <div className="space-y-4 report-card-container">
+            {/* Controls Section - hidden via class */} 
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 hide-on-print">
                 <div className="w-full sm:w-auto sm:min-w-[200px]">
                     <Select 
@@ -182,59 +180,50 @@ export default function MonthlyUnitReport() {
                 )}
             </div>
 
-            {/* Error Display */}
+            {/* Error Display - hidden via class */} 
             {error && (
                 <p className="text-red-600 hide-on-print">Error: {error}</p>
             )}
 
-            {/* Loading Indicator */}
+            {/* Loading Indicator - hidden via class (implicitly by parent or add class if needed) */} 
              {loading && (
-                <div className="flex justify-center items-center py-10">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <span className="ml-3">Generating report...</span>
-                </div>
-            )}
+                 <div className="flex justify-center items-center py-10 hide-on-print"> {/* Added hide-on-print */} 
+                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                     <span className="ml-3">Generating report...</span>
+                 </div>
+             )}
 
-            {/* Report Display Area */}
+            {/* Report Display Area */} 
             {!loading && !error && reportData && (
                 <div id="unit-report-content-area">
                     {renderTotals(reportData.totals)}
                     {renderTransactionTable(reportData.transactions)}
                 </div>
             )}
+             {/* Initial placeholder - hidden via class */}
              {!loading && !error && !reportData && selectedMonth === null && (
                  <p className="text-muted-foreground hide-on-print">Select a month and generate the report.</p>
             )}
             
-            {/* Refined Print Styles */}
+            {/* Simplified Print Styles */}
              <style jsx global>{`
                 @media print {
                     body.printing-unit-report {
                         margin: 0 !important;
                         padding: 0 !important;
-                        background-color: white !important; 
                     }
-                    /* Hide everything by default */
-                    body.printing-unit-report > * {
+                    /* Hide elements specifically marked */
+                    body.printing-unit-report .hide-on-print {
                         display: none !important;
                     }
-                    /* Reveal only the specific report content */
+                    /* Ensure the report content area is displayed and takes space */
                     body.printing-unit-report #unit-report-content-area {
-                        display: block !important;
-                        position: absolute; /* Use absolute to break out of hidden parents */
-                        left: 0;
-                        top: 0;
-                        width: 100%;
+                        display: block !important; 
                         margin: 0 !important;
-                        padding: 1in !important; /* Add print margins */
-                        border: none !important;
-                        box-shadow: none !important;
+                        padding: 0 !important; /* No extra padding needed if parents handled */
+                        width: 100% !important; 
                     }
-                    /* Ensure elements marked hide-on-print are hidden */
-                     body.printing-unit-report .hide-on-print {
-                        display: none !important;
-                     }
-                     /* Hide Vercel Toolbar if present */
+                    /* Remove Vercel toolbar */
                      body.printing-unit-report [data-vercel-toolbar] {
                          display: none !important;
                      }
