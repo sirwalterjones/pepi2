@@ -89,6 +89,7 @@ export default function TransactionList() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isCiPaymentFormOpen, setIsCiPaymentFormOpen] = useState(false);
   const [currentAgentData, setCurrentAgentData] = useState<Agent | null>(null);
+  const userId = currentAgentData?.user_id; // Derive userId
 
   // Fetch current user's agent ID and role
   useEffect(() => {
@@ -467,12 +468,41 @@ export default function TransactionList() {
             </CardDescription>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            {(isAdmin || !isAdmin) && (
-                <Button onClick={() => setIsFormOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Transaction
-                </Button>
+            <Button onClick={() => setIsFormOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                New Transaction
+            </Button>
+
+            {isAdmin && activeBook?.id && (
+                <Dialog open={isCiPaymentFormOpen} onOpenChange={setIsCiPaymentFormOpen}>
+                   <DialogTrigger asChild>
+                       <Button variant="secondary">
+                           <PlusCircle className="mr-2 h-4 w-4" /> New CI Payment
+                       </Button>
+                   </DialogTrigger>
+                   <DialogContent className="w-full max-w-xs sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-4 md:p-6">
+                       <DialogHeader>
+                           <DialogTitle>New CI Payment (Admin)</DialogTitle>
+                           <DialogDescription>
+                               Fill out the form to record a Confidential Informant payment. It will be submitted for approval.
+                           </DialogDescription>
+                       </DialogHeader>
+                       {userId && activeBook && currentAgentData && ( 
+                            <CiPaymentForm
+                               userId={userId} 
+                               userRole={'admin'}
+                               activeBookId={activeBook.id}
+                               agentData={currentAgentData} 
+                               onFormSubmitSuccess={() => {
+                                   setIsCiPaymentFormOpen(false);
+                                   fetchData();
+                               }}
+                           />
+                       )}
+                   </DialogContent>
+               </Dialog>
             )}
+
             {!isAdmin && (
               <>
                  {/* Agent: Request Funds Button */}
@@ -500,37 +530,6 @@ export default function TransactionList() {
                       />
                     </DialogContent>
                   </Dialog>
-
-                  {/* Agent: New CI Payment Button */}
-                   {activeBook?.id && (
-                     <Dialog open={isCiPaymentFormOpen} onOpenChange={setIsCiPaymentFormOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="secondary">
-                                <PlusCircle className="mr-2 h-4 w-4" /> New CI Payment
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="w-[95vw] sm:max-w-lg md:max-w-xl lg:max-w-3xl max-h-[90vh] p-0">
-                            <DialogHeader className="p-4 md:p-6 pb-0">
-                                <DialogTitle>New CI Payment</DialogTitle>
-                                <DialogDescription>
-                                    Fill out the form to record a Confidential Informant payment. It will be submitted for approval.
-                                </DialogDescription>
-                            </DialogHeader>
-                            {currentUserAgentId && activeBook && (
-                                <CiPaymentForm
-                                    userId={currentUserAgentId} 
-                                    userRole={'agent'}
-                                    activeBookId={activeBook.id}
-                                    agentData={currentAgentData} 
-                                    onFormSubmitSuccess={() => {
-                                        setIsCiPaymentFormOpen(false);
-                                        fetchData(); // Refetch data after submission
-                                    }}
-                                />
-                            )}
-                        </DialogContent>
-                    </Dialog>
-                   )}
                </>
             )}
           </div>
