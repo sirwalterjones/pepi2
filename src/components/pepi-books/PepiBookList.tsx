@@ -126,7 +126,7 @@ export default function PepiBookList({
     );
   }
 
-  if (pepiBooks.length === 0) {
+  if (!pepiBooks || pepiBooks.length === 0) {
     return (
       <Card>
         <CardContent className="pt-6">
