@@ -64,6 +64,8 @@ export function usePepiBooks() {
         // Calculate current balance
         let balance = book.starting_amount || 0;
         bookTransactions.forEach((tx: Transaction) => {
+          if (tx.status !== "approved") return; // Only count approved transactions
+
           if (tx.transaction_type === "issuance") {
             balance += Number(tx.amount);
           } else if (tx.transaction_type === "return") {
