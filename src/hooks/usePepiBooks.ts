@@ -52,14 +52,14 @@ export function usePepiBooks() {
             (tx: Transaction) => tx.pepi_book_id === book.id,
           ) || [];
 
-        // Calculate additional funds (all issuance transactions except initial funding)
+        // Calculate additional funds (only count fund additions through the Add Funds form)
+        // These are issuance transactions with descriptions containing "add funds" or similar
         const additionalFunds = bookTransactions
           .filter(
             (tx: Transaction) =>
               tx.transaction_type === "issuance" &&
               tx.status === "approved" &&
-              !tx.description?.toLowerCase().includes("initial funding") &&
-              !tx.description?.toLowerCase().includes("approved fund request"),
+              tx.description?.toLowerCase().includes("add funds"),
           )
           .reduce((sum: number, tx: Transaction) => sum + Number(tx.amount), 0);
 
