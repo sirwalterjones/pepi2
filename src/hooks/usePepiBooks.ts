@@ -74,6 +74,8 @@ export function usePepiBooks() {
             balance += Number(tx.amount); // Returns add to balance
           } else if (tx.transaction_type === "spending") {
             balance -= Number(tx.amount); // Spending reduces balance
+          } else if (tx.transaction_type === "agent_return") {
+            balance += Number(tx.amount); // Agent returns add to balance
           }
         });
 
