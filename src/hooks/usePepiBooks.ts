@@ -2,11 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "../../supabase/client";
-import { PepiBook } from "@/types/schema";
+import { PepiBook, Transaction } from "@/types/schema";
+
+type PepiBookWithBalances = PepiBook & {
+  additionalFunds: number;
+  currentBalance: number;
+};
 
 export function usePepiBooks() {
-  const [pepiBooks, setPepiBooks] = useState<PepiBook[]>([]);
-  const [activeBook, setActiveBook] = useState<PepiBook | null>(null);
+  const [pepiBooks, setPepiBooks] = useState<PepiBookWithBalances[]>([]);
+  const [activeBook, setActiveBook] = useState<PepiBookWithBalances | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const supabase = createClient();
@@ -16,17 +23,67 @@ export function usePepiBooks() {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
+      // Fetch all PEPI books
+      const { data: booksData, error: booksError } = await supabase
         .from("pepi_books")
         .select("*")
         .order("year", { ascending: false });
 
-      if (error) throw new Error(error.message);
+      if (booksError) throw new Error(booksError.message);
+      if (!booksData) throw new Error("No PEPI books found");
 
-      setPepiBooks(data as PepiBook[]);
+      // Fetch all transactions for all books
+      const { data: transactionsData, error: transactionsError } =
+        await supabase
+          .from("transactions")
+          .select("*")
+          .in(
+            "pepi_book_id",
+            booksData.map((book) => book.id),
+          )
+          .eq("status", "approved");
+
+      if (transactionsError) throw new Error(transactionsError.message);
+
+      // Calculate additional funds and current balance for each book
+      const booksWithBalances = booksData.map((book) => {
+        const bookTransactions =
+          transactionsData?.filter(
+            (tx: Transaction) => tx.pepi_book_id === book.id,
+          ) || [];
+
+        // Calculate additional funds (only issuance transactions with description containing "Add funds")
+        const additionalFunds = bookTransactions
+          .filter(
+            (tx: Transaction) =>
+              tx.transaction_type === "issuance" &&
+              tx.description?.includes("Add funds"),
+          )
+          .reduce((sum: number, tx: Transaction) => sum + Number(tx.amount), 0);
+
+        // Calculate current balance
+        let balance = book.starting_amount || 0;
+        bookTransactions.forEach((tx: Transaction) => {
+          if (tx.transaction_type === "issuance") {
+            balance += Number(tx.amount);
+          } else if (tx.transaction_type === "return") {
+            balance += Number(tx.amount); // Returns add to balance
+          } else if (tx.transaction_type === "spending") {
+            balance -= Number(tx.amount); // Spending reduces balance
+          }
+        });
+
+        return {
+          ...book,
+          additionalFunds,
+          currentBalance: balance,
+        };
+      });
+
+      setPepiBooks(booksWithBalances);
 
       // Find the active book
-      const active = data.find((book: PepiBook) => book.is_active);
+      const active = booksWithBalances.find((book) => book.is_active);
       setActiveBook(active || null);
     } catch (err) {
       console.error("Error fetching PEPI books:", err);
@@ -41,8 +98,8 @@ export function usePepiBooks() {
   useEffect(() => {
     fetchPepiBooks();
 
-    // Set up real-time subscription
-    const subscription = supabase
+    // Set up real-time subscription for both books and transactions
+    const booksSubscription = supabase
       .channel("pepi_books_changes")
       .on(
         "postgres_changes",
@@ -53,8 +110,20 @@ export function usePepiBooks() {
       )
       .subscribe();
 
+    const transactionsSubscription = supabase
+      .channel("transactions_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "transactions" },
+        () => {
+          fetchPepiBooks();
+        },
+      )
+      .subscribe();
+
     return () => {
-      subscription.unsubscribe();
+      booksSubscription.unsubscribe();
+      transactionsSubscription.unsubscribe();
     };
   }, []);
 

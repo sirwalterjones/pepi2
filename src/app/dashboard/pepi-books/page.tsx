@@ -261,6 +261,22 @@ export default function PepiBooksPage() {
                   ${activeBook.starting_amount?.toFixed(2) || "0.00"}
                 </p>
               </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Additional Funds
+                </p>
+                <p className="text-2xl font-bold text-green-600">
+                  ${activeBook.additionalFunds?.toFixed(2) || "0.00"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Current Balance
+                </p>
+                <p className="text-2xl font-bold text-blue-600">
+                  ${activeBook.currentBalance?.toFixed(2) || "0.00"}
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>

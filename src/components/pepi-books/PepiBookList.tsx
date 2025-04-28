@@ -154,6 +154,7 @@ export default function PepiBookList({
                 <TableHead>Year</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Starting Amount</TableHead>
+                <TableHead>Additional Funds</TableHead>
                 <TableHead>Current/Final Balance</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Actions</TableHead>
@@ -187,9 +188,12 @@ export default function PepiBookList({
                     {formatCurrency(book.starting_amount || 0)}
                   </TableCell>
                   <TableCell>
+                    {formatCurrency(book.additionalFunds || 0)}
+                  </TableCell>
+                  <TableCell>
                     {book.is_closed && book.closing_balance
                       ? formatCurrency(book.closing_balance)
-                      : "--"}
+                      : formatCurrency(book.currentBalance || 0)}
                   </TableCell>
                   <TableCell>
                     {new Date(book.created_at).toLocaleDateString()}
