@@ -6,6 +6,13 @@ const nextConfig = {
   },
   output: "standalone",
   distDir: ".next",
+  // Use a different port to avoid conflicts
+  experimental: {
+    serverComponentsExternalPackages: [],
+  },
+  server: {
+    port: 3001, // Changed from default 3000
+  },
   // Production optimizations
   webpack: (config, { isServer }) => {
     if (process.env.NODE_ENV === "production") {

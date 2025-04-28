@@ -33,7 +33,7 @@ export async function middleware(req: NextRequest) {
         remove(name: string, options: CookieOptions) {
           req.cookies.set({
             name,
-            value: '',
+            value: "",
             ...options,
           });
           res = NextResponse.next({
@@ -43,7 +43,7 @@ export async function middleware(req: NextRequest) {
           });
           res.cookies.set({
             name,
-            value: '',
+            value: "",
             ...options,
           });
         },
@@ -51,20 +51,24 @@ export async function middleware(req: NextRequest) {
     },
   );
 
-  // Use getUser for more robust check
-  const {
-    data: { user },
-    error: getUserError,
-  } = await supabase.auth.getUser();
-
-  if (getUserError) {
-    console.error("Middleware Error fetching user:", getUserError);
+  // Use getUser for more robust check with error handling
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    if (data && data.user) {
+      user = data.user;
+    }
+  } catch (error) {
+    // Silently handle AuthSessionMissingError as it's expected for non-authenticated users
+    if (error.name !== "AuthSessionMissingError") {
+      console.error("Exception in middleware auth check:", error);
+    }
   }
 
   // Redirect root path
   if (req.nextUrl.pathname === "/") {
     if (user) {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+      return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
@@ -72,43 +76,63 @@ export async function middleware(req: NextRequest) {
   // Protect dashboard routes
   if (req.nextUrl.pathname.startsWith("/dashboard")) {
     // Special case for receipt pages that can be opened in new tabs
-    if (req.nextUrl.pathname.includes("/ci-payments/") && req.nextUrl.pathname.includes("/receipt")) {
+    if (
+      req.nextUrl.pathname.includes("/ci-payments/") &&
+      req.nextUrl.pathname.includes("/receipt")
+    ) {
       // Allow access to receipt pages without redirection
       // The server component will still verify access through RLS
       return res;
     }
-    
+
     if (!user) {
-       // This check now applies to ALL /dashboard paths again except receipts
-       console.log(`Middleware redirecting to /sign-in (no user) for path: ${req.nextUrl.pathname}`);
-       return NextResponse.redirect(new URL("/sign-in", req.url));
+      // This check now applies to ALL /dashboard paths again except receipts
+      console.log(
+        `Middleware redirecting to /sign-in (no user) for path: ${req.nextUrl.pathname}`,
+      );
+      return NextResponse.redirect(new URL("/sign-in", req.url));
     }
 
     // Dashboard root agent redirect
     if (req.nextUrl.pathname === "/dashboard") {
       if (user) {
-         const { data: agentData } = await supabase
-           .from("agents")
-           .select("role")
-           .eq("user_id", user.id)
-           .single();
-         if (agentData && agentData.role !== "admin") {
-            console.log(`Middleware redirecting agent from /dashboard to /dashboard/transactions`);
+        try {
+          const { data: agentData } = await supabase
+            .from("agents")
+            .select("role")
+            .eq("user_id", user.id)
+            .single();
+          if (agentData && agentData.role !== "admin") {
+            console.log(
+              `Middleware redirecting agent from /dashboard to /dashboard/transactions`,
+            );
             return NextResponse.redirect(
-             new URL("/dashboard/transactions", req.url),
-           );
-         }
-      } else {
-          console.warn("Middleware: User object null unexpectedly at role check.");
+              new URL("/dashboard/transactions", req.url),
+            );
+          }
+        } catch (error) {
+          console.warn("Error fetching agent role:", error);
           return NextResponse.redirect(new URL("/sign-in", req.url));
+        }
+      } else {
+        console.warn(
+          "Middleware: User object null unexpectedly at role check.",
+        );
+        return NextResponse.redirect(new URL("/sign-in", req.url));
       }
     }
   }
 
   // Prevent logged-in users from accessing auth pages
-  if (user && (req.nextUrl.pathname.startsWith("/sign-in") || req.nextUrl.pathname.startsWith("/forgot-password"))) {
-       console.log(`Middleware redirecting logged-in user from auth page to /dashboard`);
-       return NextResponse.redirect(new URL("/dashboard", req.url));
+  if (
+    user &&
+    (req.nextUrl.pathname.startsWith("/sign-in") ||
+      req.nextUrl.pathname.startsWith("/forgot-password"))
+  ) {
+    console.log(
+      `Middleware redirecting logged-in user from auth page to /dashboard`,
+    );
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
   return res;
