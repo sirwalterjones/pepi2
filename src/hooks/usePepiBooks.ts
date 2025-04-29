@@ -51,13 +51,10 @@ export function usePepiBooks() {
             (tx: Transaction) => tx.pepi_book_id === book.id,
           ) || [];
 
-        // Calculate additional funds - only count issuances that are not the initial funding
-        // and are approved
+        // Calculate additional funds - look for transactions with receipt numbers starting with "ADD"
         const additionalFundsTransactions = bookTransactions.filter(
           (tx: Transaction) =>
-            tx.transaction_type === "issuance" &&
-            tx.status === "approved" &&
-            !tx.description?.toLowerCase().includes("initial funding"),
+            tx.status === "approved" && tx.receipt_number?.startsWith("ADD"),
         );
 
         // Show each additional fund transaction separately in console for debugging
@@ -66,7 +63,7 @@ export function usePepiBooks() {
           additionalFundsTransactions.map((tx) => ({
             id: tx.id,
             amount: tx.amount,
-            description: tx.description,
+            receipt: tx.receipt_number,
           })),
         );
 
@@ -88,7 +85,7 @@ export function usePepiBooks() {
           .forEach((tx) => {
             balance += Number(tx.amount);
             console.log(
-              `Adding issuance: ${tx.amount}, new balance: ${balance}, desc: ${tx.description}`,
+              `Adding issuance: ${tx.amount}, new balance: ${balance}, receipt: ${tx.receipt_number}`,
             );
           });
 
