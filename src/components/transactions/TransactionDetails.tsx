@@ -140,6 +140,7 @@ export default function TransactionDetails({
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
@@ -257,25 +258,46 @@ export default function TransactionDetails({
     setIsUpdating(true);
     try {
       // --- Validation for Spending Specific Fields (when editing) ---
-      if (editedTransaction.transaction_type === 'spending') {
-          if (!editedTransaction.spending_category) {
-              toast({ title: "Missing Category", description: "Please select a spending category.", variant: "destructive" });
-              setIsUpdating(false); return;
+      if (editedTransaction.transaction_type === "spending") {
+        if (!editedTransaction.spending_category) {
+          toast({
+            title: "Missing Category",
+            description: "Please select a spending category.",
+            variant: "destructive",
+          });
+          setIsUpdating(false);
+          return;
+        }
+        if (editedTransaction.spending_category === "Evidence Purchase") {
+          if (!editedTransaction.case_number?.trim()) {
+            toast({
+              title: "Missing Case #",
+              description: "Case # is required for Evidence Purchases.",
+              variant: "destructive",
+            });
+            setIsUpdating(false);
+            return;
           }
-          if (editedTransaction.spending_category === 'Evidence Purchase') {
-              if (!editedTransaction.case_number?.trim()) {
-                  toast({ title: "Missing Case #", description: "Case # is required for Evidence Purchases.", variant: "destructive" });
-                  setIsUpdating(false); return;
-              }
-              if (!editedTransaction.ecr_number?.trim()) {
-                  toast({ title: "Missing ECR #", description: "ECR # is required for Evidence Purchases.", variant: "destructive" });
-                  setIsUpdating(false); return;
-              }
-              if (!editedTransaction.date_to_evidence) {
-                  toast({ title: "Missing Date", description: "Date to Evidence is required for Evidence Purchases.", variant: "destructive" });
-                  setIsUpdating(false); return;
-              }
+          if (!editedTransaction.ecr_number?.trim()) {
+            toast({
+              title: "Missing ECR #",
+              description: "ECR # is required for Evidence Purchases.",
+              variant: "destructive",
+            });
+            setIsUpdating(false);
+            return;
           }
+          if (!editedTransaction.date_to_evidence) {
+            toast({
+              title: "Missing Date",
+              description:
+                "Date to Evidence is required for Evidence Purchases.",
+              variant: "destructive",
+            });
+            setIsUpdating(false);
+            return;
+          }
+        }
       }
       // --- End Validation ---
 
@@ -328,13 +350,26 @@ export default function TransactionDetails({
           receipt_number: updateData.receipt_number,
           agent_id: updateData.agent_id,
           updated_at: updateData.updated_at,
+          transaction_date: editedTransaction.transaction_date
+            ? format(new Date(editedTransaction.transaction_date), "yyyy-MM-dd")
+            : null,
           // Add spending fields if applicable
-          ...(editedTransaction.transaction_type === 'spending' && {
-              spending_category: editedTransaction.spending_category,
-              case_number: editedTransaction.case_number?.trim() || null,
-              paid_to: editedTransaction.paid_to?.trim() || null,
-              ecr_number: editedTransaction.spending_category === 'Evidence Purchase' ? editedTransaction.ecr_number?.trim() : null,
-              date_to_evidence: editedTransaction.spending_category === 'Evidence Purchase' && editedTransaction.date_to_evidence ? format(new Date(editedTransaction.date_to_evidence), 'yyyy-MM-dd') : null,
+          ...(editedTransaction.transaction_type === "spending" && {
+            spending_category: editedTransaction.spending_category,
+            case_number: editedTransaction.case_number?.trim() || null,
+            paid_to: editedTransaction.paid_to?.trim() || null,
+            ecr_number:
+              editedTransaction.spending_category === "Evidence Purchase"
+                ? editedTransaction.ecr_number?.trim()
+                : null,
+            date_to_evidence:
+              editedTransaction.spending_category === "Evidence Purchase" &&
+              editedTransaction.date_to_evidence
+                ? format(
+                    new Date(editedTransaction.date_to_evidence),
+                    "yyyy-MM-dd",
+                  )
+                : null,
           }),
           // If this is an agent editing their rejected transaction, reset to pending
           ...(isOwnTransaction && transaction.status === "rejected" && !isAdmin
@@ -472,33 +507,57 @@ export default function TransactionDetails({
                 </div>
                 
                 <!-- Spending Specific Fields START -->
-                ${transaction.transaction_type === 'spending' ? `
-                  ${transaction.spending_category ? `
+                ${
+                  transaction.transaction_type === "spending"
+                    ? `
+                  ${
+                    transaction.spending_category
+                      ? `
                     <div class="info-row">
                       <span class="label">Category:</span>
                       <span>${transaction.spending_category}</span>
-                    </div>` : ''}
-                  ${transaction.case_number ? `
+                    </div>`
+                      : ""
+                  }
+                  ${
+                    transaction.case_number
+                      ? `
                     <div class="info-row">
                       <span class="label">Case #:</span>
                       <span>${transaction.case_number}</span>
-                    </div>` : ''}
-                  ${transaction.paid_to ? `
+                    </div>`
+                      : ""
+                  }
+                  ${
+                    transaction.paid_to
+                      ? `
                     <div class="info-row">
                       <span class="label">Paid To:</span>
                       <span>${transaction.paid_to}</span>
-                    </div>` : ''}
-                   ${transaction.ecr_number ? `
+                    </div>`
+                      : ""
+                  }
+                   ${
+                     transaction.ecr_number
+                       ? `
                     <div class="info-row">
                       <span class="label">ECR #:</span>
                       <span>${transaction.ecr_number}</span>
-                    </div>` : ''}
-                   ${transaction.date_to_evidence ? `
+                    </div>`
+                       : ""
+                   }
+                   ${
+                     transaction.date_to_evidence
+                       ? `
                     <div class="info-row">
                       <span class="label">Date to Evidence:</span>
                       <span>${formatDate(transaction.date_to_evidence)}</span>
-                    </div>` : ''}
-                ` : ''}
+                    </div>`
+                       : ""
+                   }
+                `
+                    : ""
+                }
                 <!-- Spending Specific Fields END -->
 
                 ${
@@ -552,7 +611,9 @@ export default function TransactionDetails({
 
     setIsDeleting(true);
     try {
-      console.log(`[Client] Attempting to delete transaction ID: ${transaction.id}`);
+      console.log(
+        `[Client] Attempting to delete transaction ID: ${transaction.id}`,
+      );
       const { error } = await supabase
         .from("transactions")
         .delete()
@@ -722,118 +783,169 @@ export default function TransactionDetails({
             )}
           </div>
 
-          {/* Conditionally render spending fields for display or edit */} 
-          {displayTransaction.transaction_type === 'spending' && (
-              <div className="space-y-4 border-t pt-4 mt-4">
-                  <h4 className="text-md font-medium mb-2">Spending Details</h4>
-                  
-                  {/* Spending Category */}
-                  <div>
-                      <div className="text-sm font-medium">Category</div>
-                      {isEditing ? (
-                          <Select
-                              value={editedTransaction?.spending_category || ""}
-                              onValueChange={(value) => setEditedTransaction({ ...editedTransaction, spending_category: value || null })}
-                              required
-                          >
-                              <SelectTrigger className="mt-1">
-                              <SelectValue placeholder="Select spending category" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="CI Payment">CI Payment</SelectItem>
-                                  <SelectItem value="Evidence Purchase">Evidence Purchase</SelectItem>
-                                  <SelectItem value="Misc.">Misc.</SelectItem>
-                              </SelectContent>
-                          </Select>
-                      ) : (
-                          <div>{displayTransaction?.spending_category || 'N/A'}</div>
-                      )}
-                  </div>
+          {/* Conditionally render spending fields for display or edit */}
+          {displayTransaction.transaction_type === "spending" && (
+            <div className="space-y-4 border-t pt-4 mt-4">
+              <h4 className="text-md font-medium mb-2">Spending Details</h4>
 
-                  {/* Case Number */}                  
-                  <div>
-                      <div className="text-sm font-medium">Case #</div>
-                      {isEditing ? (
-                          <Input
-                              value={editedTransaction?.case_number || ''}
-                              onChange={(e) => setEditedTransaction({ ...editedTransaction, case_number: e.target.value })}
-                              placeholder="Case Number"
-                              className="mt-1"
-                              required={editedTransaction?.spending_category === 'Evidence Purchase'}
-                          />
-                      ) : (
-                          <div>{displayTransaction?.case_number || 'N/A'}</div>
-                      )}
-                  </div>
-
-                  {/* Paid To */}                  
-                  <div>
-                      <div className="text-sm font-medium">Paid To</div>
-                      {isEditing ? (
-                          <Input
-                              value={editedTransaction?.paid_to || ''}
-                              onChange={(e) => setEditedTransaction({ ...editedTransaction, paid_to: e.target.value })}
-                              placeholder="Person/Vendor Name"
-                              className="mt-1"
-                          />
-                      ) : (
-                          <div>{displayTransaction?.paid_to || 'N/A'}</div>
-                      )}
-                  </div>
-
-                  {/* Fields conditional on Evidence Purchase category */}                  
-                  {(editedTransaction?.spending_category === 'Evidence Purchase' ||
-                   (!isEditing && displayTransaction?.spending_category === 'Evidence Purchase')) && (
-                       <>
-                           {/* ECR Number */} 
-                           <div>
-                               <div className="text-sm font-medium">ECR #</div>
-                               {isEditing ? (
-                                   <Input
-                                       value={editedTransaction?.ecr_number || ''}
-                                       onChange={(e) => setEditedTransaction({ ...editedTransaction, ecr_number: e.target.value })}
-                                       placeholder="ECR Number"
-                                       className="mt-1"
-                                       required={editedTransaction?.spending_category === 'Evidence Purchase'}
-                                   />
-                               ) : (
-                                   <div>{displayTransaction?.ecr_number || 'N/A'}</div>
-                               )}
-                           </div>
-
-                           {/* Date to Evidence */} 
-                           <div>
-                               <div className="text-sm font-medium">Date to Evidence</div>
-                               {isEditing ? (
-                                   <Popover>
-                                       <PopoverTrigger asChild>
-                                       <Button
-                                           variant={"outline"}
-                                           className={cn(
-                                               "w-full justify-start text-left font-normal mt-1",
-                                               !editedTransaction?.date_to_evidence && "text-muted-foreground"
-                                           )}
-                                       >
-                                           <CalendarIcon className="mr-2 h-4 w-4" />
-                                           {editedTransaction?.date_to_evidence ? format(new Date(editedTransaction.date_to_evidence), "PPP") : <span>Pick a date</span>}
-                                       </Button>
-                                       </PopoverTrigger>
-                                       <PopoverContent className="w-auto p-0">
-                                       <Calendar
-                                           mode="single"
-                                           selected={editedTransaction?.date_to_evidence ? new Date(editedTransaction.date_to_evidence) : undefined}
-                                           onSelect={(date) => setEditedTransaction({ ...editedTransaction, date_to_evidence: date })}
-                                           initialFocus
-                                       />
-                                       </PopoverContent>
-                                   </Popover>
-                               ) : (
-                                   <div>{displayTransaction?.date_to_evidence ? formatDate(displayTransaction.date_to_evidence) : 'N/A'}</div>
-                               )}
-                           </div>
-                       </>
-                  )}
+              {/* Spending Category */}
+              <div>
+                <div className="text-sm font-medium">Category</div>
+                {isEditing ? (
+                  <Select
+                    value={editedTransaction?.spending_category || ""}
+                    onValueChange={(value) =>
+                      setEditedTransaction({
+                        ...editedTransaction,
+                        spending_category: value || null,
+                      })
+                    }
+                    required
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select spending category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CI Payment">CI Payment</SelectItem>
+                      <SelectItem value="Evidence Purchase">
+                        Evidence Purchase
+                      </SelectItem>
+                      <SelectItem value="Misc.">Misc.</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div>{displayTransaction?.spending_category || "N/A"}</div>
+                )}
               </div>
+
+              {/* Case Number */}
+              <div>
+                <div className="text-sm font-medium">Case #</div>
+                {isEditing ? (
+                  <Input
+                    value={editedTransaction?.case_number || ""}
+                    onChange={(e) =>
+                      setEditedTransaction({
+                        ...editedTransaction,
+                        case_number: e.target.value,
+                      })
+                    }
+                    placeholder="Case Number"
+                    className="mt-1"
+                    required={
+                      editedTransaction?.spending_category ===
+                      "Evidence Purchase"
+                    }
+                  />
+                ) : (
+                  <div>{displayTransaction?.case_number || "N/A"}</div>
+                )}
+              </div>
+
+              {/* Paid To */}
+              <div>
+                <div className="text-sm font-medium">Paid To</div>
+                {isEditing ? (
+                  <Input
+                    value={editedTransaction?.paid_to || ""}
+                    onChange={(e) =>
+                      setEditedTransaction({
+                        ...editedTransaction,
+                        paid_to: e.target.value,
+                      })
+                    }
+                    placeholder="Person/Vendor Name"
+                    className="mt-1"
+                  />
+                ) : (
+                  <div>{displayTransaction?.paid_to || "N/A"}</div>
+                )}
+              </div>
+
+              {/* Fields conditional on Evidence Purchase category */}
+              {(editedTransaction?.spending_category === "Evidence Purchase" ||
+                (!isEditing &&
+                  displayTransaction?.spending_category ===
+                    "Evidence Purchase")) && (
+                <>
+                  {/* ECR Number */}
+                  <div>
+                    <div className="text-sm font-medium">ECR #</div>
+                    {isEditing ? (
+                      <Input
+                        value={editedTransaction?.ecr_number || ""}
+                        onChange={(e) =>
+                          setEditedTransaction({
+                            ...editedTransaction,
+                            ecr_number: e.target.value,
+                          })
+                        }
+                        placeholder="ECR Number"
+                        className="mt-1"
+                        required={
+                          editedTransaction?.spending_category ===
+                          "Evidence Purchase"
+                        }
+                      />
+                    ) : (
+                      <div>{displayTransaction?.ecr_number || "N/A"}</div>
+                    )}
+                  </div>
+
+                  {/* Date to Evidence */}
+                  <div>
+                    <div className="text-sm font-medium">Date to Evidence</div>
+                    {isEditing ? (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full justify-start text-left font-normal mt-1",
+                              !editedTransaction?.date_to_evidence &&
+                                "text-muted-foreground",
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {editedTransaction?.date_to_evidence ? (
+                              format(
+                                new Date(editedTransaction.date_to_evidence),
+                                "PPP",
+                              )
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={
+                              editedTransaction?.date_to_evidence
+                                ? new Date(editedTransaction.date_to_evidence)
+                                : undefined
+                            }
+                            onSelect={(date) =>
+                              setEditedTransaction({
+                                ...editedTransaction,
+                                date_to_evidence: date,
+                              })
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <div>
+                        {displayTransaction?.date_to_evidence
+                          ? formatDate(displayTransaction.date_to_evidence)
+                          : "N/A"}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           )}
 
           {displayTransaction.status && (
