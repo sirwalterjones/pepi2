@@ -20,6 +20,7 @@ export interface Transaction {
   paid_to?: string | null;
   ecr_number?: string | null;
   date_to_evidence?: string | null;
+  document_url?: string | null;
 }
 
 export interface TransactionWithAgent extends Transaction {

@@ -763,6 +763,21 @@ export default function TransactionList() {
                             <span>Receipt: {item.receipt_number}</span>
                           </>
                         )}
+                      {item.itemType === "transaction" && item.document_url && (
+                        <>
+                          <span>•</span>
+                          <a
+                            href={item.document_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Paperclip className="h-3 w-3" />
+                            <span>Document</span>
+                          </a>
+                        </>
+                      )}
                       {item.itemType === "transaction" &&
                         item.transaction_type === "spending" &&
                         item.spending_category && (

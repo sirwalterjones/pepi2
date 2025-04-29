@@ -1032,6 +1032,25 @@ export default function TransactionDetails({
             </div>
           )}
 
+          {/* Supporting Document Section */}
+          {displayTransaction.document_url && (
+            <div>
+              <div className="text-sm font-medium">Supporting Document</div>
+              <div className="mt-2">
+                <a
+                  href={displayTransaction.document_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 p-3 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span className="flex-1 truncate">View Document</span>
+                  <Download className="h-4 w-4" />
+                </a>
+              </div>
+            </div>
+          )}
+
           {isAdmin && displayTransaction.status === "pending" && (
             <div className="border-t pt-4 mt-4">
               <div className="text-sm font-medium mb-2">Review Transaction</div>

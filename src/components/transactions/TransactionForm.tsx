@@ -635,11 +635,11 @@ export default function TransactionForm({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? (
+            <Button type="submit" disabled={loading || isUploading}>
+              {loading || isUploading ? (
                 <>
-                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
-                  Creating...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isUploading ? "Uploading..." : "Creating..."}
                 </>
               ) : (
                 "Create Transaction"
