@@ -369,7 +369,11 @@ export default function TransactionList() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    // Create date with timezone handling to prevent date shifting
+    const date = new Date(dateString);
+    return new Date(
+      date.getTime() + date.getTimezoneOffset() * 60000,
+    ).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
