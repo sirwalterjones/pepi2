@@ -70,6 +70,10 @@ export default function TransactionForm({
   const [transactionDate, setTransactionDate] = useState<Date | undefined>(
     undefined,
   );
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { agents, loading: agentsLoading } = useAgents();
   const { activeBook, loading: pepiBookLoading } = usePepiBooks();
