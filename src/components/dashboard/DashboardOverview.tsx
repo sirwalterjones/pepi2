@@ -185,11 +185,11 @@ export default function DashboardOverview() {
       }
 
       // Calculate stats based on APPROVED transactions only using the refined logic
-      let pepiBookBalance = 0;
       let totalIssuedToAgents = 0;
       let totalSpentByAgents = 0;
       let totalReturnedByAgents = 0;
       let totalAddedToBook = 0;
+      let initialAmount = activeBook.starting_amount || 0;
 
       // Start with the initial amount from the PEPI book
 
