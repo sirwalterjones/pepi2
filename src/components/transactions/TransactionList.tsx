@@ -94,9 +94,6 @@ export default function TransactionList() {
   const [requestToEdit, setRequestToEdit] = useState<FundRequest | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isCiPaymentFormOpen, setIsCiPaymentFormOpen] = useState(false);
-  const [transactionDate, setTransactionDate] = useState<Date | undefined>(
-    undefined,
-  );
   const [currentAgentData, setCurrentAgentData] = useState<Agent | null>(null);
   const [runningBalances, setRunningBalances] = useState<{
     [key: string]: number;

@@ -67,6 +67,9 @@ export default function TransactionForm({
   const [dateToEvidence, setDateToEvidence] = useState<Date | undefined>(
     undefined,
   );
+  const [transactionDate, setTransactionDate] = useState<Date | undefined>(
+    undefined,
+  );
 
   const { agents, loading: agentsLoading } = useAgents();
   const { activeBook, loading: pepiBookLoading } = usePepiBooks();
