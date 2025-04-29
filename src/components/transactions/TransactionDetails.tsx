@@ -727,7 +727,7 @@ export default function TransactionDetails({
                       onSelect={(date) =>
                         setEditedTransaction({
                           ...editedTransaction,
-                          transaction_date: date,
+                          transaction_date: date ? date : null,
                         })
                       }
                       initialFocus

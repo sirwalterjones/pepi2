@@ -236,6 +236,7 @@ export default function TransactionList() {
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
       );
+
       setCombinedList(combined);
 
       // Calculate running balances after fetching transactions

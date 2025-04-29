@@ -441,7 +441,7 @@ export default function TransactionForm({
                   <Calendar
                     mode="single"
                     selected={transactionDate}
-                    onSelect={setTransactionDate}
+                    onSelect={(date) => setTransactionDate(date)}
                     initialFocus
                   />
                 </PopoverContent>
