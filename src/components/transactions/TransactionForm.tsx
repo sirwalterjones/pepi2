@@ -671,7 +671,16 @@ export default function TransactionForm({
                           <Calendar
                             mode="single"
                             selected={dateToEvidence}
-                            onSelect={setDateToEvidence}
+                            onSelect={(date) => {
+                              if (date) {
+                                // Ensure date is set to noon to avoid timezone issues
+                                const adjustedDate = new Date(date);
+                                adjustedDate.setHours(12, 0, 0, 0);
+                                setDateToEvidence(adjustedDate);
+                              } else {
+                                setDateToEvidence(undefined);
+                              }
+                            }}
                             initialFocus
                           />
                         </PopoverContent>
