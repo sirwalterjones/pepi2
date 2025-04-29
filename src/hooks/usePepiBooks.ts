@@ -64,42 +64,46 @@ export function usePepiBooks() {
           0,
         );
 
-        // Calculate balances
+        // Calculate balances based on the corrected logic
         let totalBalance = book.starting_amount || 0;
         let issuedToAgents = 0;
         let totalSpent = 0;
+        let totalAdditions = 0;
 
         // Process all transactions to calculate balances
         bookTransactions.forEach((tx) => {
           if (tx.status !== "approved") return;
 
           if (tx.transaction_type === "issuance") {
-            totalBalance += Number(tx.amount);
-
-            // Only count issuances to agents (with agent_id)
+            // For issuances to agents, track separately
             if (tx.agent_id) {
               issuedToAgents += Number(tx.amount);
             }
+            // For additions to the book (receipt starts with ADD)
+            else if (tx.receipt_number?.startsWith("ADD")) {
+              totalAdditions += Number(tx.amount);
+            }
           } else if (tx.transaction_type === "return") {
-            // Returns reduce the amount issued to agents
+            // Returns only affect agent cash on hand and safe cash
             if (tx.agent_id) {
               issuedToAgents -= Number(tx.amount);
-            } else {
-              // Non-agent returns add to total balance
-              totalBalance += Number(tx.amount);
             }
           } else if (tx.transaction_type === "spending") {
-            // Spending reduces both total balance and issued to agents
-            totalBalance -= Number(tx.amount);
+            // All spending reduces the total balance
             totalSpent += Number(tx.amount);
+
+            // If spent by an agent, reduce their cash on hand
             if (tx.agent_id) {
               issuedToAgents -= Number(tx.amount);
             }
           }
         });
 
-        // Calculate safe cash (total minus what's with agents AND minus what's been spent)
-        const safeCashBalance = totalBalance - issuedToAgents - totalSpent;
+        // Calculate current balance: initial + additions - expenditures
+        totalBalance = book.starting_amount + totalAdditions - totalSpent;
+
+        // Calculate safe cash: current balance - what's issued to agents
+        const safeCashBalance = totalBalance - issuedToAgents;
 
         return {
           ...book,

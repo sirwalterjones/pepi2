@@ -242,8 +242,8 @@ export default function DashboardOverview() {
           transactions?.filter((t) => t.status === "approved").length || 0,
         totalIssuance: totalIssuedToAgents, // Reflects funds issued TO agents
         totalReturned: totalReturnedByAgents, // Reflects funds returned BY agents
-        currentBalance: pepiBookBalance, // Correct book balance
-        cashOnHand: pepiBookBalance, // Correct book balance
+        currentBalance: pepiBookBalance, // Total book balance (initial + additions - expenditures)
+        cashOnHand: safeCashBalance, // Safe cash (current balance - what's with agents)
         spendingTotal: totalSpentByAgents, // Reflects funds spent BY agents
         activePepiBookId: activeBook?.id || null,
         activePepiBookYear: activeBook?.year || null,
