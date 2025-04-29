@@ -427,17 +427,20 @@ export default function TransactionList() {
           transaction.transaction_type === "issuance" &&
           transaction.agent_id === null
         ) {
+          // Only add to book balance if it's an issuance to the book itself (not to an agent)
           balanceChange = transaction.amount;
           currentBalance += balanceChange;
           applied = true;
         } else if (transaction.transaction_type === "spending") {
+          // All spending reduces the book balance
           balanceChange = -transaction.amount;
           currentBalance += balanceChange;
           applied = true;
         } else if (transaction.transaction_type === "return") {
-          balanceChange = transaction.amount;
-          currentBalance += balanceChange;
-          applied = true;
+          // IMPORTANT CHANGE: Agent returns should NOT affect the PEPI book balance
+          // They only affect the agent's personal balance, not the overall book balance
+          // The money was already accounted for when it was issued to the agent
+          applied = false; // Don't apply returns to the book balance
         }
         if (applied) {
           console.log(
