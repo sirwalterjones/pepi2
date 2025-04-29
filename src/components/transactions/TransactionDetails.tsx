@@ -63,6 +63,10 @@ export default function TransactionDetails({
   const [isEditing, setIsEditing] = useState(false);
   const [editedTransaction, setEditedTransaction] = useState<any>(null);
   const [creatorName, setCreatorName] = useState<string>("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { agents } = useAgents();
   const { toast } = useToast();
   const supabase = createClient();
