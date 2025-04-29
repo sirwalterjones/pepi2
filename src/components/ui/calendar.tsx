@@ -5,14 +5,35 @@ import { DayPicker } from "react-day-picker";
 import { buttonVariants } from "../../components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker> & {date?: number};
+export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
+  date?: number;
+};
 
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  selected,
+  onSelect,
   ...props
 }: CalendarProps) {
+  // Handle date selection to prevent timezone issues
+  const handleSelect = React.useCallback(
+    (day: Date | undefined) => {
+      if (!day) {
+        if (onSelect) onSelect(undefined);
+        return;
+      }
+
+      // Set the time to noon to avoid timezone issues
+      const normalizedDate = new Date(day);
+      normalizedDate.setHours(12, 0, 0, 0);
+
+      if (onSelect) onSelect(normalizedDate);
+    },
+    [onSelect],
+  );
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
@@ -49,10 +70,12 @@ function Calendar({
         day_hidden: "invisible",
         ...classNames,
       }}
-      // components={{
-      //   IconLeft: ({ ...props }) => <ChevronLeftIcon className="h-4 w-4" />,
-      //   IconRight: ({ ...props }) => <ChevronRightIcon className="h-4 w-4" />,
-      // }}
+      components={{
+        IconLeft: () => <ChevronLeftIcon className="h-5 w-5" />,
+        IconRight: () => <ChevronRightIcon className="h-5 w-5" />,
+      }}
+      selected={selected}
+      onSelect={handleSelect}
       {...props}
     />
   );
