@@ -191,20 +191,7 @@ export default function DashboardOverview() {
       let totalReturnedByAgents = 0;
       let totalAddedToBook = 0;
 
-      // Find initial funding transaction amount
-      const initialFundingTx = transactions?.find(
-        (tx) =>
-          tx.pepi_book_id === activeBook.id &&
-          tx.transaction_type === "issuance" &&
-          tx.status === "approved" &&
-          (tx.description?.toLowerCase().includes("initial funding") ||
-            tx.agent_id === null) && // Heuristic for initial/added
-          !tx.description?.toLowerCase().includes("approved fund request"), // Exclude request approvals
-      );
-      if (initialFundingTx) {
-        pepiBookBalance = initialFundingTx.amount;
-        totalAddedToBook += initialFundingTx.amount; // Count this as funds added
-      }
+      // Start with the initial amount from the PEPI book
 
       // Process all transactions to calculate balances
       transactions?.forEach((transaction: Transaction) => {
