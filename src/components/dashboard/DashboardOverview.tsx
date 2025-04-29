@@ -226,7 +226,7 @@ export default function DashboardOverview() {
       });
 
       // Calculate safe cash: current balance - what's issued to agents
-      safeCashBalance = pepiBookBalance - totalIssuedToAgents;
+      let safeCashBalance = pepiBookBalance - totalIssuedToAgents;
 
       setStats({
         totalAgents: agentsCount || 0,
