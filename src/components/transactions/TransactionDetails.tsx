@@ -21,6 +21,10 @@ import {
   Edit,
   Save,
   CalendarIcon,
+  Paperclip,
+  X,
+  FileText,
+  Download,
 } from "lucide-react";
 import { useToast } from "../ui/use-toast";
 import { Textarea } from "../ui/textarea";
