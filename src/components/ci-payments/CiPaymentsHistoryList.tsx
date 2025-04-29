@@ -8,13 +8,8 @@ import {
 import { CiPayment } from "@/types/schema";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import {
-  Loader2,
-  FileSignature,
-  Printer,
-  Upload,
-  Paperclip,
-} from "lucide-react";
+import { Loader2, FileSignature, Printer, Upload } from "lucide-react";
+import { Paperclip } from "lucide-react";
 import {
   Card,
   CardHeader,
