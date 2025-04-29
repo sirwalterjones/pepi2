@@ -227,6 +227,9 @@ export default function TransactionForm({
         created_by: user.id,
         status: isAdmin ? "approved" : "pending",
         review_notes: null,
+        transaction_date: transactionDate
+          ? format(transactionDate, "yyyy-MM-dd")
+          : null,
       };
 
       // Add spending-specific fields if applicable
