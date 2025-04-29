@@ -88,7 +88,9 @@ export default function ReportsPage() {
                 View the consolidated transaction report for the unit for a
                 selected month.
               </div>
-              <Button>View Unit Report</Button>
+              <Link href="/dashboard/monthly-report" passHref>
+                <Button>View Unit Report</Button>
+              </Link>
             </CardContent>
           </Card>
         </div>
