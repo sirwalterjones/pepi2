@@ -11,7 +11,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { format, parseISO } from "date-fns";
-import { Upload } from "lucide-react";
+import { Upload, Paperclip } from "lucide-react";
 import Image from "next/image";
 import PrintReceiptButton from "@/app/dashboard/ci-payments/[paymentId]/receipt/PrintReceiptButton"; // Adjust path if needed
 

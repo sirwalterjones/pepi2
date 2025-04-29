@@ -21,7 +21,7 @@ import {
   Edit,
   Save,
   CalendarIcon,
-  PaperclipIcon,
+  Paperclip,
   X,
   FileText,
   Download,
