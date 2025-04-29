@@ -241,7 +241,7 @@ export default function TransactionList() {
         const dateB =
           b.itemType === "transaction" && b.transaction_date
             ? new Date(b.transaction_date)
-            : new Date(a.created_at);
+            : new Date(b.created_at);
         return dateB.getTime() - dateA.getTime();
       });
 
