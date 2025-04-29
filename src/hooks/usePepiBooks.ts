@@ -18,40 +18,6 @@ export function usePepiBooks() {
   const [error, setError] = useState<string | null>(null);
   const supabase = createClient();
 
-  // Calculate additional funds from transactions
-  const calculateAdditionalFunds = (transactions: Transaction[]): number => {
-    return transactions
-      .filter(
-        (tx) =>
-          tx.transaction_type === "issuance" &&
-          tx.status === "approved" &&
-          tx.description?.toLowerCase().includes("add funds"),
-      )
-      .reduce((sum, tx) => sum + Number(tx.amount), 0);
-  };
-
-  // Calculate current balance from starting amount and transactions
-  const calculateCurrentBalance = (
-    book: PepiBook,
-    transactions: Transaction[],
-  ): number => {
-    let balance = book.starting_amount || 0;
-
-    transactions.forEach((tx) => {
-      if (tx.status !== "approved") return;
-
-      if (tx.transaction_type === "issuance") {
-        balance += Number(tx.amount);
-      } else if (tx.transaction_type === "return") {
-        balance += Number(tx.amount);
-      } else if (tx.transaction_type === "spending") {
-        balance -= Number(tx.amount);
-      }
-    });
-
-    return balance;
-  };
-
   const fetchPepiBooks = async () => {
     try {
       setLoading(true);
@@ -85,14 +51,75 @@ export function usePepiBooks() {
             (tx: Transaction) => tx.pepi_book_id === book.id,
           ) || [];
 
-        // Calculate additional funds and current balance
-        const additionalFunds = calculateAdditionalFunds(bookTransactions);
-        const currentBalance = calculateCurrentBalance(book, bookTransactions);
+        // Calculate additional funds - only count issuances that are not the initial funding
+        // and are approved
+        const additionalFundsTransactions = bookTransactions.filter(
+          (tx: Transaction) =>
+            tx.transaction_type === "issuance" &&
+            tx.status === "approved" &&
+            !tx.description?.toLowerCase().includes("initial funding"),
+        );
+
+        // Show each additional fund transaction separately in console for debugging
+        console.log(
+          `Additional funds transactions for book ${book.year}:`,
+          additionalFundsTransactions.map((tx) => ({
+            id: tx.id,
+            amount: tx.amount,
+            description: tx.description,
+          })),
+        );
+
+        const additionalFunds = additionalFundsTransactions.reduce(
+          (sum: number, tx: Transaction) => sum + Number(tx.amount),
+          0,
+        );
+
+        // Calculate current balance using the same logic as the dashboard
+        // Start with initial amount
+        let balance = book.starting_amount || 0;
+
+        // Add all approved issuances
+        bookTransactions
+          .filter(
+            (tx) =>
+              tx.transaction_type === "issuance" && tx.status === "approved",
+          )
+          .forEach((tx) => {
+            balance += Number(tx.amount);
+            console.log(
+              `Adding issuance: ${tx.amount}, new balance: ${balance}, desc: ${tx.description}`,
+            );
+          });
+
+        // Add all approved returns
+        bookTransactions
+          .filter(
+            (tx) =>
+              tx.transaction_type === "return" && tx.status === "approved",
+          )
+          .forEach((tx) => {
+            balance += Number(tx.amount);
+            console.log(`Adding return: ${tx.amount}, new balance: ${balance}`);
+          });
+
+        // Subtract all approved spending
+        bookTransactions
+          .filter(
+            (tx) =>
+              tx.transaction_type === "spending" && tx.status === "approved",
+          )
+          .forEach((tx) => {
+            balance -= Number(tx.amount);
+            console.log(
+              `Subtracting spending: ${tx.amount}, new balance: ${balance}`,
+            );
+          });
 
         return {
           ...book,
           additionalFunds,
-          currentBalance,
+          currentBalance: balance,
         };
       });
 
