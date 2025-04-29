@@ -1033,9 +1033,59 @@ export default function TransactionDetails({
           )}
 
           {/* Supporting Document Section */}
-          {displayTransaction.document_url && (
-            <div>
-              <div className="text-sm font-medium">Supporting Document</div>
+          <div>
+            <div className="text-sm font-medium">Supporting Document</div>
+            {isEditing ? (
+              <div className="mt-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    {selectedFile
+                      ? selectedFile.name
+                      : displayTransaction.document_url
+                        ? "Change document"
+                        : "Attach document"}
+                  </Button>
+                  {(selectedFile || displayTransaction.document_url) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setSelectedFile(null);
+                        if (!isEditing) return;
+                        setEditedTransaction({
+                          ...editedTransaction,
+                          document_url: null,
+                        });
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  id="file-upload"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setSelectedFile(e.target.files[0]);
+                    }
+                  }}
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Accepted formats: PDF, JPG, PNG, DOC, DOCX (max 5MB)
+                </p>
+              </div>
+            ) : displayTransaction.document_url ? (
               <div className="mt-2">
                 <a
                   href={displayTransaction.document_url}
@@ -1048,8 +1098,12 @@ export default function TransactionDetails({
                   <Download className="h-4 w-4" />
                 </a>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="text-sm text-muted-foreground mt-1">
+                No document attached
+              </div>
+            )}
+          </div>
 
           {isAdmin && displayTransaction.status === "pending" && (
             <div className="border-t pt-4 mt-4">
