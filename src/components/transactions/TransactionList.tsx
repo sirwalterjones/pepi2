@@ -453,7 +453,7 @@ export default function TransactionList() {
     });
 
     console.log(
-      `[calculatePepiBookBalance] Calculated balance: ${pepiBookBalance} = ${initialAmount} (initial) + ${totalAdditions} (additions) - ${totalSpent} (spent)`,
+      `[calculatePepiBookBalance] Calculated balance: ${currentBalance}`,
     );
     return currentBalance;
   }, [transactions, activeBook]);
