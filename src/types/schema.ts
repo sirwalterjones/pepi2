@@ -66,3 +66,33 @@ export interface FundRequest {
   reviewed_by: string | null;
   pepi_book_id: string | null;
 }
+
+export type ApprovalStatus =
+  | "draft"
+  | "pending_approval"
+  | "approved"
+  | "published"
+  | "acknowledged"
+  | "archived";
+
+export interface Document {
+  id: string;
+  title: string;
+  content: string;
+  version: number;
+  created_at: string | null;
+  updated_at: string | null;
+  created_by: string;
+  approval_status: ApprovalStatus | null;
+  category: string | null;
+  department: string | null;
+  effective_date: string | null;
+  review_date: string | null;
+  document_number: string | null;
+  previous_version_id: string | null;
+  users?: {
+    id: string;
+    email: string;
+    user_metadata?: Record<string, any>;
+  };
+}
