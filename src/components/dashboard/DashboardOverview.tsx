@@ -206,35 +206,40 @@ export default function DashboardOverview() {
         totalAddedToBook += initialFundingTx.amount; // Count this as funds added
       }
 
-      // Process other relevant approved transactions
+      // Process all transactions to calculate balances
       transactions?.forEach((transaction: Transaction) => {
-        // Skip the initial funding transaction we already processed
-        if (transaction.id === initialFundingTx?.id) return;
-
         if (transaction.status === "approved") {
           if (transaction.transaction_type === "issuance") {
             if (transaction.agent_id !== null) {
               // Issuance TO an agent
               totalIssuedToAgents += transaction.amount;
-              // Does NOT affect pepiBookBalance
-            } else if (
-              !transaction.description
-                ?.toLowerCase()
-                .includes("approved fund request")
-            ) {
-              // Manual Additions to Book (issuance, no agent, not an approved request)
-              pepiBookBalance += transaction.amount;
+              // Does NOT affect book balance directly
+            } else if (transaction.receipt_number?.startsWith("ADD")) {
+              // Additions to the book (receipt starts with ADD)
               totalAddedToBook += transaction.amount;
+              pepiBookBalance += transaction.amount;
             }
           } else if (transaction.transaction_type === "spending") {
-            pepiBookBalance -= transaction.amount;
+            // All spending reduces the total balance
             totalSpentByAgents += transaction.amount;
+            pepiBookBalance -= transaction.amount;
+
+            // If spent by an agent, reduce their cash on hand
+            if (transaction.agent_id) {
+              totalIssuedToAgents -= transaction.amount;
+            }
           } else if (transaction.transaction_type === "return") {
-            pepiBookBalance += transaction.amount;
-            totalReturnedByAgents += transaction.amount;
+            // Returns only affect agent cash on hand
+            if (transaction.agent_id) {
+              totalIssuedToAgents -= transaction.amount;
+              totalReturnedByAgents += transaction.amount;
+            }
           }
         }
       });
+
+      // Calculate safe cash: current balance - what's issued to agents
+      safeCashBalance = pepiBookBalance - totalIssuedToAgents;
 
       setStats({
         totalAgents: agentsCount || 0,
