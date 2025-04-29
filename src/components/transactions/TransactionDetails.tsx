@@ -693,7 +693,58 @@ export default function TransactionDetails({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="text-sm font-medium">Date</div>
+              <div className="text-sm font-medium">Transaction Date</div>
+              {isEditing ? (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !editedTransaction?.transaction_date &&
+                          "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {editedTransaction?.transaction_date ? (
+                        format(
+                          new Date(editedTransaction.transaction_date),
+                          "PPP",
+                        )
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={
+                        editedTransaction?.transaction_date
+                          ? new Date(editedTransaction.transaction_date)
+                          : undefined
+                      }
+                      onSelect={(date) =>
+                        setEditedTransaction({
+                          ...editedTransaction,
+                          transaction_date: date,
+                        })
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <div>
+                  {displayTransaction.transaction_date
+                    ? formatDate(displayTransaction.transaction_date)
+                    : formatDate(displayTransaction.created_at)}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="text-sm font-medium">Created Date</div>
               <div>{formatDate(displayTransaction.created_at)}</div>
             </div>
 
