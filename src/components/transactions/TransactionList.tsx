@@ -232,10 +232,18 @@ export default function TransactionList() {
         })),
       ];
 
-      combined.sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      );
+      combined.sort((a, b) => {
+        // Use transaction_date if available, otherwise fall back to created_at
+        const dateA =
+          a.itemType === "transaction" && a.transaction_date
+            ? new Date(a.transaction_date)
+            : new Date(a.created_at);
+        const dateB =
+          b.itemType === "transaction" && b.transaction_date
+            ? new Date(b.transaction_date)
+            : new Date(a.created_at);
+        return dateB.getTime() - dateA.getTime();
+      });
 
       setCombinedList(combined);
 
