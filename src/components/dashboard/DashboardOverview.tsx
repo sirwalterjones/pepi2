@@ -16,7 +16,11 @@ import {
   ArrowDownLeft,
   AlertTriangle,
 } from "lucide-react";
-import { TransactionType, Transaction, TransactionWithAgent } from "@/types/schema";
+import {
+  TransactionType,
+  Transaction,
+  TransactionWithAgent,
+} from "@/types/schema";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -86,7 +90,8 @@ export default function DashboardOverview() {
       // Handle case where no book is selected/available
       setLoading(false);
       setInitialLoadComplete(true); // Mark load as complete
-      setStats({ // Reset stats to default
+      setStats({
+        // Reset stats to default
         totalAgents: 0,
         totalTransactions: 0,
         totalIssuance: 0,
@@ -106,28 +111,37 @@ export default function DashboardOverview() {
     // Only subscribe if we have an active book
     if (!activeBook?.id) return;
 
-    console.log(`[DashboardOverview] Setting up subscription for transactions in book: ${activeBook.id}`);
+    console.log(
+      `[DashboardOverview] Setting up subscription for transactions in book: ${activeBook.id}`,
+    );
     const transactionChannel = supabase
       .channel(`overview-transactions-changes-${activeBook.id}`) // Unique channel name per book
       .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'transactions', 
-          filter: `pepi_book_id=eq.${activeBook.id}` // Filter for relevant book
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "transactions",
+          filter: `pepi_book_id=eq.${activeBook.id}`, // Filter for relevant book
         },
         (payload) => {
-          console.log('[DashboardOverview] Transaction change detected, refetching stats...', payload);
+          console.log(
+            "[DashboardOverview] Transaction change detected, refetching stats...",
+            payload,
+          );
           fetchDashboardData(); // Refetch stats on any change
-        }
+        },
       )
       .subscribe((status, err) => {
-          if (status === 'SUBSCRIBED') {
-            console.log('[DashboardOverview] Real-time subscription active.');
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.error('[DashboardOverview] Real-time subscription error:', status, err);
-          }
+        if (status === "SUBSCRIBED") {
+          console.log("[DashboardOverview] Real-time subscription active.");
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error(
+            "[DashboardOverview] Real-time subscription error:",
+            status,
+            err,
+          );
+        }
       });
 
     // Cleanup
@@ -135,7 +149,6 @@ export default function DashboardOverview() {
       console.log("[DashboardOverview] Removing real-time subscription.");
       supabase.removeChannel(transactionChannel);
     };
-
   }, [supabase, activeBook?.id]); // Depend on supabase client and active book ID
 
   // fetchDashboardData function now assumes activeBook is valid when called
@@ -179,52 +192,59 @@ export default function DashboardOverview() {
       let totalAddedToBook = 0;
 
       // Find initial funding transaction amount
-      const initialFundingTx = transactions?.find(tx => 
+      const initialFundingTx = transactions?.find(
+        (tx) =>
           tx.pepi_book_id === activeBook.id &&
-          tx.transaction_type === 'issuance' &&
-          tx.status === 'approved' &&
-          (tx.description?.toLowerCase().includes("initial funding") || tx.agent_id === null) && // Heuristic for initial/added
-          !tx.description?.toLowerCase().includes("approved fund request") // Exclude request approvals
+          tx.transaction_type === "issuance" &&
+          tx.status === "approved" &&
+          (tx.description?.toLowerCase().includes("initial funding") ||
+            tx.agent_id === null) && // Heuristic for initial/added
+          !tx.description?.toLowerCase().includes("approved fund request"), // Exclude request approvals
       );
       if (initialFundingTx) {
-          pepiBookBalance = initialFundingTx.amount; 
-          totalAddedToBook += initialFundingTx.amount; // Count this as funds added
+        pepiBookBalance = initialFundingTx.amount;
+        totalAddedToBook += initialFundingTx.amount; // Count this as funds added
       }
 
       // Process other relevant approved transactions
       transactions?.forEach((transaction: Transaction) => {
-          // Skip the initial funding transaction we already processed
-          if (transaction.id === initialFundingTx?.id) return;
+        // Skip the initial funding transaction we already processed
+        if (transaction.id === initialFundingTx?.id) return;
 
-          if (transaction.status === "approved") { 
-              if (transaction.transaction_type === "issuance") {
-                  if (transaction.agent_id !== null) {
-                      // Issuance TO an agent
-                      totalIssuedToAgents += transaction.amount;
-                      // Does NOT affect pepiBookBalance
-                  } else if (!transaction.description?.toLowerCase().includes("approved fund request")){
-                      // Manual Additions to Book (issuance, no agent, not an approved request)
-                      pepiBookBalance += transaction.amount;
-                      totalAddedToBook += transaction.amount;
-                  }
-              } else if (transaction.transaction_type === "spending") {
-                  pepiBookBalance -= transaction.amount;
-                  totalSpentByAgents += transaction.amount;
-              } else if (transaction.transaction_type === "return") {
-                  pepiBookBalance += transaction.amount;
-                  totalReturnedByAgents += transaction.amount;
-              }
+        if (transaction.status === "approved") {
+          if (transaction.transaction_type === "issuance") {
+            if (transaction.agent_id !== null) {
+              // Issuance TO an agent
+              totalIssuedToAgents += transaction.amount;
+              // Does NOT affect pepiBookBalance
+            } else if (
+              !transaction.description
+                ?.toLowerCase()
+                .includes("approved fund request")
+            ) {
+              // Manual Additions to Book (issuance, no agent, not an approved request)
+              pepiBookBalance += transaction.amount;
+              totalAddedToBook += transaction.amount;
+            }
+          } else if (transaction.transaction_type === "spending") {
+            pepiBookBalance -= transaction.amount;
+            totalSpentByAgents += transaction.amount;
+          } else if (transaction.transaction_type === "return") {
+            pepiBookBalance += transaction.amount;
+            totalReturnedByAgents += transaction.amount;
           }
+        }
       });
 
       setStats({
         totalAgents: agentsCount || 0,
-        totalTransactions: transactions?.filter(t => t.status === 'approved').length || 0, 
-        totalIssuance: totalIssuedToAgents,   // Reflects funds issued TO agents
+        totalTransactions:
+          transactions?.filter((t) => t.status === "approved").length || 0,
+        totalIssuance: totalIssuedToAgents, // Reflects funds issued TO agents
         totalReturned: totalReturnedByAgents, // Reflects funds returned BY agents
-        currentBalance: pepiBookBalance,      // Correct book balance
-        cashOnHand: pepiBookBalance,          // Correct book balance
-        spendingTotal: totalSpentByAgents,    // Reflects funds spent BY agents
+        currentBalance: pepiBookBalance, // Correct book balance
+        cashOnHand: pepiBookBalance, // Correct book balance
+        spendingTotal: totalSpentByAgents, // Reflects funds spent BY agents
         activePepiBookId: activeBook?.id || null,
         activePepiBookYear: activeBook?.year || null,
       });
@@ -296,7 +316,9 @@ export default function DashboardOverview() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Returned By Agents</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Returned By Agents
+            </CardTitle>
             <ArrowDownLeft className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -310,7 +332,9 @@ export default function DashboardOverview() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Book Balance (Cash On Hand)</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Book Balance (Safe Cash)
+            </CardTitle>
             <DollarSign className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
@@ -318,7 +342,7 @@ export default function DashboardOverview() {
               {formatCurrency(stats.cashOnHand)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Remaining funds in PEPI Book
+              Remaining funds in PEPI Book (minus all spent items)
             </p>
           </CardContent>
         </Card>

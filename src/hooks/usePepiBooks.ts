@@ -96,8 +96,8 @@ export function usePepiBooks() {
           }
         });
 
-        // Calculate safe cash (total minus what's with agents)
-        const safeCashBalance = totalBalance - issuedToAgents;
+        // Calculate safe cash (total minus what's with agents AND minus what's been spent)
+        const safeCashBalance = totalBalance - issuedToAgents - totalSpent;
 
         return {
           ...book,
