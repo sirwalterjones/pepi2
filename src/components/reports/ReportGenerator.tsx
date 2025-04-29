@@ -236,14 +236,21 @@ export default function ReportGenerator({
 
     const initialFunding = activeBook?.starting_amount || 0;
 
+    // Process all transactions to calculate balances
     transactions.forEach((transaction) => {
       if (
-        (transaction.status === "approved" ||
-          transaction.status === "pending") &&
+        transaction.status === "approved" &&
         transaction.id !== initialFundingTransaction?.id
       ) {
         if (transaction.transaction_type === "issuance") {
-          issuanceTotal += parseFloat(transaction.amount);
+          if (transaction.agent_id !== null) {
+            // Issuance TO an agent
+            issuanceTotal += parseFloat(transaction.amount);
+            // Does NOT affect book balance directly
+          } else if (transaction.receipt_number?.startsWith("ADD")) {
+            // Additions to the book (receipt starts with ADD)
+            // This is handled in the final balance calculation
+          }
         } else if (transaction.transaction_type === "return") {
           returnedTotal += parseFloat(transaction.amount);
         } else if (transaction.transaction_type === "spending") {
@@ -252,8 +259,11 @@ export default function ReportGenerator({
       }
     });
 
-    const cashOnHand = initialFunding - spendingTotal;
+    // Calculate current balance: initial - expenditures
     const currentBalance = initialFunding - spendingTotal;
+
+    // Cash on hand is the same as current balance in this calculation
+    const cashOnHand = currentBalance;
 
     return {
       totalAgents: agentsCount,
@@ -264,63 +274,6 @@ export default function ReportGenerator({
       cashOnHand: cashOnHand,
       spendingTotal: spendingTotal,
       activePepiBookYear: activeBook?.year || null,
-    };
-  };
-
-  const calculateTotals = (transactions: TransactionWithAgent[]) => {
-    const initialFunding = activeBook?.starting_amount || 0;
-
-    const totalIssuedToAgents = transactions
-      .filter(
-        (t) =>
-          t.transaction_type === "issuance" &&
-          t.agent_id !== null &&
-          t.status === "approved",
-      )
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-
-    const totalSpentByAgents = transactions
-      .filter(
-        (t) => t.transaction_type === "spending" && t.status === "approved",
-      )
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-
-    const totalReturnedByAgents = transactions
-      .filter((t) => t.transaction_type === "return" && t.status === "approved")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-
-    const totalAddedToBook = transactions
-      .filter(
-        (t) =>
-          t.transaction_type === "issuance" &&
-          t.agent_id === null &&
-          t.status === "approved" &&
-          t.receipt_number?.startsWith("ADD"),
-      )
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-
-    const pepiBookBalance =
-      initialFunding + totalAddedToBook - totalSpentByAgents;
-
-    const safeCashBalance =
-      pepiBookBalance -
-      (totalIssuedToAgents -
-        totalReturnedByAgents -
-        transactions
-          .filter(
-            (t) =>
-              t.transaction_type === "spending" &&
-              t.agent_id &&
-              t.status === "approved",
-          )
-          .reduce((sum, t) => sum + Number(t.amount), 0));
-
-    return {
-      initialFunding,
-      totalIssued: totalIssuedToAgents,
-      totalSpent: totalSpentByAgents,
-      cashOnHand: safeCashBalance,
-      currentBalance: pepiBookBalance,
     };
   };
 
@@ -382,7 +335,10 @@ export default function ReportGenerator({
     }, 300);
   };
 
-  const calculateTotals = (transactions: TransactionWithAgent[]) => {
+  const totals = calculateTotals(reportData || []);
+
+  // This function calculates totals for the report display
+  const calculateTotals = (transactions: any[]) => {
     const initialFunding = activeBook?.starting_amount || 0;
 
     const totalIssuedToAgents = transactions
@@ -438,8 +394,6 @@ export default function ReportGenerator({
       currentBalance: pepiBookBalance,
     };
   };
-
-  const totals = calculateTotals(reportData || []);
 
   useEffect(() => {
     if (activeBook) {
