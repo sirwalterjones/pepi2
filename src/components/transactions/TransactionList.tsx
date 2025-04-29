@@ -168,7 +168,6 @@ export default function TransactionList() {
           agent:agents!transactions_agent_id_fkey ( id, name, badge_number )
         `,
         )
-        .order("transaction_date", { ascending: false, nullsLast: true })
         .order("created_at", { ascending: false });
 
       transactionQuery = transactionQuery.eq("pepi_book_id", activeBook.id);
