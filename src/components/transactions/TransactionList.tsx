@@ -769,6 +769,14 @@ export default function TransactionList() {
                         : ""}
                       {formatCurrency(Math.abs(item.amount))}
                     </div>
+                    {/* Display running balance for transactions */}
+                    {item.itemType === "transaction" &&
+                      item.status === "approved" && (
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Balance:{" "}
+                          {formatCurrency(runningBalances[item.id] || 0)}
+                        </div>
+                      )}
                     <div className="flex flex-col gap-1 items-end mt-1">
                       {item.itemType === "transaction" ? (
                         getTransactionBadge(item.transaction_type)
