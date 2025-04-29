@@ -74,7 +74,7 @@ export default function ReportsPage() {
               <div className="text-sm text-muted-foreground mb-4">
                 View a summary of monthly activity for a specific agent.
               </div>
-              <Link href="/dashboard/monthly-report" passHref>
+              <Link href="/dashboard/reports/custom/agent-report" passHref>
                 <Button>View Agent Report</Button>
               </Link>
             </CardContent>
