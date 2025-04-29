@@ -90,6 +90,7 @@ export function usePepiBooks() {
           } else if (tx.transaction_type === "spending") {
             // Spending reduces both total balance and issued to agents
             totalBalance -= Number(tx.amount);
+            totalSpent += Number(tx.amount);
             if (tx.agent_id) {
               issuedToAgents -= Number(tx.amount);
             }
