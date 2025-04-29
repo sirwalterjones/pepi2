@@ -7,6 +7,8 @@ import { PepiBook, Transaction } from "@/types/schema";
 type PepiBookWithBalances = PepiBook & {
   additionalFunds: number;
   currentBalance: number;
+  agentCashOnHand: number;
+  safeCashBalance: number;
 };
 
 export function usePepiBooks() {
@@ -57,66 +59,52 @@ export function usePepiBooks() {
             tx.status === "approved" && tx.receipt_number?.startsWith("ADD"),
         );
 
-        // Show each additional fund transaction separately in console for debugging
-        console.log(
-          `Additional funds transactions for book ${book.year}:`,
-          additionalFundsTransactions.map((tx) => ({
-            id: tx.id,
-            amount: tx.amount,
-            receipt: tx.receipt_number,
-          })),
-        );
-
         const additionalFunds = additionalFundsTransactions.reduce(
           (sum: number, tx: Transaction) => sum + Number(tx.amount),
           0,
         );
 
-        // Calculate current balance using the same logic as the dashboard
-        // Start with initial amount
-        let balance = book.starting_amount || 0;
+        // Calculate balances
+        let totalBalance = book.starting_amount || 0;
+        let issuedToAgents = 0;
 
-        // Add all approved issuances
-        bookTransactions
-          .filter(
-            (tx) =>
-              tx.transaction_type === "issuance" && tx.status === "approved",
-          )
-          .forEach((tx) => {
-            balance += Number(tx.amount);
-            console.log(
-              `Adding issuance: ${tx.amount}, new balance: ${balance}, receipt: ${tx.receipt_number}`,
-            );
-          });
+        // Process all transactions to calculate balances
+        bookTransactions.forEach((tx) => {
+          if (tx.status !== "approved") return;
 
-        // Add all approved returns
-        bookTransactions
-          .filter(
-            (tx) =>
-              tx.transaction_type === "return" && tx.status === "approved",
-          )
-          .forEach((tx) => {
-            balance += Number(tx.amount);
-            console.log(`Adding return: ${tx.amount}, new balance: ${balance}`);
-          });
+          if (tx.transaction_type === "issuance") {
+            totalBalance += Number(tx.amount);
 
-        // Subtract all approved spending
-        bookTransactions
-          .filter(
-            (tx) =>
-              tx.transaction_type === "spending" && tx.status === "approved",
-          )
-          .forEach((tx) => {
-            balance -= Number(tx.amount);
-            console.log(
-              `Subtracting spending: ${tx.amount}, new balance: ${balance}`,
-            );
-          });
+            // Only count issuances to agents (with agent_id)
+            if (tx.agent_id) {
+              issuedToAgents += Number(tx.amount);
+            }
+          } else if (tx.transaction_type === "return") {
+            // Returns reduce the amount issued to agents
+            if (tx.agent_id) {
+              issuedToAgents -= Number(tx.amount);
+            } else {
+              // Non-agent returns add to total balance
+              totalBalance += Number(tx.amount);
+            }
+          } else if (tx.transaction_type === "spending") {
+            // Spending reduces both total balance and issued to agents
+            totalBalance -= Number(tx.amount);
+            if (tx.agent_id) {
+              issuedToAgents -= Number(tx.amount);
+            }
+          }
+        });
+
+        // Calculate safe cash (total minus what's with agents)
+        const safeCashBalance = totalBalance - issuedToAgents;
 
         return {
           ...book,
           additionalFunds,
-          currentBalance: balance,
+          currentBalance: totalBalance,
+          agentCashOnHand: issuedToAgents,
+          safeCashBalance: safeCashBalance,
         };
       });
 

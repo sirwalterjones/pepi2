@@ -186,6 +186,11 @@ export default function PepiBookList({
                   </TableCell>
                   <TableCell>
                     {formatCurrency(book.starting_amount || 0)}
+                    {book.additionalFunds > 0 && (
+                      <div className="text-xs text-green-600 mt-1">
+                        + {formatCurrency(book.additionalFunds)} added
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     {formatCurrency(book.additionalFunds || 0)}

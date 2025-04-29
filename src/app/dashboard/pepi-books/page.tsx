@@ -182,6 +182,14 @@ export default function PepiBooksPage() {
     }
   };
 
+  const formatCurrency = (amount: number | null | undefined) => {
+    if (amount === null || amount === undefined) return "$0.00";
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
+  };
+
   return (
     <div className="container py-6 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -246,7 +254,7 @@ export default function PepiBooksPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
                   Year
@@ -258,23 +266,34 @@ export default function PepiBooksPage() {
                   Starting Amount
                 </p>
                 <p className="text-2xl font-bold">
-                  ${activeBook.starting_amount?.toFixed(2) || "0.00"}
+                  {formatCurrency(activeBook.starting_amount)}
                 </p>
+                {activeBook.additionalFunds > 0 && (
+                  <p className="text-sm text-green-600">
+                    + {formatCurrency(activeBook.additionalFunds)} added
+                  </p>
+                )}
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Additional Funds
-                </p>
-                <p className="text-2xl font-bold text-green-600">
-                  ${activeBook.additionalFunds?.toFixed(2) || "0.00"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Current Balance
+                  Safe Cash
                 </p>
                 <p className="text-2xl font-bold text-blue-600">
-                  ${activeBook.currentBalance?.toFixed(2) || "0.00"}
+                  {formatCurrency(activeBook.safeCashBalance)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Cash that should be in the safe
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Agent Cash on Hand
+                </p>
+                <p className="text-2xl font-bold text-amber-600">
+                  {formatCurrency(activeBook.agentCashOnHand)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Cash issued to agents
                 </p>
               </div>
             </div>
