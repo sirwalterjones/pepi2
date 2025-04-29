@@ -27,15 +27,15 @@ import { useAgents } from "@/hooks/useAgents";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
 
 // Import for Date Picker
-import { CalendarIcon } from "lucide-react"
-import { format } from "date-fns"
-import { cn } from "@/lib/utils"
-import { Calendar } from "@/components/ui/calendar"
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/components/ui/popover";
 
 interface TransactionFormProps {
   open: boolean;
@@ -60,11 +60,13 @@ export default function TransactionForm({
     null,
   );
   // State for new spending fields
-  const [spendingCategory, setSpendingCategory] = useState<string | null>(null); 
+  const [spendingCategory, setSpendingCategory] = useState<string | null>(null);
   const [caseNumber, setCaseNumber] = useState<string>("");
   const [paidTo, setPaidTo] = useState<string>("");
   const [ecrNumber, setEcrNumber] = useState<string>("");
-  const [dateToEvidence, setDateToEvidence] = useState<Date | undefined>(undefined);
+  const [dateToEvidence, setDateToEvidence] = useState<Date | undefined>(
+    undefined,
+  );
 
   const { agents, loading: agentsLoading } = useAgents();
   const { activeBook, loading: pepiBookLoading } = usePepiBooks();
@@ -132,25 +134,46 @@ export default function TransactionForm({
       }
 
       // --- Validation for Spending Specific Fields ---
-      if (transactionType === 'spending') {
-          if (!spendingCategory) {
-              toast({ title: "Missing Category", description: "Please select a spending category.", variant: "destructive" });
-              setLoading(false); return;
+      if (transactionType === "spending") {
+        if (!spendingCategory) {
+          toast({
+            title: "Missing Category",
+            description: "Please select a spending category.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+        if (spendingCategory === "Evidence Purchase") {
+          if (!caseNumber.trim()) {
+            toast({
+              title: "Missing Case #",
+              description: "Case # is required for Evidence Purchases.",
+              variant: "destructive",
+            });
+            setLoading(false);
+            return;
           }
-          if (spendingCategory === 'Evidence Purchase') {
-              if (!caseNumber.trim()) {
-                  toast({ title: "Missing Case #", description: "Case # is required for Evidence Purchases.", variant: "destructive" });
-                  setLoading(false); return;
-              }
-              if (!ecrNumber.trim()) {
-                  toast({ title: "Missing ECR #", description: "ECR # is required for Evidence Purchases.", variant: "destructive" });
-                  setLoading(false); return;
-              }
-              if (!dateToEvidence) {
-                  toast({ title: "Missing Date", description: "Date to Evidence is required for Evidence Purchases.", variant: "destructive" });
-                  setLoading(false); return;
-              }
+          if (!ecrNumber.trim()) {
+            toast({
+              title: "Missing ECR #",
+              description: "ECR # is required for Evidence Purchases.",
+              variant: "destructive",
+            });
+            setLoading(false);
+            return;
           }
+          if (!dateToEvidence) {
+            toast({
+              title: "Missing Date",
+              description:
+                "Date to Evidence is required for Evidence Purchases.",
+              variant: "destructive",
+            });
+            setLoading(false);
+            return;
+          }
+        }
       }
       // --- End Validation ---
 
@@ -195,27 +218,29 @@ export default function TransactionForm({
 
       // Create transaction data object
       const transactionData: any = {
-          transaction_type: transactionType,
-          amount: amountValue,
-          receipt_number: finalReceiptNumber,
-          description: description || null,
-          agent_id: selectedAgentId === "none" ? null : selectedAgentId,
-          pepi_book_id: activeBook?.id || null,
-          created_by: user.id,
-          status: isAdmin ? "approved" : "pending", 
-          review_notes: null,
+        transaction_type: transactionType,
+        amount: amountValue,
+        receipt_number: finalReceiptNumber,
+        description: description || null,
+        agent_id: selectedAgentId === "none" ? null : selectedAgentId,
+        pepi_book_id: activeBook?.id || null,
+        created_by: user.id,
+        status: isAdmin ? "approved" : "pending",
+        review_notes: null,
       };
 
       // Add spending-specific fields if applicable
-      if (transactionType === 'spending') {
-          transactionData.spending_category = spendingCategory;
-          transactionData.case_number = caseNumber.trim() || null;
-          transactionData.paid_to = paidTo.trim() || null;
-          if (spendingCategory === 'Evidence Purchase') {
-              transactionData.ecr_number = ecrNumber.trim();
-              // Format date as YYYY-MM-DD for the database
-              transactionData.date_to_evidence = dateToEvidence ? format(dateToEvidence, 'yyyy-MM-dd') : null;
-          }
+      if (transactionType === "spending") {
+        transactionData.spending_category = spendingCategory;
+        transactionData.case_number = caseNumber.trim() || null;
+        transactionData.paid_to = paidTo.trim() || null;
+        if (spendingCategory === "Evidence Purchase") {
+          transactionData.ecr_number = ecrNumber.trim();
+          // Format date as YYYY-MM-DD for the database
+          transactionData.date_to_evidence = dateToEvidence
+            ? format(dateToEvidence, "yyyy-MM-dd")
+            : null;
+        }
       }
 
       // Perform the insert
@@ -385,6 +410,37 @@ export default function TransactionForm({
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="transaction-date" className="text-right">
+                Transaction Date
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "col-span-3 justify-start text-left font-normal",
+                      !transactionDate && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {transactionDate ? (
+                      format(transactionDate, "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={transactionDate}
+                    onSelect={setTransactionDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="receipt-number" className="text-right">
                 Receipt #
               </Label>
@@ -449,108 +505,119 @@ export default function TransactionForm({
               />
             </div>
 
-            {/* Spending Specific Fields */} 
-            {transactionType === 'spending' && (
-                <>
-                    {/* Spending Category */}
+            {/* Spending Specific Fields */}
+            {transactionType === "spending" && (
+              <>
+                {/* Spending Category */}
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="spending-category" className="text-right">
+                    Spending Category
+                  </Label>
+                  <Select
+                    value={spendingCategory || ""}
+                    onValueChange={(value) =>
+                      setSpendingCategory(value || null)
+                    }
+                    required
+                  >
+                    <SelectTrigger
+                      id="spending-category"
+                      className="col-span-3"
+                    >
+                      <SelectValue placeholder="Select spending category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CI Payment">CI Payment</SelectItem>
+                      <SelectItem value="Evidence Purchase">
+                        Evidence Purchase
+                      </SelectItem>
+                      <SelectItem value="Misc.">Misc.</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Case Number */}
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="case-number" className="text-right">
+                    Case #
+                  </Label>
+                  <Input
+                    id="case-number"
+                    value={caseNumber}
+                    onChange={(e) => setCaseNumber(e.target.value)}
+                    placeholder="Optional Case Number"
+                    className="col-span-3"
+                    required={spendingCategory === "Evidence Purchase"}
+                  />
+                </div>
+
+                {/* Paid To */}
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="paid-to" className="text-right">
+                    Paid To
+                  </Label>
+                  <Input
+                    id="paid-to"
+                    value={paidTo}
+                    onChange={(e) => setPaidTo(e.target.value)}
+                    placeholder="Person/Vendor Name"
+                    className="col-span-3"
+                  />
+                </div>
+
+                {/* Conditional Fields for Evidence Purchase */}
+                {spendingCategory === "Evidence Purchase" && (
+                  <>
+                    {/* ECR Number */}
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="spending-category" className="text-right">
-                            Spending Category
-                        </Label>
-                        <Select
-                            value={spendingCategory || ""}
-                            onValueChange={(value) => setSpendingCategory(value || null)}
-                            required
-                        >
-                            <SelectTrigger id="spending-category" className="col-span-3">
-                            <SelectValue placeholder="Select spending category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                            <SelectItem value="CI Payment">CI Payment</SelectItem>
-                            <SelectItem value="Evidence Purchase">Evidence Purchase</SelectItem>
-                            <SelectItem value="Misc.">Misc.</SelectItem>
-                            </SelectContent>
-                        </Select>
+                      <Label htmlFor="ecr-number" className="text-right">
+                        ECR #
+                      </Label>
+                      <Input
+                        id="ecr-number"
+                        value={ecrNumber}
+                        onChange={(e) => setEcrNumber(e.target.value)}
+                        placeholder="Evidence Control Receipt Number"
+                        className="col-span-3"
+                        required={spendingCategory === "Evidence Purchase"}
+                      />
                     </div>
 
-                    {/* Case Number */}
+                    {/* Date to Evidence */}
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="case-number" className="text-right">
-                            Case #
-                        </Label>
-                        <Input
-                            id="case-number"
-                            value={caseNumber}
-                            onChange={(e) => setCaseNumber(e.target.value)}
-                            placeholder="Optional Case Number"
-                            className="col-span-3"
-                            required={spendingCategory === 'Evidence Purchase'}
-                        />
+                      <Label htmlFor="date-to-evidence" className="text-right">
+                        Date to Evidence
+                      </Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "col-span-3 justify-start text-left font-normal",
+                              !dateToEvidence && "text-muted-foreground",
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateToEvidence ? (
+                              format(dateToEvidence, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={dateToEvidence}
+                            onSelect={setDateToEvidence}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
-
-                    {/* Paid To */}
-                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="paid-to" className="text-right">
-                            Paid To
-                        </Label>
-                        <Input
-                            id="paid-to"
-                            value={paidTo}
-                            onChange={(e) => setPaidTo(e.target.value)}
-                            placeholder="Person/Vendor Name"
-                            className="col-span-3"
-                        />
-                    </div>
-
-                    {/* Conditional Fields for Evidence Purchase */}
-                    {spendingCategory === 'Evidence Purchase' && (
-                        <>
-                            {/* ECR Number */}
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="ecr-number" className="text-right">
-                                    ECR #
-                                </Label>
-                                <Input
-                                    id="ecr-number"
-                                    value={ecrNumber}
-                                    onChange={(e) => setEcrNumber(e.target.value)}
-                                    placeholder="Evidence Control Receipt Number"
-                                    className="col-span-3"
-                                    required={spendingCategory === 'Evidence Purchase'}
-                                />
-                            </div>
-
-                            {/* Date to Evidence */}
-                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="date-to-evidence" className="text-right">
-                                    Date to Evidence
-                                </Label>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                    <Button
-                                        variant={"outline"}
-                                        className={cn(
-                                            "col-span-3 justify-start text-left font-normal",
-                                            !dateToEvidence && "text-muted-foreground"
-                                        )}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {dateToEvidence ? format(dateToEvidence, "PPP") : <span>Pick a date</span>}
-                                    </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0">
-                                    <Calendar
-                                        mode="single"
-                                        selected={dateToEvidence}
-                                        onSelect={setDateToEvidence}
-                                        initialFocus
-                                    />
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                        </>
-                    )}
-                </>
+                  </>
+                )}
+              </>
             )}
           </div>
           <DialogFooter>

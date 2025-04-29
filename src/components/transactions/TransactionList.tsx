@@ -730,7 +730,12 @@ export default function TransactionList() {
                         : `Fund Request (Case: ${item.case_number || "N/A"})`}
                     </div>
                     <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span>{formatDate(item.created_at)}</span>
+                      <span>
+                        {item.itemType === "transaction" &&
+                        item.transaction_date
+                          ? formatDate(item.transaction_date)
+                          : formatDate(item.created_at)}
+                      </span>
                       {item.agent?.name && (
                         <>
                           <span>•</span>
