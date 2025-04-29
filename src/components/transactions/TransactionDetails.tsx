@@ -1103,7 +1103,7 @@ export default function TransactionDetails({
                     className="w-full justify-start text-left font-normal"
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    <Paperclip className="mr-2 h-4 w-4" />
+                    <PaperclipIcon className="mr-2 h-4 w-4" />
                     {selectedFile
                       ? selectedFile.name
                       : displayTransaction.document_url
