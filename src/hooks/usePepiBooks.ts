@@ -67,6 +67,7 @@ export function usePepiBooks() {
         // Calculate balances
         let totalBalance = book.starting_amount || 0;
         let issuedToAgents = 0;
+        let totalSpent = 0;
 
         // Process all transactions to calculate balances
         bookTransactions.forEach((tx) => {
