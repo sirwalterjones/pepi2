@@ -39,7 +39,9 @@ export default function ReportsPage() {
                 Generate a detailed transaction report based on custom date
                 ranges and filters.
               </div>
-              <Button>Generate Report</Button>
+              <Link href="/dashboard/reports/custom" passHref>
+                <Button>Generate Report</Button>
+              </Link>
             </CardContent>
           </Card>
 
@@ -72,7 +74,9 @@ export default function ReportsPage() {
               <div className="text-sm text-muted-foreground mb-4">
                 View a summary of monthly activity for a specific agent.
               </div>
-              <Button>View Agent Report</Button>
+              <Link href="/dashboard/monthly-report" passHref>
+                <Button>View Agent Report</Button>
+              </Link>
             </CardContent>
           </Card>
 

@@ -76,9 +76,7 @@ export default function ReportGenerator({
   const supabase = createClient();
 
   useEffect(() => {
-    // Auto-generate report when component mounts if we're on the view tab
     if (activeBook) {
-      // Add a small delay to ensure all components are mounted
       const timer = setTimeout(() => {
         if (reportType === "monthly") {
           generateMonthlyReport();
@@ -105,13 +103,11 @@ export default function ReportGenerator({
         )
         .order("created_at", { ascending: false });
 
-      // Apply filters
       if (startDate) {
         query = query.gte("created_at", startDate.toISOString());
       }
 
       if (endDate) {
-        // Add one day to include the end date fully
         const nextDay = new Date(endDate);
         nextDay.setDate(nextDay.getDate() + 1);
         query = query.lt("created_at", nextDay.toISOString());
@@ -141,17 +137,13 @@ export default function ReportGenerator({
         return;
       }
 
-      // Filter out transactions from deactivated agents
       const filteredData = (data || []).filter((transaction) => {
-        // If there's no agent, keep the transaction
         if (!transaction.agents) return true;
-        // Only keep transactions from active agents
         return transaction.agents.is_active !== false;
       });
 
       setReportData(filteredData);
 
-      // Calculate dashboard stats
       const { agentsCount } = await fetchAgentsCount();
       const stats = calculateDashboardStats(filteredData, agentsCount);
       setDashboardStats(stats);
@@ -167,7 +159,6 @@ export default function ReportGenerator({
     setIsGenerating(true);
     setReportData(null);
 
-    // Set date range to current month
     const currentMonthStart = startOfMonth(new Date());
     const currentMonthEnd = endOfMonth(new Date());
     setStartDate(currentMonthStart);
@@ -198,17 +189,13 @@ export default function ReportGenerator({
         return;
       }
 
-      // Filter out transactions from deactivated agents
       const filteredData = (data || []).filter((transaction) => {
-        // If there's no agent, keep the transaction
         if (!transaction.agents) return true;
-        // Only keep transactions from active agents
         return transaction.agents.is_active !== false;
       });
 
       setReportData(filteredData);
 
-      // Calculate dashboard stats
       const { agentsCount } = await fetchAgentsCount();
       const stats = calculateDashboardStats(filteredData, agentsCount);
       setDashboardStats(stats);
@@ -247,18 +234,12 @@ export default function ReportGenerator({
     let returnedTotal = 0;
     let spendingTotal = 0;
 
-    // Find initial funding transaction
-    const initialFundingTransaction = transactions?.find(
-      (transaction) =>
-        transaction.transaction_type === "issuance" &&
-        transaction.description?.toLowerCase().includes("initial funding"),
-    );
+    const initialFunding = activeBook?.starting_amount || 0;
 
-    transactions?.forEach((transaction) => {
+    transactions.forEach((transaction) => {
       if (
         (transaction.status === "approved" ||
           transaction.status === "pending") &&
-        // Skip the initial funding transaction when calculating issuance total
         transaction.id !== initialFundingTransaction?.id
       ) {
         if (transaction.transaction_type === "issuance") {
@@ -271,13 +252,7 @@ export default function ReportGenerator({
       }
     });
 
-    // Initial funding is the starting amount from the PEPI book
-    const initialFunding = activeBook?.starting_amount || 0;
-
-    // Cash on hand is the initial funding minus what's been spent
     const cashOnHand = initialFunding - spendingTotal;
-
-    // Current balance is the initial funding minus what's been spent
     const currentBalance = initialFunding - spendingTotal;
 
     return {
@@ -292,11 +267,67 @@ export default function ReportGenerator({
     };
   };
 
+  const calculateTotals = (transactions: TransactionWithAgent[]) => {
+    const initialFunding = activeBook?.starting_amount || 0;
+
+    const totalIssuedToAgents = transactions
+      .filter(
+        (t) =>
+          t.transaction_type === "issuance" &&
+          t.agent_id !== null &&
+          t.status === "approved",
+      )
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const totalSpentByAgents = transactions
+      .filter(
+        (t) => t.transaction_type === "spending" && t.status === "approved",
+      )
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const totalReturnedByAgents = transactions
+      .filter((t) => t.transaction_type === "return" && t.status === "approved")
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const totalAddedToBook = transactions
+      .filter(
+        (t) =>
+          t.transaction_type === "issuance" &&
+          t.agent_id === null &&
+          t.status === "approved" &&
+          t.receipt_number?.startsWith("ADD"),
+      )
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const pepiBookBalance =
+      initialFunding + totalAddedToBook - totalSpentByAgents;
+
+    const safeCashBalance =
+      pepiBookBalance -
+      (totalIssuedToAgents -
+        totalReturnedByAgents -
+        transactions
+          .filter(
+            (t) =>
+              t.transaction_type === "spending" &&
+              t.agent_id &&
+              t.status === "approved",
+          )
+          .reduce((sum, t) => sum + Number(t.amount), 0));
+
+    return {
+      initialFunding,
+      totalIssued: totalIssuedToAgents,
+      totalSpent: totalSpentByAgents,
+      cashOnHand: safeCashBalance,
+      currentBalance: pepiBookBalance,
+    };
+  };
+
   const downloadReport = () => {
     if (!reportData) return;
 
     if (reportFormat === "csv") {
-      // Generate CSV
       const headers = [
         "Transaction ID",
         "Type",
@@ -339,8 +370,6 @@ export default function ReportGenerator({
       link.click();
       document.body.removeChild(link);
     } else {
-      // For PDF, we'd typically use a library like jsPDF or pdfmake
-      // This is a simplified placeholder
       alert("PDF export functionality will be implemented with a PDF library");
     }
   };
@@ -349,37 +378,69 @@ export default function ReportGenerator({
     setShowPrintable(true);
     setTimeout(() => {
       window.print();
-      // Keep the printable view visible for a moment after printing
       setTimeout(() => setShowPrintable(false), 500);
     }, 300);
   };
 
-  const calculateTotals = () => {
-    if (!reportData)
-      return { issuance: 0, spending: 0, returned: 0, balance: 0 };
+  const calculateTotals = (transactions: TransactionWithAgent[]) => {
+    const initialFunding = activeBook?.starting_amount || 0;
 
-    let issuance = 0;
-    let spending = 0;
-    let returned = 0;
+    const totalIssuedToAgents = transactions
+      .filter(
+        (t) =>
+          t.transaction_type === "issuance" &&
+          t.agent_id !== null &&
+          t.status === "approved",
+      )
+      .reduce((sum, t) => sum + Number(t.amount), 0);
 
-    reportData.forEach((transaction) => {
-      if (transaction.transaction_type === "issuance") {
-        issuance += parseFloat(transaction.amount);
-      } else if (transaction.transaction_type === "spending") {
-        spending += parseFloat(transaction.amount);
-      } else if (transaction.transaction_type === "return") {
-        returned += parseFloat(transaction.amount);
-      }
-    });
+    const totalSpentByAgents = transactions
+      .filter(
+        (t) => t.transaction_type === "spending" && t.status === "approved",
+      )
+      .reduce((sum, t) => sum + Number(t.amount), 0);
 
-    const balance = issuance - spending - returned;
+    const totalReturnedByAgents = transactions
+      .filter((t) => t.transaction_type === "return" && t.status === "approved")
+      .reduce((sum, t) => sum + Number(t.amount), 0);
 
-    return { issuance, spending, returned, balance };
+    const totalAddedToBook = transactions
+      .filter(
+        (t) =>
+          t.transaction_type === "issuance" &&
+          t.agent_id === null &&
+          t.status === "approved" &&
+          t.receipt_number?.startsWith("ADD"),
+      )
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const pepiBookBalance =
+      initialFunding + totalAddedToBook - totalSpentByAgents;
+
+    const safeCashBalance =
+      pepiBookBalance -
+      (totalIssuedToAgents -
+        totalReturnedByAgents -
+        transactions
+          .filter(
+            (t) =>
+              t.transaction_type === "spending" &&
+              t.agent_id &&
+              t.status === "approved",
+          )
+          .reduce((sum, t) => sum + Number(t.amount), 0));
+
+    return {
+      initialFunding,
+      totalIssued: totalIssuedToAgents,
+      totalSpent: totalSpentByAgents,
+      cashOnHand: safeCashBalance,
+      currentBalance: pepiBookBalance,
+    };
   };
 
-  const totals = calculateTotals();
+  const totals = calculateTotals(reportData || []);
 
-  // Set active PEPI book as default when component loads
   useEffect(() => {
     if (activeBook) {
       setPepiBookId(activeBook.id);
