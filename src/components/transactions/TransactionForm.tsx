@@ -129,6 +129,42 @@ export default function TransactionForm({
     setLoading(true);
 
     try {
+      // Upload file if selected
+      let fileUrl = null;
+      if (selectedFile) {
+        setIsUploading(true);
+        setUploadError(null);
+
+        // Create a unique file path
+        const fileExt = selectedFile.name.split(".").pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+        const filePath = `transaction-documents/${fileName}`;
+
+        const { error: uploadError, data } = await supabase.storage
+          .from("documents")
+          .upload(filePath, selectedFile);
+
+        if (uploadError) {
+          setUploadError(uploadError.message);
+          toast({
+            title: "Upload Failed",
+            description: `Failed to upload document: ${uploadError.message}`,
+            variant: "destructive",
+          });
+          setIsUploading(false);
+          setLoading(false);
+          return;
+        }
+
+        // Get the public URL for the file
+        const { data: publicUrlData } = await supabase.storage
+          .from("documents")
+          .getPublicUrl(filePath);
+
+        fileUrl = publicUrlData?.publicUrl || filePath;
+        setIsUploading(false);
+      }
+
       // Validate amount
       const amountValue = parseFloat(amount);
       if (isNaN(amountValue) || amountValue <= 0) {
