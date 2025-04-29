@@ -372,9 +372,16 @@ export default function CiPaymentForm({
                     <Calendar
                       mode="single"
                       selected={field.value ? parseISO(field.value) : undefined}
-                      onSelect={(date) =>
-                        field.onChange(date ? date.toISOString() : "")
-                      }
+                      onSelect={(date) => {
+                        if (date) {
+                          // Ensure date is set to noon to avoid timezone issues
+                          const adjustedDate = new Date(date);
+                          adjustedDate.setHours(12, 0, 0, 0);
+                          field.onChange(adjustedDate.toISOString());
+                        } else {
+                          field.onChange("");
+                        }
+                      }}
                       initialFocus
                     />
                   </PopoverContent>

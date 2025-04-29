@@ -487,7 +487,16 @@ export default function TransactionForm({
                   <Calendar
                     mode="single"
                     selected={transactionDate}
-                    onSelect={(date) => setTransactionDate(date)}
+                    onSelect={(date) => {
+                      if (date) {
+                        // Ensure date is set to noon to avoid timezone issues
+                        const adjustedDate = new Date(date);
+                        adjustedDate.setHours(12, 0, 0, 0);
+                        setTransactionDate(adjustedDate);
+                      } else {
+                        setTransactionDate(undefined);
+                      }
+                    }}
                     initialFocus
                   />
                 </PopoverContent>

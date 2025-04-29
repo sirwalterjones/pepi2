@@ -1035,12 +1035,22 @@ export default function TransactionDetails({
                                 ? new Date(editedTransaction.date_to_evidence)
                                 : undefined
                             }
-                            onSelect={(date) =>
-                              setEditedTransaction({
-                                ...editedTransaction,
-                                date_to_evidence: date,
-                              })
-                            }
+                            onSelect={(date) => {
+                              if (date) {
+                                // Ensure date is set to noon to avoid timezone issues
+                                const adjustedDate = new Date(date);
+                                adjustedDate.setHours(12, 0, 0, 0);
+                                setEditedTransaction({
+                                  ...editedTransaction,
+                                  date_to_evidence: adjustedDate,
+                                });
+                              } else {
+                                setEditedTransaction({
+                                  ...editedTransaction,
+                                  date_to_evidence: undefined,
+                                });
+                              }
+                            }}
                             initialFocus
                           />
                         </PopoverContent>
