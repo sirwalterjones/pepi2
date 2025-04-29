@@ -33,6 +33,7 @@ import {
   AlertCircle,
   Edit,
   Trash2,
+  Paperclip,
 } from "lucide-react";
 import { Input } from "../ui/input";
 import {
