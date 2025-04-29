@@ -91,6 +91,7 @@ export default function TransactionForm({
     setPaidTo("");
     setEcrNumber("");
     setDateToEvidence(undefined);
+    setTransactionDate(undefined);
   };
 
   // Generate a receipt number for all transaction types
