@@ -277,6 +277,11 @@ export default function TransactionForm({
         document_url: fileUrl,
       };
 
+      console.log("Creating transaction with data:", {
+        ...transactionData,
+        document_url: fileUrl ? "[URL exists]" : null,
+      });
+
       // Add spending-specific fields if applicable
       if (transactionType === "spending") {
         transactionData.spending_category = spendingCategory;

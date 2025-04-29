@@ -349,6 +349,56 @@ export default function TransactionDetails({
         JSON.stringify({ ...updateData, amount: amountAsString }),
       );
 
+      // Upload file if selected
+      let fileUrl = transaction.document_url;
+      if (selectedFile) {
+        setIsUploading(true);
+        try {
+          // Create a unique file path
+          const fileExt = selectedFile.name.split(".").pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+          const filePath = `transaction-documents/${fileName}`;
+
+          console.log(`Uploading file to ${filePath}`);
+
+          const { error: uploadError } = await supabase.storage
+            .from("documents")
+            .upload(filePath, selectedFile);
+
+          if (uploadError) {
+            toast({
+              title: "Upload Failed",
+              description: `Failed to upload document: ${uploadError.message}`,
+              variant: "destructive",
+            });
+            setIsUploading(false);
+            setIsUpdating(false);
+            return;
+          }
+
+          // Get the public URL for the file
+          const { data: publicUrlData } = await supabase.storage
+            .from("documents")
+            .getPublicUrl(filePath);
+
+          fileUrl = publicUrlData?.publicUrl || null;
+          console.log("File uploaded successfully, URL:", fileUrl);
+        } catch (error) {
+          console.error("Error uploading file:", error);
+          toast({
+            title: "Upload Error",
+            description:
+              "An unexpected error occurred while uploading the file",
+            variant: "destructive",
+          });
+          setIsUploading(false);
+          setIsUpdating(false);
+          return;
+        } finally {
+          setIsUploading(false);
+        }
+      }
+
       // Try a direct update with the regular update method instead of RPC
       const { data, error } = await supabase
         .from("transactions")
@@ -358,6 +408,7 @@ export default function TransactionDetails({
           receipt_number: updateData.receipt_number,
           agent_id: updateData.agent_id,
           updated_at: updateData.updated_at,
+          document_url: fileUrl, // Add the document URL
           transaction_date: editedTransaction.transaction_date
             ? format(new Date(editedTransaction.transaction_date), "yyyy-MM-dd")
             : null,

@@ -1,56 +1,56 @@
--- Add document_url column to transactions table
-ALTER TABLE transactions ADD COLUMN IF NOT EXISTS document_url TEXT;
-
--- Add document_url column to ci_payments table
-ALTER TABLE ci_payments ADD COLUMN IF NOT EXISTS document_url TEXT;
-
--- Create storage bucket for transaction documents if it doesn't exist
+-- Create a storage bucket for documents if it doesn't exist
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('transaction-documents', 'transaction-documents', false)
+VALUES ('documents', 'documents', true)
 ON CONFLICT (id) DO NOTHING;
 
--- Set up storage policy to allow authenticated users to upload
-DROP POLICY IF EXISTS "Authenticated users can upload transaction documents" ON storage.objects;
-CREATE POLICY "Authenticated users can upload transaction documents"
+-- Enable RLS on the documents bucket
+UPDATE storage.buckets
+SET public = true
+WHERE id = 'documents';
+
+-- Create policy to allow authenticated users to upload documents
+CREATE POLICY "Allow authenticated users to upload documents"
 ON storage.objects
 FOR INSERT
 TO authenticated
-WITH CHECK (bucket_id = 'transaction-documents');
+WITH CHECK (bucket_id = 'documents');
 
--- Set up storage policy to allow authenticated users to select their own documents
-DROP POLICY IF EXISTS "Users can view their own transaction documents" ON storage.objects;
-CREATE POLICY "Users can view their own transaction documents"
+-- Create policy to allow authenticated users to select documents
+CREATE POLICY "Allow authenticated users to select documents"
 ON storage.objects
 FOR SELECT
 TO authenticated
-USING (bucket_id = 'transaction-documents' AND (storage.foldername(name))[1] = auth.uid()::text);
+USING (bucket_id = 'documents');
 
--- Set up storage policy to allow authenticated users to update their own documents
-DROP POLICY IF EXISTS "Users can update their own transaction documents" ON storage.objects;
-CREATE POLICY "Users can update their own transaction documents"
+-- Create policy to allow authenticated users to update their own documents
+CREATE POLICY "Allow authenticated users to update their own documents"
 ON storage.objects
 FOR UPDATE
 TO authenticated
-USING (bucket_id = 'transaction-documents' AND (storage.foldername(name))[1] = auth.uid()::text);
+USING (bucket_id = 'documents' AND owner = auth.uid());
 
--- Set up storage policy to allow authenticated users to delete their own documents
-DROP POLICY IF EXISTS "Users can delete their own transaction documents" ON storage.objects;
-CREATE POLICY "Users can delete their own transaction documents"
+-- Create policy to allow authenticated users to delete their own documents
+CREATE POLICY "Allow authenticated users to delete their own documents"
 ON storage.objects
 FOR DELETE
 TO authenticated
-USING (bucket_id = 'transaction-documents' AND (storage.foldername(name))[1] = auth.uid()::text);
+USING (bucket_id = 'documents' AND owner = auth.uid());
 
--- Allow admins to view all documents
-DROP POLICY IF EXISTS "Admins can view all transaction documents" ON storage.objects;
-CREATE POLICY "Admins can view all transaction documents"
+-- Create policy to allow public access to documents
+CREATE POLICY "Allow public access to documents"
 ON storage.objects
 FOR SELECT
-TO authenticated
-USING (
-  bucket_id = 'transaction-documents' AND 
-  EXISTS (
-    SELECT 1 FROM agents 
-    WHERE agents.user_id = auth.uid() AND agents.role = 'admin'
-  )
-);
+TO public
+USING (bucket_id = 'documents');
+
+-- Add document_url column to transactions table if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                WHERE table_schema = 'public' 
+                AND table_name = 'transactions' 
+                AND column_name = 'document_url') THEN
+    ALTER TABLE public.transactions ADD COLUMN document_url TEXT;
+  END IF;
+END
+$$;
