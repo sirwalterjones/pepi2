@@ -665,6 +665,51 @@ export default function TransactionForm({
                     </div>
                   </>
                 )}
+
+                {/* File Upload Field */}
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="file-upload" className="text-right">
+                    Supporting Document
+                  </Label>
+                  <div className="col-span-3">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Paperclip className="mr-2 h-4 w-4" />
+                        {selectedFile ? selectedFile.name : "Attach document"}
+                      </Button>
+                      {selectedFile && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setSelectedFile(null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      id="file-upload"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setSelectedFile(e.target.files[0]);
+                        }
+                      }}
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Accepted formats: PDF, JPG, PNG, DOC, DOCX (max 5MB)
+                    </p>
+                  </div>
+                </div>
               </>
             )}
           </div>
