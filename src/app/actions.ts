@@ -433,7 +433,10 @@ export async function requestFundsAction(formData: {
   const supabase = await createClient();
 
   // 1. Get current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
   if (userError || !user) {
     console.error("User not authenticated:", userError);
@@ -450,45 +453,54 @@ export async function requestFundsAction(formData: {
 
   if (agentCheckError || !agentData) {
     console.error("Agent verification failed:", agentCheckError);
-    return { error: "Agent verification failed. You can only submit requests for yourself." };
+    return {
+      error:
+        "Agent verification failed. You can only submit requests for yourself.",
+    };
   }
 
   // 3. Validate incoming data
   const validatedFields = FundRequestSchema.safeParse(formData);
 
   if (!validatedFields.success) {
-    console.error("Fund request validation failed:", validatedFields.error.flatten().fieldErrors);
+    console.error(
+      "Fund request validation failed:",
+      validatedFields.error.flatten().fieldErrors,
+    );
     // Safer way to get the first error message
     const fieldErrors = validatedFields.error.flatten().fieldErrors;
     // Ensure fieldErrors is not empty and get the first key
     const errorKeys = Object.keys(fieldErrors) as (keyof typeof fieldErrors)[];
     const firstErrorKey = errorKeys[0];
     // Get the message using the typed key
-    const firstErrorMessage = firstErrorKey ? fieldErrors[firstErrorKey]?.[0] : undefined;
-    return { error: firstErrorMessage || "Invalid data provided. Please check the form." };
+    const firstErrorMessage = firstErrorKey
+      ? fieldErrors[firstErrorKey]?.[0]
+      : undefined;
+    return {
+      error:
+        firstErrorMessage || "Invalid data provided. Please check the form.",
+    };
   }
 
-  const { amount, caseNumber, agentSignature, agentId, pepiBookId } = validatedFields.data;
+  const { amount, caseNumber, agentSignature, agentId, pepiBookId } =
+    validatedFields.data;
 
   // Log the IDs just before inserting to compare with RLS check
   console.log(`[Server Action] Attempting insert for requestFundsAction.
     Logged-in User ID (auth.uid): ${user.id}
-    Agent ID being inserted (agent_id): ${agentId}`
-  );
+    Agent ID being inserted (agent_id): ${agentId}`);
 
   // 4. Insert into fund_requests table
   try {
-    const { error: insertError } = await supabase
-      .from("fund_requests")
-      .insert({
-        agent_id: agentId,
-        pepi_book_id: pepiBookId,
-        amount: amount,
-        case_number: caseNumber,
-        agent_signature: agentSignature,
-        // status defaults to 'pending'
-        // requested_at defaults to now()
-      });
+    const { error: insertError } = await supabase.from("fund_requests").insert({
+      agent_id: agentId,
+      pepi_book_id: pepiBookId,
+      amount: amount,
+      case_number: caseNumber,
+      agent_signature: agentSignature,
+      // status defaults to 'pending'
+      // requested_at defaults to now()
+    });
 
     if (insertError) {
       console.error("Error inserting fund request:", insertError);
@@ -500,7 +512,6 @@ export async function requestFundsAction(formData: {
     // TODO: Add path for admin view if different
 
     return { success: true };
-
   } catch (error: any) {
     console.error("Fund request submission failed:", error);
     return { error: error.message || "An unexpected error occurred." };
@@ -511,7 +522,9 @@ export async function requestFundsAction(formData: {
 export async function approveFundRequestAction(requestId: string) {
   "use server";
   // Log invocation immediately
-  console.log(`[Server Action] approveFundRequestAction INVOKED with requestId: ${requestId}`);
+  console.log(
+    `[Server Action] approveFundRequestAction INVOKED with requestId: ${requestId}`,
+  );
 
   try {
     // Original logic starts here
@@ -519,14 +532,19 @@ export async function approveFundRequestAction(requestId: string) {
 
     // 1. Verify user is admin
     console.log(`[Server Action] Attempting to get user...`);
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (userError || !user) {
       console.error("[Server Action] Authentication error:", userError);
       return { error: "Authentication required." };
     }
     console.log(`[Server Action] Authenticated User ID: ${user.id}`);
 
-    console.log(`[Server Action] Attempting to fetch agent data for user ${user.id}...`);
+    console.log(
+      `[Server Action] Attempting to fetch agent data for user ${user.id}...`,
+    );
     const { data: agentData, error: adminCheckError } = await supabase
       .from("agents")
       .select("id, name, role") // Select role
@@ -534,61 +552,93 @@ export async function approveFundRequestAction(requestId: string) {
       .single();
 
     if (adminCheckError || !agentData) {
-      console.error(`[Server Action] Error fetching agent data for user ${user.id}:`, adminCheckError);
+      console.error(
+        `[Server Action] Error fetching agent data for user ${user.id}:`,
+        adminCheckError,
+      );
       // Provide more specific feedback if possible
-      if (adminCheckError?.code === 'PGRST116') { // Code for 'No rows found'
-         return { error: `No agent record found linked to user ID ${user.id}. Cannot verify role.` };
+      if (adminCheckError?.code === "PGRST116") {
+        // Code for 'No rows found'
+        return {
+          error: `No agent record found linked to user ID ${user.id}. Cannot verify role.`,
+        };
       }
       return { error: "Failed to retrieve agent data." };
     }
     console.log(`[Server Action] User's Agent Role: ${agentData.role}`);
 
-    if (agentData.role !== 'admin') {
-       console.warn(`[Server Action] User ${user.id} with role ${agentData.role} attempted admin action.`);
-       return { error: "Admin privileges required." };
+    if (agentData.role !== "admin") {
+      console.warn(
+        `[Server Action] User ${user.id} with role ${agentData.role} attempted admin action.`,
+      );
+      return { error: "Admin privileges required." };
     }
 
     // 2. Fetch the fund request details
-    console.log(`[Server Action] Attempting to fetch fund request with ID: ${requestId}`);
+    console.log(
+      `[Server Action] Attempting to fetch fund request with ID: ${requestId}`,
+    );
     const { data: request, error: fetchError } = await supabase
       .from("fund_requests")
-      .select(`
+      .select(
+        `
         *,
         pepi_book:pepi_books!fund_requests_pepi_book_id_fkey(is_active, is_closed),
         agent:agents!fund_requests_agent_id_fkey(name)
-      `)
+      `,
+      )
       .eq("id", requestId)
       .single();
 
     if (fetchError || !request) {
-      console.error(`[Server Action] Error fetching fund request ${requestId}:`, fetchError);
-      return { error: `Fund request not found (ID: ${requestId.substring(0,8)}...). Supabase error: ${fetchError?.message}` };
+      console.error(
+        `[Server Action] Error fetching fund request ${requestId}:`,
+        fetchError,
+      );
+      return {
+        error: `Fund request not found (ID: ${requestId.substring(0, 8)}...). Supabase error: ${fetchError?.message}`,
+      };
     }
-    console.log(`[Server Action] Found fund request ${requestId}. Status: ${request.status}`);
+    console.log(
+      `[Server Action] Found fund request ${requestId}. Status: ${request.status}`,
+    );
 
-    if (request.status !== 'pending') {
-      console.warn(`[Server Action] Request ${requestId} already processed. Status: ${request.status}`);
+    if (request.status !== "pending") {
+      console.warn(
+        `[Server Action] Request ${requestId} already processed. Status: ${request.status}`,
+      );
       return { error: "Request has already been processed." };
     }
 
     if (!request.pepi_book?.is_active || request.pepi_book?.is_closed) {
-      console.warn(`[Server Action] Request ${requestId} belongs to inactive/closed PEPI Book.`);
-      return { error: "Cannot process request for an inactive or closed PEPI Book." };
+      console.warn(
+        `[Server Action] Request ${requestId} belongs to inactive/closed PEPI Book.`,
+      );
+      return {
+        error: "Cannot process request for an inactive or closed PEPI Book.",
+      };
     }
 
     // Inline formatters (or use global ones if available)
-    const formatCurrency = (amount: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
-    const formatDate = (dateString: string) => new Date(dateString).toLocaleString();
+    const formatCurrency = (amount: number) =>
+      new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      }).format(amount);
+    const formatDate = (dateString: string) =>
+      new Date(dateString).toLocaleString();
 
     // 3. Create the corresponding transaction with a detailed description
-    console.log(`[Server Action] Creating transaction for request ${requestId}...`);
-    const transactionDescription = 
+    console.log(
+      `[Server Action] Creating transaction for request ${requestId}...`,
+    );
+    const transactionDescription =
       `Approved fund request for ${request.agent?.name || request.agent_id} ` +
-      `(Case: ${request.case_number || 'N/A'}). ` +
+      `(Case: ${request.case_number || "N/A"}). ` +
       `Amount: ${formatCurrency(request.amount)}. ` +
       `Requested: ${formatDate(request.requested_at)}. ` +
       `Approved by: ${agentData.name || user.email}. ` +
-      `Agent Signature on Request: ${request.agent_signature || 'N/A'}`;
+      `Agent Signature on Request: ${request.agent_signature || "N/A"}`;
 
     const { data: newTransaction, error: transactionError } = await supabase
       .from("transactions")
@@ -602,17 +652,24 @@ export async function approveFundRequestAction(requestId: string) {
         status: "approved", // Auto-approved issuance
         receipt_number: `REQ-${requestId.substring(0, 8)}`, // Generate a receipt number
       })
-      .select('id') // Select the ID of the newly created transaction
+      .select("id") // Select the ID of the newly created transaction
       .single();
 
     if (transactionError || !newTransaction) {
-      console.error(`[Server Action] Error creating transaction for fund request ${requestId}:`, transactionError);
+      console.error(
+        `[Server Action] Error creating transaction for fund request ${requestId}:`,
+        transactionError,
+      );
       return { error: "Failed to create associated transaction." };
     }
-    console.log(`[Server Action] Created transaction ${newTransaction.id} for request ${requestId}.`);
+    console.log(
+      `[Server Action] Created transaction ${newTransaction.id} for request ${requestId}.`,
+    );
 
     // 4. Update the fund request status
-    console.log(`[Server Action] Updating status for request ${requestId} to approved...`);
+    console.log(
+      `[Server Action] Updating status for request ${requestId} to approved...`,
+    );
     const { error: updateError } = await supabase
       .from("fund_requests")
       .update({
@@ -624,34 +681,51 @@ export async function approveFundRequestAction(requestId: string) {
       .eq("id", requestId);
 
     if (updateError) {
-      console.error(`[Server Action] CRITICAL: Failed to update fund request ${requestId} status after creating transaction ${newTransaction.id}:`, updateError);
+      console.error(
+        `[Server Action] CRITICAL: Failed to update fund request ${requestId} status after creating transaction ${newTransaction.id}:`,
+        updateError,
+      );
       // TODO: Consider trying to delete the created transaction here if possible
       return { error: "Failed to update request status after approval." };
     }
-    console.log(`[Server Action] Successfully updated status for request ${requestId}.`);
+    console.log(
+      `[Server Action] Successfully updated status for request ${requestId}.`,
+    );
 
     // 5. Revalidate paths
     console.log(`[Server Action] Revalidating /dashboard path...`);
     revalidatePath("/dashboard");
 
-    console.log(`[Server Action] approveFundRequestAction COMPLETED successfully for requestId: ${requestId}`);
+    console.log(
+      `[Server Action] approveFundRequestAction COMPLETED successfully for requestId: ${requestId}`,
+    );
     return { success: true };
-
   } catch (error: any) {
     // Catch any unexpected errors in the entire block
-    console.error(`[Server Action] UNHANDLED ERROR in approveFundRequestAction for requestId: ${requestId}:`, error);
+    console.error(
+      `[Server Action] UNHANDLED ERROR in approveFundRequestAction for requestId: ${requestId}:`,
+      error,
+    );
     return { error: `An unexpected server error occurred: ${error.message}` };
   }
 }
 
 // Action to reject a fund request
-export async function rejectFundRequestAction(requestId: string, reason?: string | null) {
+export async function rejectFundRequestAction(
+  requestId: string,
+  reason?: string | null,
+) {
   "use server";
-  console.log(`[Server Action] rejectFundRequestAction called for ${requestId} with reason: ${reason}`);
+  console.log(
+    `[Server Action] rejectFundRequestAction called for ${requestId} with reason: ${reason}`,
+  );
   const supabase = await createClient();
 
   // 1. Verify user is admin
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
   if (userError || !user) {
     console.error("[Server Action] Authentication error:", userError);
     return { error: "Authentication required." };
@@ -664,8 +738,10 @@ export async function rejectFundRequestAction(requestId: string, reason?: string
     .single();
 
   if (adminCheckError || !adminData) {
-     console.warn(`[Server Action] User ${user.id} without admin privileges attempted reject action.`);
-     return { error: "Admin privileges required." };
+    console.warn(
+      `[Server Action] User ${user.id} without admin privileges attempted reject action.`,
+    );
+    return { error: "Admin privileges required." };
   }
 
   // 2. Fetch the fund request to ensure it's pending
@@ -676,17 +752,24 @@ export async function rejectFundRequestAction(requestId: string, reason?: string
     .single();
 
   if (fetchError || !request) {
-    console.error(`[Server Action] Fund request ${requestId} not found for rejection:`, fetchError);
+    console.error(
+      `[Server Action] Fund request ${requestId} not found for rejection:`,
+      fetchError,
+    );
     return { error: "Fund request not found." };
   }
 
-  if (request.status !== 'pending') {
-    console.warn(`[Server Action] Fund request ${requestId} already processed (status: ${request.status}). Cannot reject.`);
+  if (request.status !== "pending") {
+    console.warn(
+      `[Server Action] Fund request ${requestId} already processed (status: ${request.status}). Cannot reject.`,
+    );
     return { error: "Request has already been processed." };
   }
 
   // 3. Update the fund request status and add rejection reason
-  console.log(`[Server Action] Updating request ${requestId} to rejected with reason: ${reason}`);
+  console.log(
+    `[Server Action] Updating request ${requestId} to rejected with reason: ${reason}`,
+  );
   const { error: updateError } = await supabase
     .from("fund_requests")
     .update({
@@ -698,7 +781,10 @@ export async function rejectFundRequestAction(requestId: string, reason?: string
     .eq("id", requestId);
 
   if (updateError) {
-    console.error(`[Server Action] Error rejecting fund request ${requestId}:`, updateError);
+    console.error(
+      `[Server Action] Error rejecting fund request ${requestId}:`,
+      updateError,
+    );
     return { error: "Failed to update request status." };
   }
   console.log(`[Server Action] Successfully rejected request ${requestId}.`);
@@ -711,180 +797,252 @@ export async function rejectFundRequestAction(requestId: string, reason?: string
 
 // Action to resubmit an edited fund request
 export async function resubmitFundRequestAction(formData: {
-    requestId: string; // ID of the request being edited
-    amount: number;
-    caseNumber: string | null;
-    agentSignature: string; 
+  requestId: string; // ID of the request being edited
+  amount: number;
+  caseNumber: string | null;
+  agentSignature: string;
 }) {
-    "use server";
-    console.log("[Server Action] resubmitFundRequestAction called for:", formData.requestId);
-    const supabase = await createClient();
+  "use server";
+  console.log(
+    "[Server Action] resubmitFundRequestAction called for:",
+    formData.requestId,
+  );
+  const supabase = await createClient();
 
-    // 1. Get current user and verify they are the agent who owns the request
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-        console.error("[Server Action] Authentication error during resubmit:", userError);
-        return { error: "Authentication required." };
-    }
+  // 1. Get current user and verify they are the agent who owns the request
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    console.error(
+      "[Server Action] Authentication error during resubmit:",
+      userError,
+    );
+    return { error: "Authentication required." };
+  }
 
-    const { data: agentData, error: agentCheckError } = await supabase
-        .from("agents")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
+  const { data: agentData, error: agentCheckError } = await supabase
+    .from("agents")
+    .select("id")
+    .eq("user_id", user.id)
+    .single();
 
-    if (agentCheckError || !agentData) {
-        console.error(`[Server Action] Failed to find agent record for user ${user.id} during resubmit:`, agentCheckError);
-        return { error: "Agent verification failed." };
-    }
+  if (agentCheckError || !agentData) {
+    console.error(
+      `[Server Action] Failed to find agent record for user ${user.id} during resubmit:`,
+      agentCheckError,
+    );
+    return { error: "Agent verification failed." };
+  }
 
-    // 2. Fetch the existing request to verify ownership and status ('rejected')
-    const { data: existingRequest, error: fetchError } = await supabase
-        .from("fund_requests")
-        .select("id, agent_id, status")
-        .eq("id", formData.requestId)
-        .single();
+  // 2. Fetch the existing request to verify ownership and status ('rejected')
+  const { data: existingRequest, error: fetchError } = await supabase
+    .from("fund_requests")
+    .select("id, agent_id, status")
+    .eq("id", formData.requestId)
+    .single();
 
-    if (fetchError || !existingRequest) {
-        console.error(`[Server Action] Failed to find rejected request ${formData.requestId} for resubmit:`, fetchError);
-        return { error: "Original rejected request not found." };
-    }
+  if (fetchError || !existingRequest) {
+    console.error(
+      `[Server Action] Failed to find rejected request ${formData.requestId} for resubmit:`,
+      fetchError,
+    );
+    return { error: "Original rejected request not found." };
+  }
 
-    if (existingRequest.agent_id !== agentData.id) {
-        console.warn(`[Server Action] Agent ${agentData.id} attempted to resubmit request ${formData.requestId} owned by ${existingRequest.agent_id}.`);
-        return { error: "You can only resubmit your own rejected requests." };
-    }
+  if (existingRequest.agent_id !== agentData.id) {
+    console.warn(
+      `[Server Action] Agent ${agentData.id} attempted to resubmit request ${formData.requestId} owned by ${existingRequest.agent_id}.`,
+    );
+    return { error: "You can only resubmit your own rejected requests." };
+  }
 
-    if (existingRequest.status !== 'rejected') {
-        console.warn(`[Server Action] Attempted to resubmit request ${formData.requestId} which is not rejected (status: ${existingRequest.status}).`);
-        return { error: "Only rejected requests can be resubmitted." };
-    }
+  if (existingRequest.status !== "rejected") {
+    console.warn(
+      `[Server Action] Attempted to resubmit request ${formData.requestId} which is not rejected (status: ${existingRequest.status}).`,
+    );
+    return { error: "Only rejected requests can be resubmitted." };
+  }
 
-    // 3. Update the request
-    const { error: updateError } = await supabase
-        .from("fund_requests")
-        .update({
-            amount: formData.amount,
-            case_number: formData.caseNumber,
-            agent_signature: formData.agentSignature,
-            status: 'pending', // Set status back to pending
-            rejection_reason: null, // Clear rejection reason
-            reviewed_by_user_id: null, // Clear reviewer fields
-            reviewed_at: null,
-            transaction_id: null, // Clear linked transaction (shouldn't exist anyway)
-            requested_at: new Date().toISOString(), // Update timestamp to reflect resubmission time
-        })
-        .eq("id", formData.requestId);
+  // 3. Update the request
+  const { error: updateError } = await supabase
+    .from("fund_requests")
+    .update({
+      amount: formData.amount,
+      case_number: formData.caseNumber,
+      agent_signature: formData.agentSignature,
+      status: "pending", // Set status back to pending
+      rejection_reason: null, // Clear rejection reason
+      reviewed_by_user_id: null, // Clear reviewer fields
+      reviewed_at: null,
+      transaction_id: null, // Clear linked transaction (shouldn't exist anyway)
+      requested_at: new Date().toISOString(), // Update timestamp to reflect resubmission time
+    })
+    .eq("id", formData.requestId);
 
-    if (updateError) {
-        console.error(`[Server Action] Error updating fund request ${formData.requestId} on resubmit:`, updateError);
-        return { error: "Failed to resubmit fund request." };
-    }
-    
-    console.log(`[Server Action] Successfully resubmitted request ${formData.requestId}`);
+  if (updateError) {
+    console.error(
+      `[Server Action] Error updating fund request ${formData.requestId} on resubmit:`,
+      updateError,
+    );
+    return { error: "Failed to resubmit fund request." };
+  }
 
-    // 4. Revalidate paths
-    revalidatePath("/dashboard");
+  console.log(
+    `[Server Action] Successfully resubmitted request ${formData.requestId}`,
+  );
 
-    return { success: true };
+  // 4. Revalidate paths
+  revalidatePath("/dashboard");
+
+  return { success: true };
 }
 
 // Action to delete a fund request
 export async function deleteFundRequestAction(requestId: string) {
-    "use server";
-    console.log(`[Server Action] deleteFundRequestAction called for: ${requestId}`);
-    const supabase = await createClient();
+  "use server";
+  console.log(
+    `[Server Action] deleteFundRequestAction called for: ${requestId}`,
+  );
+  const supabase = await createClient();
 
-    // 1. Get current user and their agent details (ID and Role)
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-        console.error("[Server Action] Authentication error during delete:", userError);
-        return { error: "Authentication required." };
-    }
+  // 1. Get current user and their agent details (ID and Role)
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    console.error(
+      "[Server Action] Authentication error during delete:",
+      userError,
+    );
+    return { error: "Authentication required." };
+  }
 
-    const { data: agentData, error: agentCheckError } = await supabase
-        .from("agents")
-        .select("id, role")
-        .eq("user_id", user.id)
-        .single();
+  const { data: agentData, error: agentCheckError } = await supabase
+    .from("agents")
+    .select("id, role")
+    .eq("user_id", user.id)
+    .single();
 
-    if (agentCheckError || !agentData) {
-        console.error(`[Server Action] Failed to find agent record for user ${user.id} during delete:`, agentCheckError);
-        return { error: "Agent verification failed." };
-    }
-    console.log(`[Server Action] Delete initiated by Agent ID: ${agentData.id}, Role: ${agentData.role}`);
+  if (agentCheckError || !agentData) {
+    console.error(
+      `[Server Action] Failed to find agent record for user ${user.id} during delete:`,
+      agentCheckError,
+    );
+    return { error: "Agent verification failed." };
+  }
+  console.log(
+    `[Server Action] Delete initiated by Agent ID: ${agentData.id}, Role: ${agentData.role}`,
+  );
 
-    // 2. Fetch the request to check ownership and status
-    const { data: requestToDelete, error: fetchError } = await supabase
-        .from("fund_requests")
-        .select("id, agent_id, status")
-        .eq("id", requestId)
-        .single();
+  // 2. Fetch the request to check ownership and status
+  const { data: requestToDelete, error: fetchError } = await supabase
+    .from("fund_requests")
+    .select("id, agent_id, status")
+    .eq("id", requestId)
+    .single();
 
-    if (fetchError || !requestToDelete) {
-        console.error(`[Server Action] Fund request ${requestId} not found for deletion:`, fetchError);
-        // Don't reveal if request exists or not for security, just say failed.
-        return { error: "Could not delete request. It may have already been removed." }; 
-    }
+  if (fetchError || !requestToDelete) {
+    console.error(
+      `[Server Action] Fund request ${requestId} not found for deletion:`,
+      fetchError,
+    );
+    // Don't reveal if request exists or not for security, just say failed.
+    return {
+      error: "Could not delete request. It may have already been removed.",
+    };
+  }
 
-    // 3. Authorization Check
-    let canDelete = false;
-    if (agentData.role === 'admin') {
-        canDelete = true; // Admins can delete any request
-        console.log(`[Server Action] Admin deletion authorized for request ${requestId}.`);
-    } else if (agentData.id === requestToDelete.agent_id) {
-        // Agents can delete their own requests only if pending or rejected
-        if (requestToDelete.status === 'pending' || requestToDelete.status === 'rejected') {
-            canDelete = true;
-            console.log(`[Server Action] Agent deletion authorized for own ${requestToDelete.status} request ${requestId}.`);
-        } else {
-            console.warn(`[Server Action] Agent ${agentData.id} denied deletion of own ${requestToDelete.status} request ${requestId}.`);
-            return { error: "Cannot delete a request that has already been approved." };
-        }
+  // 3. Authorization Check
+  let canDelete = false;
+  if (agentData.role === "admin") {
+    canDelete = true; // Admins can delete any request
+    console.log(
+      `[Server Action] Admin deletion authorized for request ${requestId}.`,
+    );
+  } else if (agentData.id === requestToDelete.agent_id) {
+    // Agents can delete their own requests only if pending or rejected
+    if (
+      requestToDelete.status === "pending" ||
+      requestToDelete.status === "rejected"
+    ) {
+      canDelete = true;
+      console.log(
+        `[Server Action] Agent deletion authorized for own ${requestToDelete.status} request ${requestId}.`,
+      );
     } else {
-        // Agent trying to delete someone else's request
-        console.warn(`[Server Action] Agent ${agentData.id} denied deletion of request ${requestId} owned by ${requestToDelete.agent_id}.`);
-        return { error: "You do not have permission to delete this request." };
+      console.warn(
+        `[Server Action] Agent ${agentData.id} denied deletion of own ${requestToDelete.status} request ${requestId}.`,
+      );
+      return {
+        error: "Cannot delete a request that has already been approved.",
+      };
     }
+  } else {
+    // Agent trying to delete someone else's request
+    console.warn(
+      `[Server Action] Agent ${agentData.id} denied deletion of request ${requestId} owned by ${requestToDelete.agent_id}.`,
+    );
+    return { error: "You do not have permission to delete this request." };
+  }
 
-    if (!canDelete) {
-         // Should not be reached due to checks above, but as a safeguard
-         console.error(`[Server Action] Authorization failed unexpectedly for delete request ${requestId}.`);
-         return { error: "Authorization failed." };
-    }
+  if (!canDelete) {
+    // Should not be reached due to checks above, but as a safeguard
+    console.error(
+      `[Server Action] Authorization failed unexpectedly for delete request ${requestId}.`,
+    );
+    return { error: "Authorization failed." };
+  }
 
-    // 4. Perform Deletion
-    console.log(`[Server Action] Performing deletion for request ${requestId}...`);
-    const { error: deleteError, count: deleteCount } = await supabase // Capture count
-        .from("fund_requests")
-        .delete()
-        .eq("id", requestId);
+  // 4. Perform Deletion
+  console.log(
+    `[Server Action] Performing deletion for request ${requestId}...`,
+  );
+  const { error: deleteError, count: deleteCount } = await supabase // Capture count
+    .from("fund_requests")
+    .delete()
+    .eq("id", requestId);
 
-    if (deleteError) {
-        console.error(`[Server Action] Error deleting fund request ${requestId}:`, deleteError);
-        return { error: "Failed to delete fund request from database." };
-    }
+  if (deleteError) {
+    console.error(
+      `[Server Action] Error deleting fund request ${requestId}:`,
+      deleteError,
+    );
+    return { error: "Failed to delete fund request from database." };
+  }
 
-    // Log the count of deleted rows
-    console.log(`[Server Action] Delete operation completed for ${requestId}. Rows affected: ${deleteCount}`);
+  // Log the count of deleted rows
+  console.log(
+    `[Server Action] Delete operation completed for ${requestId}. Rows affected: ${deleteCount}`,
+  );
 
-    if (deleteCount === 0) {
-        console.warn(`[Server Action] Delete operation for ${requestId} completed without error, but 0 rows were affected. RLS or timing issue?`);
-        // Optionally return an error here if 0 affected rows is unexpected
-        // return { error: "Delete operation completed but did not remove the request." };
-    }
+  if (deleteCount === 0) {
+    console.warn(
+      `[Server Action] Delete operation for ${requestId} completed without error, but 0 rows were affected. RLS or timing issue?`,
+    );
+    // Optionally return an error here if 0 affected rows is unexpected
+    // return { error: "Delete operation completed but did not remove the request." };
+  }
 
-    console.log(`[Server Action] Successfully confirmed deletion of request ${requestId}.`); // Modified log message
+  console.log(
+    `[Server Action] Successfully confirmed deletion of request ${requestId}.`,
+  ); // Modified log message
 
-    // 5. Revalidate paths
-    revalidatePath("/dashboard");
+  // 5. Revalidate paths
+  revalidatePath("/dashboard");
 
-    return { success: true };
+  return { success: true };
 }
 
 // Define the schema for CI Payment form data using Zod
 const ciPaymentSchema = z.object({
-  date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid date format" }),
+  date: z
+    .string()
+    .refine((val) => !isNaN(Date.parse(val)), {
+      message: "Invalid date format",
+    }),
   paying_agent_id: z.string().uuid().optional(), // Optional: Admin might select this
   amount_paid: z.number().positive({ message: "Amount must be positive" }),
   case_number: z.string().optional(),
@@ -892,19 +1050,25 @@ const ciPaymentSchema = z.object({
   paid_to: z.string().optional(), // Add paid_to here as well
   paying_agent_signature: z.string().optional(),
   witness_signature: z.string().optional(),
-  paying_agent_printed_name: z.string().min(1, { message: "Paying agent's printed name is required" }),
+  paying_agent_printed_name: z
+    .string()
+    .min(1, { message: "Paying agent's printed name is required" }),
   witness_printed_name: z.string().optional(),
   pepi_receipt_number: z.string().optional(),
-  book_id: z.string().uuid({ message: "Active PEPI Book ID is required" }) // Ensure book_id is provided
+  book_id: z.string().uuid({ message: "Active PEPI Book ID is required" }), // Ensure book_id is provided
 });
 
 export type CiPaymentFormData = z.infer<typeof ciPaymentSchema>;
 
-export async function createCiPaymentAction(formData: CiPaymentFormData): Promise<{ success: boolean; error?: string; data?: CiPayment }> {
+export async function createCiPaymentAction(
+  formData: CiPaymentFormData,
+): Promise<{ success: boolean; error?: string; data?: CiPayment }> {
   const supabase = await createClient();
 
   // 1. Get current user and role
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) {
     return { success: false, error: "Authentication required." };
   }
@@ -926,9 +1090,14 @@ export async function createCiPaymentAction(formData: CiPaymentFormData): Promis
   // 2. Validate input data
   const validationResult = ciPaymentSchema.safeParse(formData);
   if (!validationResult.success) {
-    console.error("CI Payment validation error:", validationResult.error.flatten());
+    console.error(
+      "CI Payment validation error:",
+      validationResult.error.flatten(),
+    );
     // Concatenate all error messages
-    const errorMessages = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+    const errorMessages = validationResult.error.errors
+      .map((e) => `${e.path.join(".")}: ${e.message}`)
+      .join(", ");
     return { success: false, error: `Invalid form data: ${errorMessages}` };
   }
 
@@ -936,26 +1105,42 @@ export async function createCiPaymentAction(formData: CiPaymentFormData): Promis
 
   // 3. Determine Paying Agent ID (Revised Logic)
   let payingAgentId: string;
-  if (userRole === 'admin') {
+  if (userRole === "admin") {
     // Admin can specify an agent, or defaults to themselves if none selected
     payingAgentId = validatedData.paying_agent_id || loggedInUserId;
-    console.log(`[CI Payment Action] Admin user (${loggedInUserId}) submitting. Paying Agent ID set to: ${payingAgentId}`);
+    console.log(
+      `[CI Payment Action] Admin user (${loggedInUserId}) submitting. Paying Agent ID set to: ${payingAgentId}`,
+    );
   } else {
     // Agent MUST submit for themselves.
     // Check if they tried to submit for someone else (paying_agent_id is present and different)
-    if (validatedData.paying_agent_id && validatedData.paying_agent_id !== loggedInUserId) {
-      console.warn(`[CI Payment Action] Agent user (${loggedInUserId}) attempt to submit for different agent (${validatedData.paying_agent_id}). Denying.`);
-      return { success: false, error: "Agents can only submit payments for themselves." };
+    if (
+      validatedData.paying_agent_id &&
+      validatedData.paying_agent_id !== loggedInUserId
+    ) {
+      console.warn(
+        `[CI Payment Action] Agent user (${loggedInUserId}) attempt to submit for different agent (${validatedData.paying_agent_id}). Denying.`,
+      );
+      return {
+        success: false,
+        error: "Agents can only submit payments for themselves.",
+      };
     }
     // Otherwise, agent is submitting for themselves (paying_agent_id is undefined or matches)
     payingAgentId = loggedInUserId;
-     console.log(`[CI Payment Action] Agent user (${loggedInUserId}) submitting for self. Paying Agent ID set to: ${payingAgentId}`);
+    console.log(
+      `[CI Payment Action] Agent user (${loggedInUserId}) submitting for self. Paying Agent ID set to: ${payingAgentId}`,
+    );
   }
 
   // 4. Generate Receipt Number (Example: CI-YYYYMMDD-HHMMSS-RANDOM)
   // Consider using a more robust method or sequence in production
   const now = new Date();
-  const receiptNumber = `CI-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+  const receiptNumber = `CI-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, "0")}${now.getDate().toString().padStart(2, "0")}-${now.getHours().toString().padStart(2, "0")}${now.getMinutes().toString().padStart(2, "0")}${now.getSeconds().toString().padStart(2, "0")}-${Math.floor(
+    Math.random() * 1000,
+  )
+    .toString()
+    .padStart(3, "0")}`;
 
   // 5. Prepare data for insertion
   const paymentDataToInsert = {
@@ -970,7 +1155,7 @@ export async function createCiPaymentAction(formData: CiPaymentFormData): Promis
     witness_printed_name: validatedData.witness_printed_name,
     receipt_number: receiptNumber,
     pepi_receipt_number: validatedData.pepi_receipt_number,
-    status: 'pending', // Always pending initially
+    status: "pending", // Always pending initially
     book_id: validatedData.book_id, // Ensure this comes from the form/context
     // commander_signature, reviewed_by, reviewed_at, rejection_reason are null initially
   };
@@ -984,9 +1169,13 @@ export async function createCiPaymentAction(formData: CiPaymentFormData): Promis
 
   if (insertError) {
     console.error("Error inserting CI Payment:", insertError);
-     // Check for specific errors like unique constraint violation for receipt_number
-    if (insertError.code === '23505') { // Unique violation
-        return { success: false, error: `Database error: Failed to generate a unique receipt number. Please try again. (${insertError.message})` };
+    // Check for specific errors like unique constraint violation for receipt_number
+    if (insertError.code === "23505") {
+      // Unique violation
+      return {
+        success: false,
+        error: `Database error: Failed to generate a unique receipt number. Please try again. (${insertError.message})`,
+      };
     }
     return { success: false, error: `Database error: ${insertError.message}` };
   }
@@ -1001,11 +1190,17 @@ export async function createCiPaymentAction(formData: CiPaymentFormData): Promis
 }
 
 // Action to fetch all agents for selection (e.g., in admin forms)
-export async function getAgentsForSelectAction(): Promise<{ success: boolean; data?: { user_id: string; name: string }[]; error?: string }> {
+export async function getAgentsForSelectAction(): Promise<{
+  success: boolean;
+  data?: { user_id: string; name: string }[];
+  error?: string;
+}> {
   const supabase = await createClient();
 
   // Verify user is admin
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Authentication required." };
 
   const { data: adminData, error: adminCheckError } = await supabase
@@ -1014,8 +1209,11 @@ export async function getAgentsForSelectAction(): Promise<{ success: boolean; da
     .eq("user_id", user.id)
     .single();
 
-  if (adminCheckError || !adminData || adminData.role !== 'admin') {
-    console.error("Admin check failed for getAgentsForSelectAction:", adminCheckError);
+  if (adminCheckError || !adminData || adminData.role !== "admin") {
+    console.error(
+      "Admin check failed for getAgentsForSelectAction:",
+      adminCheckError,
+    );
     return { success: false, error: "Admin privileges required." };
   }
 
@@ -1034,11 +1232,15 @@ export async function getAgentsForSelectAction(): Promise<{ success: boolean; da
 }
 
 // Action to fetch pending CI Payments for admin review
-export async function getPendingCiPaymentsAction(bookId: string): Promise<{ success: boolean; data?: CiPayment[]; error?: string }> {
+export async function getPendingCiPaymentsAction(
+  bookId: string,
+): Promise<{ success: boolean; data?: CiPayment[]; error?: string }> {
   const supabase = await createClient();
 
   // Verify user is admin
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Authentication required." };
 
   const { data: adminData, error: adminCheckError } = await supabase
@@ -1047,8 +1249,11 @@ export async function getPendingCiPaymentsAction(bookId: string): Promise<{ succ
     .eq("user_id", user.id)
     .single();
 
-  if (adminCheckError || !adminData || adminData.role !== 'admin') {
-    console.error("Admin check failed for getPendingCiPaymentsAction:", adminCheckError);
+  if (adminCheckError || !adminData || adminData.role !== "admin") {
+    console.error(
+      "Admin check failed for getPendingCiPaymentsAction:",
+      adminCheckError,
+    );
     return { success: false, error: "Admin privileges required." };
   }
 
@@ -1059,10 +1264,12 @@ export async function getPendingCiPaymentsAction(bookId: string): Promise<{ succ
   // Fetch pending payments for the specified book, joining with agent name
   const { data: payments, error } = await supabase
     .from("ci_payments")
-    .select(`
+    .select(
+      `
       *,
       paying_agent:agents!ci_payments_paying_agent_id_fkey(name)
-    `)
+    `,
+    )
     .eq("status", "pending")
     .eq("book_id", bookId)
     .order("created_at", { ascending: true });
@@ -1073,17 +1280,25 @@ export async function getPendingCiPaymentsAction(bookId: string): Promise<{ succ
   }
 
   // Explicitly cast to CiPayment[] ensuring paying_agent is handled
-  const typedPayments = (payments || []).map(p => ({ ...p, paying_agent: p.paying_agent as Agent | null })) as CiPayment[];
+  const typedPayments = (payments || []).map((p) => ({
+    ...p,
+    paying_agent: p.paying_agent as Agent | null,
+  })) as CiPayment[];
 
   return { success: true, data: typedPayments };
 }
 
 // Action to approve a CI Payment
-export async function approveCiPaymentAction(paymentId: string, commanderSignature: string): Promise<{ success: boolean; error?: string }> {
+export async function approveCiPaymentAction(
+  paymentId: string,
+  commanderSignature: string,
+): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
 
   // Verify user is admin
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Authentication required." };
 
   const { data: adminData, error: adminCheckError } = await supabase
@@ -1092,13 +1307,19 @@ export async function approveCiPaymentAction(paymentId: string, commanderSignatu
     .eq("user_id", user.id)
     .single();
 
-  if (adminCheckError || !adminData || adminData.role !== 'admin') {
-    console.error("Admin check failed for approveCiPaymentAction:", adminCheckError);
+  if (adminCheckError || !adminData || adminData.role !== "admin") {
+    console.error(
+      "Admin check failed for approveCiPaymentAction:",
+      adminCheckError,
+    );
     return { success: false, error: "Admin privileges required." };
   }
 
   if (!paymentId || !commanderSignature) {
-    return { success: false, error: "Payment ID and Commander Signature are required." };
+    return {
+      success: false,
+      error: "Payment ID and Commander Signature are required.",
+    };
   }
 
   // Fetch payment to ensure it's pending
@@ -1113,7 +1334,7 @@ export async function approveCiPaymentAction(paymentId: string, commanderSignatu
     return { success: false, error: "Payment not found." };
   }
 
-  if (payment.status !== 'pending') {
+  if (payment.status !== "pending") {
     return { success: false, error: "Payment has already been processed." };
   }
 
@@ -1125,7 +1346,7 @@ export async function approveCiPaymentAction(paymentId: string, commanderSignatu
       reviewed_by: user.id,
       reviewed_at: new Date().toISOString(),
       commander_signature: commanderSignature,
-      rejection_reason: null // Clear any previous rejection reason if applicable (though shouldn't happen)
+      rejection_reason: null, // Clear any previous rejection reason if applicable (though shouldn't happen)
     })
     .eq("id", paymentId);
 
@@ -1143,11 +1364,16 @@ export async function approveCiPaymentAction(paymentId: string, commanderSignatu
 }
 
 // Action to reject a CI Payment
-export async function rejectCiPaymentAction(paymentId: string, rejectionReason: string): Promise<{ success: boolean; error?: string }> {
+export async function rejectCiPaymentAction(
+  paymentId: string,
+  rejectionReason: string,
+): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
 
   // Verify user is admin
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Authentication required." };
 
   const { data: adminData, error: adminCheckError } = await supabase
@@ -1156,13 +1382,19 @@ export async function rejectCiPaymentAction(paymentId: string, rejectionReason: 
     .eq("user_id", user.id)
     .single();
 
-  if (adminCheckError || !adminData || adminData.role !== 'admin') {
-    console.error("Admin check failed for rejectCiPaymentAction:", adminCheckError);
+  if (adminCheckError || !adminData || adminData.role !== "admin") {
+    console.error(
+      "Admin check failed for rejectCiPaymentAction:",
+      adminCheckError,
+    );
     return { success: false, error: "Admin privileges required." };
   }
 
   if (!paymentId || !rejectionReason) {
-    return { success: false, error: "Payment ID and Rejection Reason are required." };
+    return {
+      success: false,
+      error: "Payment ID and Rejection Reason are required.",
+    };
   }
 
   // Fetch payment to ensure it's pending
@@ -1177,7 +1409,7 @@ export async function rejectCiPaymentAction(paymentId: string, rejectionReason: 
     return { success: false, error: "Payment not found." };
   }
 
-  if (payment.status !== 'pending') {
+  if (payment.status !== "pending") {
     return { success: false, error: "Payment has already been processed." };
   }
 
@@ -1189,7 +1421,7 @@ export async function rejectCiPaymentAction(paymentId: string, rejectionReason: 
       reviewed_by: user.id,
       reviewed_at: new Date().toISOString(),
       rejection_reason: rejectionReason,
-      commander_signature: null // Clear commander signature on rejection
+      commander_signature: null, // Clear commander signature on rejection
     })
     .eq("id", paymentId);
 
@@ -1207,17 +1439,29 @@ export async function rejectCiPaymentAction(paymentId: string, rejectionReason: 
 }
 
 // Action to fetch a specific CI Payment for printing (ensures it's approved)
-export async function getCiPaymentForPrintAction(paymentId: string): Promise<{ success: boolean; data?: CiPayment; error?: string }> {
-  console.log(`[getCiPaymentForPrintAction] Initiated for paymentId: ${paymentId}`); // Log start
+export async function getCiPaymentForPrintAction(
+  paymentId: string,
+): Promise<{ success: boolean; data?: CiPayment; error?: string }> {
+  console.log(
+    `[getCiPaymentForPrintAction] Initiated for paymentId: ${paymentId}`,
+  ); // Log start
   const supabase = await createClient();
 
   // 1. Verify user authentication (optional but good practice)
-  const { data: { user }, error: authError } = await supabase.auth.getUser(); // Capture authError
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser(); // Capture authError
   if (authError || !user) {
-      console.error(`[getCiPaymentForPrintAction] Authentication error for paymentId ${paymentId}:`, authError);
-      return { success: false, error: "Authentication required." };
+    console.error(
+      `[getCiPaymentForPrintAction] Authentication error for paymentId ${paymentId}:`,
+      authError,
+    );
+    return { success: false, error: "Authentication required." };
   }
-  console.log(`[getCiPaymentForPrintAction] User ${user.id} authenticated for paymentId: ${paymentId}`);
+  console.log(
+    `[getCiPaymentForPrintAction] User ${user.id} authenticated for paymentId: ${paymentId}`,
+  );
 
   // Admins or potentially the agent who submitted might view/print?
   // For now, let's assume authenticated users with access via RLS can fetch.
@@ -1229,54 +1473,83 @@ export async function getCiPaymentForPrintAction(paymentId: string): Promise<{ s
   }
 
   // 2. Fetch the payment details, including related agent/reviewer names
-  console.log(`[getCiPaymentForPrintAction] Attempting to fetch payment details for ID: ${paymentId}`);
+  console.log(
+    `[getCiPaymentForPrintAction] Attempting to fetch payment details for ID: ${paymentId}`,
+  );
   const { data: payment, error: fetchError } = await supabase // Capture fetchError
     .from("ci_payments")
-    .select(`
+    .select(
+      `
       *,
       paying_agent:agents!ci_payments_paying_agent_id_fkey(name, badge_number),
       reviewer:agents!ci_payments_reviewed_by_fkey(name)
-    `)
+    `,
+    )
     .eq("id", paymentId)
     // .eq("status", "approved") // Optional: Ensure only approved can be fetched here, or rely on RLS/calling context
     .single();
 
   if (fetchError) {
-    console.error(`[getCiPaymentForPrintAction] Error fetching CI Payment ${paymentId} details:`, fetchError);
-    return { success: false, error: `Failed to fetch CI Payment details. Code: ${fetchError.code}` }; // Include error code
+    console.error(
+      `[getCiPaymentForPrintAction] Error fetching CI Payment ${paymentId} details:`,
+      fetchError,
+    );
+    return {
+      success: false,
+      error: `Failed to fetch CI Payment details. Code: ${fetchError.code}`,
+    }; // Include error code
   }
 
   if (!payment) {
-     console.warn(`[getCiPaymentForPrintAction] CI Payment ${paymentId} not found.`);
-     return { success: false, error: "CI Payment not found." };
+    console.warn(
+      `[getCiPaymentForPrintAction] CI Payment ${paymentId} not found.`,
+    );
+    return { success: false, error: "CI Payment not found." };
   }
-  console.log(`[getCiPaymentForPrintAction] Successfully fetched payment ${paymentId}. Status: ${payment.status}`);
-  
+  console.log(
+    `[getCiPaymentForPrintAction] Successfully fetched payment ${paymentId}. Status: ${payment.status}`,
+  );
+
   // Optional: Add explicit check for approved status if not done in query/RLS
-  if (payment.status !== 'approved') {
-      console.warn(`[getCiPaymentForPrintAction] Payment ${paymentId} is not approved (status: ${payment.status}).`);
-      return { success: false, error: "This CI Payment has not been approved yet." };
+  if (payment.status !== "approved") {
+    console.warn(
+      `[getCiPaymentForPrintAction] Payment ${paymentId} is not approved (status: ${payment.status}).`,
+    );
+    return {
+      success: false,
+      error: "This CI Payment has not been approved yet.",
+    };
   }
 
   // Cast nested objects to ensure type safety
   const typedPayment = {
-      ...payment,
-      paying_agent: payment.paying_agent as Agent | null,
-      reviewer: payment.reviewer as Agent | null
+    ...payment,
+    paying_agent: payment.paying_agent as Agent | null,
+    reviewer: payment.reviewer as Agent | null,
   } as CiPayment;
 
-  console.log(`[getCiPaymentForPrintAction] Returning success for paymentId: ${paymentId}`);
+  console.log(
+    `[getCiPaymentForPrintAction] Returning success for paymentId: ${paymentId}`,
+  );
   return { success: true, data: typedPayment };
 }
 
 // Action to fetch approved CI Payments based on role and book
-export async function getApprovedCiPaymentsAction(bookId: string): Promise<{ success: boolean; data?: CiPayment[]; error?: string }> {
+export async function getApprovedCiPaymentsAction(
+  bookId: string,
+): Promise<{ success: boolean; data?: CiPayment[]; error?: string }> {
   const supabase = await createClient();
 
   // 1. Verify user authentication
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
   if (userError || !user) {
-    console.error("[getApprovedCiPaymentsAction] Authentication error:", userError);
+    console.error(
+      "[getApprovedCiPaymentsAction] Authentication error:",
+      userError,
+    );
     return { success: false, error: "Authentication required." };
   }
 
@@ -1290,48 +1563,73 @@ export async function getApprovedCiPaymentsAction(bookId: string): Promise<{ suc
     // RLS policies will automatically filter based on the user's role (admin sees all, agent sees own)
     const { data: payments, error } = await supabase
       .from("ci_payments")
-      .select(`
+      .select(
+        `
         *,
         paying_agent:agents!ci_payments_paying_agent_id_fkey(name),
         reviewer:agents!ci_payments_reviewed_by_fkey(name) 
-      `)
+      `,
+      )
       .eq("status", "approved")
       .eq("book_id", bookId)
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("[getApprovedCiPaymentsAction] Error fetching approved CI Payments:", error);
+      console.error(
+        "[getApprovedCiPaymentsAction] Error fetching approved CI Payments:",
+        error,
+      );
       // Check for specific RLS errors if needed, though the policy should handle it
-      if (error.code === '42501') { // RLS violation
-           return { success: false, error: `Row Level Security prevented fetching payments. Ensure policies are correct. (${error.message})` };
+      if (error.code === "42501") {
+        // RLS violation
+        return {
+          success: false,
+          error: `Row Level Security prevented fetching payments. Ensure policies are correct. (${error.message})`,
+        };
       }
-      return { success: false, error: `Failed to fetch approved payments: ${error.message}` };
+      return {
+        success: false,
+        error: `Failed to fetch approved payments: ${error.message}`,
+      };
     }
 
     // 3. Format and return data
-    const typedPayments = (payments || []).map(p => ({
+    const typedPayments = (payments || []).map((p) => ({
       ...p,
       paying_agent: p.paying_agent as Agent | null,
-      reviewer: p.reviewer as Agent | null
+      reviewer: p.reviewer as Agent | null,
     })) as CiPayment[];
 
-    console.log(`[getApprovedCiPaymentsAction] Fetched ${typedPayments.length} approved payments for book ${bookId} for user ${user.id}`);
+    console.log(
+      `[getApprovedCiPaymentsAction] Fetched ${typedPayments.length} approved payments for book ${bookId} for user ${user.id}`,
+    );
     return { success: true, data: typedPayments };
-
   } catch (err: any) {
-     console.error("[getApprovedCiPaymentsAction] Unexpected error:", err);
-     return { success: false, error: `An unexpected server error occurred: ${err.message}` };
+    console.error("[getApprovedCiPaymentsAction] Unexpected error:", err);
+    return {
+      success: false,
+      error: `An unexpected server error occurred: ${err.message}`,
+    };
   }
 }
 
 // Action to fetch CI payment history based on role (agent sees their own, admin sees all)
-export async function getCiPaymentHistoryAction(bookId: string, agentId: string | null = null): Promise<{ success: boolean; data?: CiPayment[]; error?: string }> {
+export async function getCiPaymentHistoryAction(
+  bookId: string,
+  agentId: string | null = null,
+): Promise<{ success: boolean; data?: CiPayment[]; error?: string }> {
   const supabase = await createClient();
 
   // 1. Verify user authentication
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
   if (userError || !user) {
-    console.error("[getCiPaymentHistoryAction] Authentication error:", userError);
+    console.error(
+      "[getCiPaymentHistoryAction] Authentication error:",
+      userError,
+    );
     return { success: false, error: "Authentication required." };
   }
 
@@ -1344,14 +1642,16 @@ export async function getCiPaymentHistoryAction(bookId: string, agentId: string 
     // Build query - if agentId is provided, filter by agent
     let query = supabase
       .from("ci_payments")
-      .select(`
+      .select(
+        `
         *,
         paying_agent:agents!ci_payments_paying_agent_id_fkey(name, badge_number),
         reviewer:agents!ci_payments_reviewed_by_fkey(name)
-      `)
+      `,
+      )
       .eq("book_id", bookId)
       .order("created_at", { ascending: false });
-    
+
     // If agent ID is provided (non-admin view), filter to only show their payments
     if (agentId) {
       query = query.eq("paying_agent_id", agentId);
@@ -1360,23 +1660,33 @@ export async function getCiPaymentHistoryAction(bookId: string, agentId: string 
     const { data: payments, error } = await query;
 
     if (error) {
-      console.error("[getCiPaymentHistoryAction] Error fetching CI Payments:", error);
-      return { success: false, error: `Failed to fetch payments: ${error.message}` };
+      console.error(
+        "[getCiPaymentHistoryAction] Error fetching CI Payments:",
+        error,
+      );
+      return {
+        success: false,
+        error: `Failed to fetch payments: ${error.message}`,
+      };
     }
 
     // Format and return data
-    const typedPayments = (payments || []).map(p => ({
+    const typedPayments = (payments || []).map((p) => ({
       ...p,
       paying_agent: p.paying_agent as Agent | null,
-      reviewer: p.reviewer as Agent | null
+      reviewer: p.reviewer as Agent | null,
     })) as CiPayment[];
 
-    console.log(`[getCiPaymentHistoryAction] Fetched ${typedPayments.length} CI payments for book ${bookId}${agentId ? ` and agent ${agentId}` : ''}`);
+    console.log(
+      `[getCiPaymentHistoryAction] Fetched ${typedPayments.length} CI payments for book ${bookId}${agentId ? ` and agent ${agentId}` : ""}`,
+    );
     return { success: true, data: typedPayments };
-
   } catch (err: any) {
     console.error("[getCiPaymentHistoryAction] Unexpected error:", err);
-    return { success: false, error: `An unexpected server error occurred: ${err.message}` };
+    return {
+      success: false,
+      error: `An unexpected server error occurred: ${err.message}`,
+    };
   }
 }
 
@@ -1391,7 +1701,10 @@ export async function updateUserProfileAction(data: {
   const supabase = await createClient();
 
   // 1. Verify user authentication
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
   if (authError || !user) {
     console.error("[updateUserProfileAction] Authentication error:", authError);
     return { success: false, error: "Authentication required." };
@@ -1406,8 +1719,14 @@ export async function updateUserProfileAction(data: {
     .single();
 
   if (agentCheckError || !agentData) {
-    console.error("[updateUserProfileAction] Agent verification failed:", agentCheckError);
-    return { success: false, error: "Verification failed. You can only update your own profile." };
+    console.error(
+      "[updateUserProfileAction] Agent verification failed:",
+      agentCheckError,
+    );
+    return {
+      success: false,
+      error: "Verification failed. You can only update your own profile.",
+    };
   }
 
   // 3. Update the agents table
@@ -1421,30 +1740,41 @@ export async function updateUserProfileAction(data: {
     .eq("id", data.agentId);
 
   if (updateAgentError) {
-    console.error("[updateUserProfileAction] Error updating agents table:", updateAgentError);
-    return { success: false, error: `Failed to update profile details: ${updateAgentError.message}` };
+    console.error(
+      "[updateUserProfileAction] Error updating agents table:",
+      updateAgentError,
+    );
+    return {
+      success: false,
+      error: `Failed to update profile details: ${updateAgentError.message}`,
+    };
   }
 
   // Optional: Update auth.users metadata if needed (like name)
   // Be cautious with this, ensure data consistency
   const { error: updateAuthError } = await supabase.auth.updateUser({
-      data: { full_name: data.name } // Make sure your auth schema supports this
+    data: { full_name: data.name }, // Make sure your auth schema supports this
   });
 
   if (updateAuthError) {
-      console.warn("[updateUserProfileAction] Failed to update auth user metadata:", updateAuthError);
-      // Don't necessarily fail the whole operation, but log it
+    console.warn(
+      "[updateUserProfileAction] Failed to update auth user metadata:",
+      updateAuthError,
+    );
+    // Don't necessarily fail the whole operation, but log it
   }
 
   // Optional: Handle password change logic here if implemented
   // This would involve verifying the current password and then calling supabase.auth.updateUser({ password: newPassword })
 
-  console.log(`[updateUserProfileAction] Profile updated successfully for agent ${data.agentId}`);
+  console.log(
+    `[updateUserProfileAction] Profile updated successfully for agent ${data.agentId}`,
+  );
 
   // Revalidate relevant paths
   revalidatePath("/dashboard/profile");
   // Revalidate navbar if it displays the user's name
-  revalidatePath("/dashboard"); 
+  revalidatePath("/dashboard");
 
   return { success: true };
 }
@@ -1452,13 +1782,16 @@ export async function updateUserProfileAction(data: {
 // Action to update an existing CI Payment
 export async function updateCiPaymentAction(
   paymentId: string,
-  formData: CiPaymentFormData // Use the same Zod schema type
+  formData: CiPaymentFormData, // Use the same Zod schema type
 ): Promise<{ success: boolean; error?: string; data?: CiPayment }> {
   "use server";
   const supabase = await createClient();
 
   // 1. Get current user and role
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
   if (authError || !user) {
     return { success: false, error: "Authentication required." };
   }
@@ -1470,7 +1803,10 @@ export async function updateCiPaymentAction(
     .single();
 
   if (agentError || !agentData) {
-    console.error("[updateCiPaymentAction] Error fetching agent role:", agentError);
+    console.error(
+      "[updateCiPaymentAction] Error fetching agent role:",
+      agentError,
+    );
     return { success: false, error: "Could not verify agent role." };
   }
 
@@ -1485,14 +1821,25 @@ export async function updateCiPaymentAction(
     .single();
 
   if (fetchError || !existingPayment) {
-    console.error(`[updateCiPaymentAction] Failed to find payment ${paymentId} to update:`, fetchError);
+    console.error(
+      `[updateCiPaymentAction] Failed to find payment ${paymentId} to update:`,
+      fetchError,
+    );
     return { success: false, error: "CI Payment not found." };
   }
 
   // 3. Authorization Check
-  if (userRole !== 'admin' && existingPayment.paying_agent_id !== loggedInAgentId) {
-    console.warn(`[updateCiPaymentAction] Agent ${loggedInAgentId} attempted to update payment ${paymentId} owned by ${existingPayment.paying_agent_id}.`);
-    return { success: false, error: "You do not have permission to edit this payment." };
+  if (
+    userRole !== "admin" &&
+    existingPayment.paying_agent_id !== loggedInAgentId
+  ) {
+    console.warn(
+      `[updateCiPaymentAction] Agent ${loggedInAgentId} attempted to update payment ${paymentId} owned by ${existingPayment.paying_agent_id}.`,
+    );
+    return {
+      success: false,
+      error: "You do not have permission to edit this payment.",
+    };
   }
 
   // Optional: Add status check if edits are restricted (e.g., only pending/rejected)
@@ -1503,21 +1850,26 @@ export async function updateCiPaymentAction(
   // 4. Validate incoming data (already validated by form, but good practice)
   const validationResult = ciPaymentSchema.safeParse(formData);
   if (!validationResult.success) {
-    console.error("[updateCiPaymentAction] Invalid data received:", validationResult.error.flatten());
-    const errorMessages = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+    console.error(
+      "[updateCiPaymentAction] Invalid data received:",
+      validationResult.error.flatten(),
+    );
+    const errorMessages = validationResult.error.errors
+      .map((e) => `${e.path.join(".")}: ${e.message}`)
+      .join(", ");
     return { success: false, error: `Invalid form data: ${errorMessages}` };
   }
   const validatedData = validationResult.data;
 
-   // 5. Determine Paying Agent ID for update (Admin might change it)
-   let payingAgentIdToUpdate: string;
-   if (userRole === 'admin') {
-       // Admin can specify an agent or it defaults to the logged-in admin if `paying_agent_id` is missing from form data
-       payingAgentIdToUpdate = validatedData.paying_agent_id || loggedInAgentId;
-   } else {
-       // Agent cannot change the paying agent, it remains who originally submitted
-       payingAgentIdToUpdate = existingPayment.paying_agent_id;
-   }
+  // 5. Determine Paying Agent ID for update (Admin might change it)
+  let payingAgentIdToUpdate: string;
+  if (userRole === "admin") {
+    // Admin can specify an agent or it defaults to the logged-in admin if `paying_agent_id` is missing from form data
+    payingAgentIdToUpdate = validatedData.paying_agent_id || loggedInAgentId;
+  } else {
+    // Agent cannot change the paying agent, it remains who originally submitted
+    payingAgentIdToUpdate = existingPayment.paying_agent_id;
+  }
 
   // 6. Prepare data for update (excluding fields that shouldn't change like receipt_number, created_at)
   const paymentDataToUpdate = {
@@ -1537,7 +1889,7 @@ export async function updateCiPaymentAction(
     // reviewed_by: null, // Clear approval fields if status resets
     // reviewed_at: null,
     // commander_signature: null,
-    // rejection_reason: null, 
+    // rejection_reason: null,
     updated_at: new Date().toISOString(),
   };
 
@@ -1550,15 +1902,20 @@ export async function updateCiPaymentAction(
     .single();
 
   if (updateError) {
-    console.error(`[updateCiPaymentAction] Error updating CI Payment ${paymentId}:`, updateError);
+    console.error(
+      `[updateCiPaymentAction] Error updating CI Payment ${paymentId}:`,
+      updateError,
+    );
     return { success: false, error: `Database error: ${updateError.message}` };
   }
 
   // 8. Revalidate paths
   revalidatePath("/dashboard/ci-history");
-  revalidatePath("/dashboard"); 
+  revalidatePath("/dashboard");
 
-  console.log(`[updateCiPaymentAction] CI Payment ${paymentId} updated successfully.`);
+  console.log(
+    `[updateCiPaymentAction] CI Payment ${paymentId} updated successfully.`,
+  );
   return { success: true, data: updatedPayment as CiPayment };
 }
 
@@ -1567,19 +1924,19 @@ export async function updateCiPaymentAction(
 // =============================================
 
 export type MonthlyPepiMemoData = {
-    bookYear: number;
-    monthName: string;
-    memoDate: string; // Formatted date string for the memo date line
-    reconciliationDate: string; // Formatted date string for the narrative
-    commanderName: string; // Now passed in
-    beginningBalance: number;
-    totalAgentIssues: number;
-    totalAgentReturns: number;
-    totalExpenditures: number;
-    totalAdditionalUnitIssue: number;
-    cashOnHand: number; 
-    endingBalance: number;
-    ytdExpenditures: number;
+  bookYear: number;
+  monthName: string;
+  memoDate: string; // Formatted date string for the memo date line
+  reconciliationDate: string; // Formatted date string for the narrative
+  commanderName: string; // Now passed in
+  beginningBalance: number;
+  totalAgentIssues: number;
+  totalAgentReturns: number;
+  totalExpenditures: number;
+  totalAdditionalUnitIssue: number;
+  cashOnHand: number;
+  endingBalance: number;
+  ytdExpenditures: number;
 };
 
 /**
@@ -1590,241 +1947,445 @@ export type MonthlyPepiMemoData = {
  * @param selectedMemoDateISO - The date selected in the UI for the memo (ISO string).
  */
 export async function getMonthlyPepiMemoDataAction(
-    bookId: string, 
-    month: number,
-    selectedCommanderName: string,
-    selectedMemoDateISO: string 
+  bookId: string,
+  month: number,
+  selectedCommanderName: string,
+  selectedMemoDateISO: string,
 ): Promise<{ success: boolean; data?: MonthlyPepiMemoData; error?: string }> {
-    "use server";
-    const supabase = await createClient();
-    
-    // 1. Verify user is an admin (still required to access the action)
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-        return { success: false, error: "Authentication required." };
+  "use server";
+  const supabase = await createClient();
+
+  // 1. Verify user is an admin (still required to access the action)
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: "Authentication required." };
+  }
+  const { data: agentData, error: agentError } = await supabase
+    .from("agents")
+    .select("role") // Only need role for verification
+    .eq("user_id", user.id)
+    .single();
+
+  if (agentError || !agentData) {
+    return { success: false, error: "Could not verify your agent details." };
+  }
+  if (agentData.role !== "admin") {
+    return {
+      success: false,
+      error: "Permission denied. Only admins can generate this report.",
+    };
+  }
+  // Use passed-in commander name
+  const commanderName = selectedCommanderName;
+
+  // 2. Fetch PEPI Book details
+  const { data: bookData, error: bookError } = await supabase
+    .from("pepi_books")
+    .select("year, starting_amount, created_at")
+    .eq("id", bookId)
+    .single();
+
+  if (bookError || !bookData) {
+    console.error(
+      `[getMonthlyPepiMemoDataAction] Error fetching book ${bookId}:`,
+      bookError,
+    );
+    return {
+      success: false,
+      error: `Failed to fetch PEPI Book details: ${bookError?.message}`,
+    };
+  }
+  const bookYear = bookData.year;
+  const bookStartDateISO = new Date(bookData.created_at).toISOString();
+
+  // 3. Determine date range & format selected date
+  const year = bookYear;
+  if (month < 1 || month > 12) {
+    return { success: false, error: "Invalid month selected." };
+  }
+  if (!selectedCommanderName) {
+    return { success: false, error: "Commander name is required." };
+  }
+  let memoDateObj: Date;
+  try {
+    memoDateObj = new Date(selectedMemoDateISO);
+    if (isNaN(memoDateObj.getTime())) throw new Error("Invalid date format");
+  } catch (e) {
+    return { success: false, error: "Invalid memo date provided." };
+  }
+
+  const monthStartDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+  const monthEndDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+  const monthStartDateISO = monthStartDate.toISOString();
+  const monthEndDateISO = monthEndDate.toISOString();
+  const monthName = monthStartDate.toLocaleString("default", {
+    month: "long",
+    timeZone: "UTC",
+  });
+
+  // Use the selected date for formatting memo/reconciliation date
+  const memoDateFormatted = memoDateObj.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const reconciliationDateFormatted = memoDateFormatted; // Use same selected date for narrative
+
+  console.log(
+    `[getMonthlyPepiMemoDataAction] Calculating for Book: ${bookId}, Month: ${monthName} ${year}, Memo Date: ${memoDateFormatted}, Commander: ${commanderName}`,
+  );
+
+  try {
+    // --- Calculation Logic ---
+
+    // Function to fetch sum of amounts based on criteria
+    const fetchSum = async (
+      table: string,
+      column: string,
+      filters: Record<string, any>,
+      dateColumn: string = "created_at",
+    ) => {
+      let query = supabase
+        .from(table)
+        .select(`${column}, ${dateColumn}`, { count: "exact", head: false });
+      for (const key in filters) {
+        if (key === "lt") query = query.lt(dateColumn, filters[key]);
+        else if (key === "gte") query = query.gte(dateColumn, filters[key]);
+        else if (key === "lte") query = query.lte(dateColumn, filters[key]);
+        else if (
+          key === "description" &&
+          typeof filters[key] === "string" &&
+          filters[key].includes("%")
+        ) {
+          query = query.like(key, filters[key]);
+        } else query = query.eq(key, filters[key]);
+      }
+      const { data, error, count } = await query;
+      if (error) {
+        console.error(
+          `Error fetching sum from ${table} for ${column} with filters ${JSON.stringify(filters)}:`,
+          error,
+        );
+        throw new Error(
+          `Database error fetching sum from ${table}: ${error.message}`,
+        );
+      }
+      return (
+        data?.reduce(
+          (acc, row: { [key: string]: any }) => acc + (row[column] || 0),
+          0,
+        ) || 0
+      );
+    };
+
+    // 4. Calculate Beginning Balance
+    let runningBalance = bookData.starting_amount || 0;
+    console.log(
+      `[getMonthlyPepiMemoDataAction] Initial Funding (starting_amount): ${runningBalance}`,
+    );
+
+    // Get all approved transactions before the month start date
+    const { data: priorTransactions, error: priorTxError } = await supabase
+      .from("transactions")
+      .select("transaction_type, amount, description")
+      .eq("pepi_book_id", bookId)
+      .eq("status", "approved")
+      .lt("created_at", monthStartDateISO);
+
+    if (priorTxError) {
+      console.error(
+        `[getMonthlyPepiMemoDataAction] Error fetching prior transactions: ${priorTxError.message}`,
+      );
+      throw new Error(
+        `Database error fetching prior transactions: ${priorTxError.message}`,
+      );
     }
-    const { data: agentData, error: agentError } = await supabase
-        .from("agents")
-        .select("role") // Only need role for verification
-        .eq("user_id", user.id)
-        .single();
 
-    if (agentError || !agentData) {
-        return { success: false, error: "Could not verify your agent details." };
-    }
-    if (agentData.role !== 'admin') {
-        return { success: false, error: "Permission denied. Only admins can generate this report." };
-    }
-    // Use passed-in commander name
-    const commanderName = selectedCommanderName;
-
-    // 2. Fetch PEPI Book details
-    const { data: bookData, error: bookError } = await supabase
-        .from('pepi_books')
-        .select('year, starting_amount, created_at') 
-        .eq('id', bookId)
-        .single();
-
-    if (bookError || !bookData) {
-        console.error(`[getMonthlyPepiMemoDataAction] Error fetching book ${bookId}:`, bookError);
-        return { success: false, error: `Failed to fetch PEPI Book details: ${bookError?.message}` }; 
-    }
-    const bookYear = bookData.year;
-    const bookStartDateISO = new Date(bookData.created_at).toISOString();
-
-    // 3. Determine date range & format selected date
-    const year = bookYear;
-    if (month < 1 || month > 12) {
-        return { success: false, error: "Invalid month selected." };
-    }
-    if (!selectedCommanderName) {
-        return { success: false, error: "Commander name is required." };
-    }
-    let memoDateObj: Date;
-    try {
-        memoDateObj = new Date(selectedMemoDateISO);
-        if (isNaN(memoDateObj.getTime())) throw new Error('Invalid date format');
-    } catch (e) {
-        return { success: false, error: "Invalid memo date provided." };
+    // Process each transaction to calculate beginning balance
+    for (const tx of priorTransactions || []) {
+      if (tx.transaction_type === "issuance") {
+        if (tx.description?.includes("Approved fund request")) {
+          // Agent issues decrease balance
+          runningBalance -= tx.amount;
+          console.log(
+            `[getMonthlyPepiMemoDataAction] - Prior Agent Issue: ${tx.amount}`,
+          );
+        } else {
+          // Other issuances (initial funding, add funds) increase balance
+          runningBalance += tx.amount;
+          console.log(
+            `[getMonthlyPepiMemoDataAction] + Prior Issuance: ${tx.amount}`,
+          );
+        }
+      } else if (tx.transaction_type === "spending") {
+        // Spending decreases balance
+        runningBalance -= tx.amount;
+        console.log(
+          `[getMonthlyPepiMemoDataAction] - Prior Spending: ${tx.amount}`,
+        );
+      } else if (
+        tx.transaction_type === "return" ||
+        tx.transaction_type === "agent_return"
+      ) {
+        // Returns increase balance
+        runningBalance += tx.amount;
+        console.log(
+          `[getMonthlyPepiMemoDataAction] + Prior Return: ${tx.amount}`,
+        );
+      }
     }
 
-    const monthStartDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
-    const monthEndDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
-    const monthStartDateISO = monthStartDate.toISOString();
-    const monthEndDateISO = monthEndDate.toISOString();
-    const monthName = monthStartDate.toLocaleString('default', { month: 'long', timeZone: 'UTC' });
-    
-    // Use the selected date for formatting memo/reconciliation date
-    const memoDateFormatted = memoDateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    const reconciliationDateFormatted = memoDateFormatted; // Use same selected date for narrative
+    const beginningBalance = runningBalance;
+    console.log(
+      `[getMonthlyPepiMemoDataAction] Final Beginning Balance Calculated: ${beginningBalance}`,
+    );
 
-    console.log(`[getMonthlyPepiMemoDataAction] Calculating for Book: ${bookId}, Month: ${monthName} ${year}, Memo Date: ${memoDateFormatted}, Commander: ${commanderName}`);
+    // 5. Calculate Monthly Totals
+    // Get all approved transactions within the month
+    const { data: monthlyTransactions, error: monthlyTxError } = await supabase
+      .from("transactions")
+      .select("transaction_type, amount, description")
+      .eq("pepi_book_id", bookId)
+      .eq("status", "approved")
+      .gte("created_at", monthStartDateISO)
+      .lte("created_at", monthEndDateISO);
 
-    try {
-        // --- Calculation Logic --- 
-
-        // Function to fetch sum of amounts based on criteria
-        const fetchSum = async (table: string, column: string, filters: Record<string, any>, dateColumn: string = 'created_at') => {
-            let query = supabase.from(table).select(`${column}, ${dateColumn}`, { count: 'exact', head: false })
-            for (const key in filters) {
-                if (key === 'lt') query = query.lt(dateColumn, filters[key]);
-                else if (key === 'gte') query = query.gte(dateColumn, filters[key]);
-                else if (key === 'lte') query = query.lte(dateColumn, filters[key]);
-                else if (key === 'description' && typeof filters[key] === 'string' && filters[key].includes('%')) {
-                     query = query.like(key, filters[key]);
-                }
-                else query = query.eq(key, filters[key]);
-            }
-            const { data, error, count } = await query;
-            if (error) {
-                console.error(`Error fetching sum from ${table} for ${column} with filters ${JSON.stringify(filters)}:`, error);
-                throw new Error(`Database error fetching sum from ${table}: ${error.message}`);
-            }
-            return data?.reduce((acc, row: { [key: string]: any }) => acc + (row[column] || 0), 0) || 0;
-        };
-
-        // 4. Calculate Beginning Balance 
-        let runningBalance = bookData.starting_amount || 0; 
-        console.log(`[getMonthlyPepiMemoDataAction] Initial Funding (starting_amount): ${runningBalance}`);
-        const bbAddFunds = await fetchSum('transactions', 'amount', { pepi_book_id: bookId, transaction_type: 'issuance', status: 'approved', description: 'Add funds', lt: monthStartDateISO });
-        runningBalance += bbAddFunds;
-        console.log(`[getMonthlyPepiMemoDataAction] + Beginning Balance Add Funds: ${bbAddFunds}`);
-        const bbAgentReturns = await fetchSum('transactions', 'amount', { pepi_book_id: bookId, transaction_type: 'agent_return', status: 'approved', lt: monthStartDateISO });
-        runningBalance += bbAgentReturns;
-        console.log(`[getMonthlyPepiMemoDataAction] + Beginning Balance Agent Returns: ${bbAgentReturns}`);
-        const bbAgentIssues = await fetchSum('transactions', 'amount', { pepi_book_id: bookId, transaction_type: 'issuance', status: 'approved', description: '%Approved fund request%', lt: monthStartDateISO }); 
-        runningBalance -= bbAgentIssues;
-        console.log(`[getMonthlyPepiMemoDataAction] - Beginning Balance Agent Issues: ${bbAgentIssues}`);
-        const bbExpenditures = await fetchSum('transactions', 'amount', { pepi_book_id: bookId, transaction_type: 'spending', status: 'approved', lt: monthStartDateISO }, 'created_at'); // Switched BB expenditures to use spending transactions
-        runningBalance -= bbExpenditures;
-        console.log(`[getMonthlyPepiMemoDataAction] - Beginning Balance Expenditures (Spending Txns): ${bbExpenditures}`);
-        const beginningBalance = runningBalance;
-        console.log(`[getMonthlyPepiMemoDataAction] Final Beginning Balance Calculated: ${beginningBalance}`);
-
-        // 5. Calculate Monthly Totals 
-        const monthlyFiltersBase = { pepi_book_id: bookId, gte: monthStartDateISO, lte: monthEndDateISO };
-        const monthlyFiltersBaseApproved = { ...monthlyFiltersBase, status: 'approved' };
-        const totalAgentIssues = await fetchSum('transactions', 'amount', { ...monthlyFiltersBaseApproved, transaction_type: 'issuance', description: '%Approved fund request%' });
-        const totalAgentReturns = await fetchSum('transactions', 'amount', { ...monthlyFiltersBaseApproved, transaction_type: 'agent_return' });
-        const totalExpenditures = await fetchSum('transactions', 'amount', { ...monthlyFiltersBaseApproved, transaction_type: 'spending' }, 'created_at');
-        const totalAdditionalUnitIssue = await fetchSum('transactions', 'amount', { ...monthlyFiltersBaseApproved, transaction_type: 'issuance', description: 'Add funds' });
-        console.log(`[getMonthlyPepiMemoDataAction] Monthly Totals: Issues=${totalAgentIssues}, Returns=${totalAgentReturns}, Expenditures=${totalExpenditures}, AddFunds=${totalAdditionalUnitIssue}`);
-
-        // 6. Calculate Ending Balance
-        const endingBalance = beginningBalance + totalAdditionalUnitIssue + totalAgentReturns - totalAgentIssues - totalExpenditures;
-        console.log(`[getMonthlyPepiMemoDataAction] Ending Balance Calculated: ${endingBalance}`);
-
-        // 7. Calculate Cash On Hand 
-        const cashOnHand = endingBalance; 
-
-        // 8. Calculate YTD Expenditures 
-        const ytdExpenditures = await fetchSum('transactions', 'amount', { pepi_book_id: bookId, transaction_type: 'spending', status: 'approved', gte: bookStartDateISO, lte: monthEndDateISO },'created_at');
-        console.log(`[getMonthlyPepiMemoDataAction] Total YTD Expenditures (Spending Transactions) Calculated: ${ytdExpenditures}`);
-
-        console.log('[getMonthlyPepiMemoDataAction] All calculations complete.');
-
-        // 9. Prepare result data
-        const memoData: MonthlyPepiMemoData = {
-            bookYear,
-            monthName,
-            memoDate: memoDateFormatted,
-            reconciliationDate: reconciliationDateFormatted, 
-            commanderName,
-            beginningBalance,
-            totalAgentIssues,       
-            totalAgentReturns,      
-            totalExpenditures,      
-            totalAdditionalUnitIssue, 
-            cashOnHand,             
-            endingBalance,          
-            ytdExpenditures,        
-        };
-
-        return { success: true, data: memoData };
-
-    } catch (error: any) {
-        console.error(`[getMonthlyPepiMemoDataAction] Unexpected error calculating memo data for Book ${bookId}, Month ${month}:`, error);
-        return { success: false, error: `An unexpected error occurred during calculation: ${error.message}` };
+    if (monthlyTxError) {
+      console.error(
+        `[getMonthlyPepiMemoDataAction] Error fetching monthly transactions: ${monthlyTxError.message}`,
+      );
+      throw new Error(
+        `Database error fetching monthly transactions: ${monthlyTxError.message}`,
+      );
     }
+
+    // Initialize monthly totals
+    let totalAgentIssues = 0;
+    let totalAgentReturns = 0;
+    let totalExpenditures = 0;
+    let totalAdditionalUnitIssue = 0;
+
+    // Process each transaction to calculate monthly totals
+    for (const tx of monthlyTransactions || []) {
+      if (tx.transaction_type === "issuance") {
+        if (tx.description?.includes("Approved fund request")) {
+          // Agent issues
+          totalAgentIssues += tx.amount;
+          console.log(
+            `[getMonthlyPepiMemoDataAction] + Monthly Agent Issue: ${tx.amount}`,
+          );
+        } else if (
+          tx.description?.includes("Add funds") ||
+          tx.description?.includes("Initial funding")
+        ) {
+          // Additional unit issue
+          totalAdditionalUnitIssue += tx.amount;
+          console.log(
+            `[getMonthlyPepiMemoDataAction] + Monthly Additional Unit Issue: ${tx.amount}`,
+          );
+        }
+      } else if (tx.transaction_type === "spending") {
+        // Expenditures
+        totalExpenditures += tx.amount;
+        console.log(
+          `[getMonthlyPepiMemoDataAction] + Monthly Expenditure: ${tx.amount}`,
+        );
+      } else if (
+        tx.transaction_type === "return" ||
+        tx.transaction_type === "agent_return"
+      ) {
+        // Agent returns
+        totalAgentReturns += tx.amount;
+        console.log(
+          `[getMonthlyPepiMemoDataAction] + Monthly Agent Return: ${tx.amount}`,
+        );
+      }
+    }
+
+    console.log(
+      `[getMonthlyPepiMemoDataAction] Monthly Totals: Issues=${totalAgentIssues}, Returns=${totalAgentReturns}, Expenditures=${totalExpenditures}, AddFunds=${totalAdditionalUnitIssue}`,
+    );
+
+    // 6. Calculate Ending Balance
+    const endingBalance =
+      beginningBalance +
+      totalAdditionalUnitIssue +
+      totalAgentReturns -
+      totalAgentIssues -
+      totalExpenditures;
+    console.log(
+      `[getMonthlyPepiMemoDataAction] Ending Balance Calculated: ${endingBalance}`,
+    );
+
+    // 7. Calculate Cash On Hand
+    const cashOnHand = endingBalance;
+
+    // 8. Calculate YTD Expenditures
+    // Get all approved spending transactions from the beginning of the book to the end of the month
+    const { data: ytdTxns, error: ytdTxError } = await supabase
+      .from("transactions")
+      .select("amount")
+      .eq("pepi_book_id", bookId)
+      .eq("transaction_type", "spending")
+      .eq("status", "approved")
+      .gte("created_at", bookStartDateISO)
+      .lte("created_at", monthEndDateISO);
+
+    if (ytdTxError) {
+      console.error(
+        `[getMonthlyPepiMemoDataAction] Error fetching YTD transactions: ${ytdTxError.message}`,
+      );
+      throw new Error(
+        `Database error fetching YTD transactions: ${ytdTxError.message}`,
+      );
+    }
+
+    const ytdExpenditures = (ytdTxns || []).reduce(
+      (sum, tx) => sum + (tx.amount || 0),
+      0,
+    );
+    console.log(
+      `[getMonthlyPepiMemoDataAction] Total YTD Expenditures Calculated: ${ytdExpenditures}`,
+    );
+
+    console.log("[getMonthlyPepiMemoDataAction] All calculations complete.");
+
+    // 9. Prepare result data
+    const memoData: MonthlyPepiMemoData = {
+      bookYear,
+      monthName,
+      memoDate: memoDateFormatted,
+      reconciliationDate: reconciliationDateFormatted,
+      commanderName,
+      beginningBalance,
+      totalAgentIssues,
+      totalAgentReturns,
+      totalExpenditures,
+      totalAdditionalUnitIssue,
+      cashOnHand,
+      endingBalance,
+      ytdExpenditures,
+    };
+
+    return { success: true, data: memoData };
+  } catch (error: any) {
+    console.error(
+      `[getMonthlyPepiMemoDataAction] Unexpected error calculating memo data for Book ${bookId}, Month ${month}:`,
+      error,
+    );
+    return {
+      success: false,
+      error: `An unexpected error occurred during calculation: ${error.message}`,
+    };
+  }
 }
 
 // Type for individual transaction row in the unit report
-export type MonthlyUnitReportTransaction = Pick<Transaction, 
-    'id' | 'created_at' | 'transaction_type' | 'amount' | 'description' | 'receipt_number' | 'status' | 'agent_id' 
-> & { 
-    agent_name?: string | null; 
+export type MonthlyUnitReportTransaction = Pick<
+  Transaction,
+  | "id"
+  | "created_at"
+  | "transaction_type"
+  | "amount"
+  | "description"
+  | "receipt_number"
+  | "status"
+  | "agent_id"
+> & {
+  agent_name?: string | null;
 };
 
 // Type for the calculated monthly totals
 export type MonthlyUnitReportTotals = {
-    totalAgentIssues: number;
-    totalAgentReturns: number;
-    totalExpenditures: number;
-    totalAdditionalUnitIssue: number;
-    // Add netChange or other summary fields if needed
+  totalAgentIssues: number;
+  totalAgentReturns: number;
+  totalExpenditures: number;
+  totalAdditionalUnitIssue: number;
+  // Add netChange or other summary fields if needed
 };
 
 // Type for the complete report data (totals + transactions)
 export type MonthlyUnitReportData = {
-    totals: MonthlyUnitReportTotals;
-    transactions: MonthlyUnitReportTransaction[];
+  totals: MonthlyUnitReportTotals;
+  transactions: MonthlyUnitReportTransaction[];
 };
 
 /**
  * Fetches all transactions and calculates totals for a given PEPI Book and month.
  */
 export async function getMonthlyUnitReportAction(
-    bookId: string, 
-    month: number
+  bookId: string,
+  month: number,
 ): Promise<{ success: boolean; data?: MonthlyUnitReportData; error?: string }> {
-    "use server";
-    const supabase = await createClient();
-    
-    // 1. Verify user is an admin
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-        return { success: false, error: "Authentication required." };
-    }
-    const { data: agentData, error: agentError } = await supabase
-        .from("agents")
-        .select("role")
-        .eq("user_id", user.id)
-        .single();
+  "use server";
+  const supabase = await createClient();
 
-    if (agentError || !agentData || agentData.role !== 'admin') {
-        return { success: false, error: "Permission denied. Only admins can generate this report." };
-    }
+  // 1. Verify user is an admin
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: "Authentication required." };
+  }
+  const { data: agentData, error: agentError } = await supabase
+    .from("agents")
+    .select("role")
+    .eq("user_id", user.id)
+    .single();
 
-    // 2. Fetch PEPI Book year
-    const { data: bookData, error: bookError } = await supabase
-        .from('pepi_books')
-        .select('year')
-        .eq('id', bookId)
-        .single();
+  if (agentError || !agentData || agentData.role !== "admin") {
+    return {
+      success: false,
+      error: "Permission denied. Only admins can generate this report.",
+    };
+  }
 
-    if (bookError || !bookData) {
-        console.error(`[getMonthlyUnitReportAction] Error fetching book ${bookId}:`, bookError);
-        return { success: false, error: `Failed to fetch PEPI Book details: ${bookError?.message}` };
-    }
-    const bookYear = bookData.year;
+  // 2. Fetch PEPI Book year
+  const { data: bookData, error: bookError } = await supabase
+    .from("pepi_books")
+    .select("year")
+    .eq("id", bookId)
+    .single();
 
-    // 3. Determine date range for the selected month
-    if (month < 1 || month > 12) {
-        return { success: false, error: "Invalid month selected." };
-    }
-    const startDate = new Date(Date.UTC(bookYear, month - 1, 1, 0, 0, 0, 0));
-    const endDate = new Date(Date.UTC(bookYear, month, 0, 23, 59, 59, 999));
-    const startDateISO = startDate.toISOString();
-    const endDateISO = endDate.toISOString();
-    const monthName = startDate.toLocaleString('default', { month: 'long', timeZone: 'UTC' });
+  if (bookError || !bookData) {
+    console.error(
+      `[getMonthlyUnitReportAction] Error fetching book ${bookId}:`,
+      bookError,
+    );
+    return {
+      success: false,
+      error: `Failed to fetch PEPI Book details: ${bookError?.message}`,
+    };
+  }
+  const bookYear = bookData.year;
 
-    console.log(`[getMonthlyUnitReportAction] Fetching transactions and calculating totals for Book: ${bookId}, Month: ${monthName} ${bookYear}`);
+  // 3. Determine date range for the selected month
+  if (month < 1 || month > 12) {
+    return { success: false, error: "Invalid month selected." };
+  }
+  const startDate = new Date(Date.UTC(bookYear, month - 1, 1, 0, 0, 0, 0));
+  const endDate = new Date(Date.UTC(bookYear, month, 0, 23, 59, 59, 999));
+  const startDateISO = startDate.toISOString();
+  const endDateISO = endDate.toISOString();
+  const monthName = startDate.toLocaleString("default", {
+    month: "long",
+    timeZone: "UTC",
+  });
 
-    try {
-        // 4. Fetch all transactions within the date range 
-        const { data: fetchedTransactions, error: fetchError } = await supabase
-            .from('transactions')
-            .select(`
+  console.log(
+    `[getMonthlyUnitReportAction] Fetching transactions and calculating totals for Book: ${bookId}, Month: ${monthName} ${bookYear}`,
+  );
+
+  try {
+    // 4. Fetch all transactions within the date range
+    const { data: fetchedTransactions, error: fetchError } = await supabase
+      .from("transactions")
+      .select(
+        `
                 id,
                 created_at,
                 transaction_type,
@@ -1834,85 +2395,107 @@ export async function getMonthlyUnitReportAction(
                 status,
                 agent_id,
                 agent:agents ( name ) 
-            `)
-            .eq('pepi_book_id', bookId)
-            .gte('created_at', startDateISO)
-            .lte('created_at', endDateISO)
-            .order('created_at', { ascending: true });
+            `,
+      )
+      .eq("pepi_book_id", bookId)
+      .gte("created_at", startDateISO)
+      .lte("created_at", endDateISO)
+      .order("created_at", { ascending: true });
 
-        if (fetchError) {
-             console.error(`[getMonthlyUnitReportAction] Error fetching transactions:`, fetchError);
-             throw new Error(`Database error fetching transactions: ${fetchError.message}`);
-        }
-
-        const transactions = fetchedTransactions || [];
-
-        // 5. Calculate Monthly Totals from fetched transactions
-        let totalAgentIssues = 0;
-        let totalAgentReturns = 0;
-        let totalExpenditures = 0;
-        let totalAdditionalUnitIssue = 0;
-
-        for (const tx of transactions) {
-             // Only count approved transactions towards totals
-            if (tx.status !== 'approved') continue;
-
-            const amount = tx.amount || 0;
-            switch (tx.transaction_type) {
-                case 'issuance':
-                    // Distinguish between agent issue and added funds based on description
-                    if (tx.description?.toLowerCase().includes('approved fund request')) {
-                        totalAgentIssues += amount;
-                    } else if (tx.description?.toLowerCase().includes('add funds')) { // Or match exact description if known
-                        totalAdditionalUnitIssue += amount;
-                    } else if (tx.description?.toLowerCase().includes('initial funding')) {
-                        // Usually handled by beginning balance, but include if needed
-                    } // Add other issuance types if necessary
-                    break;
-                case 'spending':
-                    totalExpenditures += amount;
-                    break;
-                case 'return': // Changed from 'agent_return'
-                    totalAgentReturns += amount;
-                    break;
-                // Add other transaction types if they affect totals
-            }
-        }
-
-        const totals: MonthlyUnitReportTotals = {
-            totalAgentIssues,
-            totalAgentReturns, // Calculated using 'return'
-            totalExpenditures,
-            totalAdditionalUnitIssue
-        };
-
-        // 6. Format transaction list data (extract agent name)
-        const transactionList: MonthlyUnitReportTransaction[] = transactions.map((tx: any) => ({
-            id: tx.id,
-            created_at: tx.created_at,
-            transaction_type: tx.transaction_type,
-            amount: tx.amount,
-            description: tx.description,
-            receipt_number: tx.receipt_number,
-            status: tx.status,
-            agent_id: tx.agent_id,
-            agent_name: tx.agent && Array.isArray(tx.agent) && tx.agent.length > 0 ? tx.agent[0]?.name : null 
-        }));
-
-        const reportData: MonthlyUnitReportData = {
-            totals,
-            transactions: transactionList
-        }
-
-        console.log(`[getMonthlyUnitReportAction] Fetched ${transactionList.length} transactions. Totals:`, totals);
-        return { success: true, data: reportData };
-
-    } catch (error: any) {
-        console.error(`[getMonthlyUnitReportAction] Unexpected error for Book ${bookId}, Month ${month}:`, error);
-        return { success: false, error: `An unexpected error occurred: ${error.message}` };
+    if (fetchError) {
+      console.error(
+        `[getMonthlyUnitReportAction] Error fetching transactions:`,
+        fetchError,
+      );
+      throw new Error(
+        `Database error fetching transactions: ${fetchError.message}`,
+      );
     }
-    // Ensure all paths return a value explicitly, although the catch block should handle errors
-    // return { success: false, error: "An unexpected situation occurred." }; // Could add this, but catch should cover it
+
+    const transactions = fetchedTransactions || [];
+
+    // 5. Calculate Monthly Totals from fetched transactions
+    let totalAgentIssues = 0;
+    let totalAgentReturns = 0;
+    let totalExpenditures = 0;
+    let totalAdditionalUnitIssue = 0;
+
+    for (const tx of transactions) {
+      // Only count approved transactions towards totals
+      if (tx.status !== "approved") continue;
+
+      const amount = tx.amount || 0;
+      switch (tx.transaction_type) {
+        case "issuance":
+          // Distinguish between agent issue and added funds based on description
+          if (tx.description?.toLowerCase().includes("approved fund request")) {
+            totalAgentIssues += amount;
+          } else if (tx.description?.toLowerCase().includes("add funds")) {
+            // Or match exact description if known
+            totalAdditionalUnitIssue += amount;
+          } else if (
+            tx.description?.toLowerCase().includes("initial funding")
+          ) {
+            // Usually handled by beginning balance, but include if needed
+          } // Add other issuance types if necessary
+          break;
+        case "spending":
+          totalExpenditures += amount;
+          break;
+        case "return": // Changed from 'agent_return'
+          totalAgentReturns += amount;
+          break;
+        // Add other transaction types if they affect totals
+      }
+    }
+
+    const totals: MonthlyUnitReportTotals = {
+      totalAgentIssues,
+      totalAgentReturns, // Calculated using 'return'
+      totalExpenditures,
+      totalAdditionalUnitIssue,
+    };
+
+    // 6. Format transaction list data (extract agent name)
+    const transactionList: MonthlyUnitReportTransaction[] = transactions.map(
+      (tx: any) => ({
+        id: tx.id,
+        created_at: tx.created_at,
+        transaction_type: tx.transaction_type,
+        amount: tx.amount,
+        description: tx.description,
+        receipt_number: tx.receipt_number,
+        status: tx.status,
+        agent_id: tx.agent_id,
+        agent_name:
+          tx.agent && Array.isArray(tx.agent) && tx.agent.length > 0
+            ? tx.agent[0]?.name
+            : null,
+      }),
+    );
+
+    const reportData: MonthlyUnitReportData = {
+      totals,
+      transactions: transactionList,
+    };
+
+    console.log(
+      `[getMonthlyUnitReportAction] Fetched ${transactionList.length} transactions. Totals:`,
+      totals,
+    );
+    return { success: true, data: reportData };
+  } catch (error: any) {
+    console.error(
+      `[getMonthlyUnitReportAction] Unexpected error for Book ${bookId}, Month ${month}:`,
+      error,
+    );
+    return {
+      success: false,
+      error: `An unexpected error occurred: ${error.message}`,
+    };
+  }
+  // Ensure all paths return a value explicitly, although the catch block should handle errors
+  // return { success: false, error: "An unexpected situation occurred." }; // Could add this, but catch should cover it
 }
 
 // =============================================
@@ -1923,168 +2506,251 @@ export async function getMonthlyUnitReportAction(
  * Resets the currently active PEPI Book by deleting all associated transactions,
  * fund requests, and CI payments. Requires admin privileges.
  */
-export async function resetActivePepiBookAction(): Promise<{ success: boolean; message?: string; error?: string }> {
-    "use server";
-    const supabase = await createClient();
+export async function resetActivePepiBookAction(): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+}> {
+  "use server";
+  const supabase = await createClient();
 
-    // 1. Verify user is an admin
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-        return { success: false, error: "Authentication required." };
+  // 1. Verify user is an admin
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: "Authentication required." };
+  }
+  const { data: agentData, error: agentError } = await supabase
+    .from("agents")
+    .select("role")
+    .eq("user_id", user.id)
+    .single();
+
+  if (agentError || !agentData || agentData.role !== "admin") {
+    return {
+      success: false,
+      error: "Permission denied. Only admins can perform this action.",
+    };
+  }
+
+  // 2. Find the *single* active PEPI Book
+  const { data: activeBooks, error: bookError } = await supabase
+    .from("pepi_books")
+    .select("id, year")
+    .eq("is_active", true)
+    .eq("is_closed", false); // Ensure it's not closed either
+
+  if (bookError) {
+    console.error(
+      "[resetActivePepiBookAction] Error fetching active book:",
+      bookError,
+    );
+    return {
+      success: false,
+      error: `Database error fetching active book: ${bookError.message}`,
+    };
+  }
+  if (!activeBooks || activeBooks.length === 0) {
+    return { success: false, error: "No active PEPI Book found to reset." };
+  }
+  if (activeBooks.length > 1) {
+    console.error(
+      "[resetActivePepiBookAction] Found multiple active PEPI Books:",
+      activeBooks,
+    );
+    return {
+      success: false,
+      error:
+        "Consistency error: Multiple active PEPI Books found. Cannot proceed.",
+    };
+  }
+  const activeBook = activeBooks[0];
+  const bookId = activeBook.id;
+  const bookYear = activeBook.year;
+
+  console.log(
+    `[resetActivePepiBookAction] Initiating reset for active PEPI Book ID: ${bookId} (Year: ${bookYear})`,
+  );
+
+  try {
+    // 3. Delete associated records (order might matter depending on constraints)
+    // It's often safer to delete records referencing transactions/payments first.
+
+    // First check if any fund_requests reference transactions through transaction_id
+    console.log(
+      `[resetActivePepiBookAction] Checking for fund_requests with transaction references...`,
+    );
+    const { data: linkedRequests, error: checkError } = await supabase
+      .from("fund_requests")
+      .select("id, transaction_id")
+      .eq("pepi_book_id", bookId)
+      .not("transaction_id", "is", null);
+
+    if (checkError)
+      throw new Error(
+        `Failed to check fund_requests references: ${checkError.message}`,
+      );
+
+    // If fund requests have transaction_id references, we need to clear these first
+    if (linkedRequests && linkedRequests.length > 0) {
+      console.log(
+        `[resetActivePepiBookAction] Found ${linkedRequests.length} fund requests with transaction references to clear`,
+      );
+
+      // Update fund_requests to remove transaction_id references
+      const { error: clearError } = await supabase
+        .from("fund_requests")
+        .update({ transaction_id: null })
+        .eq("pepi_book_id", bookId)
+        .not("transaction_id", "is", null);
+
+      if (clearError)
+        throw new Error(
+          `Failed to clear transaction references: ${clearError.message}`,
+        );
+      console.log(
+        `[resetActivePepiBookAction] Cleared transaction references from fund requests`,
+      );
     }
-    const { data: agentData, error: agentError } = await supabase
-        .from("agents")
-        .select("role")
-        .eq("user_id", user.id)
-        .single();
 
-    if (agentError || !agentData || agentData.role !== 'admin') {
-        return { success: false, error: "Permission denied. Only admins can perform this action." };
-    }
+    console.log(
+      `[resetActivePepiBookAction] Deleting CI Payments for book ${bookId}...`,
+    );
+    const { error: ciDeleteError } = await supabase
+      .from("ci_payments")
+      .delete()
+      .eq("book_id", bookId);
+    if (ciDeleteError)
+      throw new Error(`Failed to delete CI Payments: ${ciDeleteError.message}`);
+    console.log(`[resetActivePepiBookAction] CI Payments deleted.`);
 
-    // 2. Find the *single* active PEPI Book
-    const { data: activeBooks, error: bookError } = await supabase
-        .from('pepi_books')
-        .select('id, year')
-        .eq('is_active', true)
-        .eq('is_closed', false); // Ensure it's not closed either
+    console.log(
+      `[resetActivePepiBookAction] Deleting Fund Requests for book ${bookId}...`,
+    );
+    const { error: frDeleteError } = await supabase
+      .from("fund_requests")
+      .delete()
+      .eq("pepi_book_id", bookId);
+    if (frDeleteError)
+      throw new Error(
+        `Failed to delete Fund Requests: ${frDeleteError.message}`,
+      );
+    console.log(`[resetActivePepiBookAction] Fund Requests deleted.`);
 
-    if (bookError) {
-        console.error("[resetActivePepiBookAction] Error fetching active book:", bookError);
-        return { success: false, error: `Database error fetching active book: ${bookError.message}` };
-    }
-    if (!activeBooks || activeBooks.length === 0) {
-        return { success: false, error: "No active PEPI Book found to reset." };
-    }
-    if (activeBooks.length > 1) {
-        console.error("[resetActivePepiBookAction] Found multiple active PEPI Books:", activeBooks);
-        return { success: false, error: "Consistency error: Multiple active PEPI Books found. Cannot proceed." };
-    }
-    const activeBook = activeBooks[0];
-    const bookId = activeBook.id;
-    const bookYear = activeBook.year;
+    console.log(
+      `[resetActivePepiBookAction] Deleting Transactions for book ${bookId}...`,
+    );
+    const { error: txDeleteError } = await supabase
+      .from("transactions")
+      .delete()
+      .eq("pepi_book_id", bookId);
+    if (txDeleteError)
+      throw new Error(
+        `Failed to delete Transactions: ${txDeleteError.message}`,
+      );
+    console.log(`[resetActivePepiBookAction] Transactions deleted.`);
 
-    console.log(`[resetActivePepiBookAction] Initiating reset for active PEPI Book ID: ${bookId} (Year: ${bookYear})`);
+    // Note: We don't update the pepi_books table itself. The balance is reset by removing transactions.
 
-    try {
-        // 3. Delete associated records (order might matter depending on constraints)
-        // It's often safer to delete records referencing transactions/payments first.
-        
-        // First check if any fund_requests reference transactions through transaction_id
-        console.log(`[resetActivePepiBookAction] Checking for fund_requests with transaction references...`);
-        const { data: linkedRequests, error: checkError } = await supabase
-            .from('fund_requests')
-            .select('id, transaction_id')
-            .eq('pepi_book_id', bookId)
-            .not('transaction_id', 'is', null);
-            
-        if (checkError) throw new Error(`Failed to check fund_requests references: ${checkError.message}`);
-        
-        // If fund requests have transaction_id references, we need to clear these first
-        if (linkedRequests && linkedRequests.length > 0) {
-            console.log(`[resetActivePepiBookAction] Found ${linkedRequests.length} fund requests with transaction references to clear`);
-            
-            // Update fund_requests to remove transaction_id references
-            const { error: clearError } = await supabase
-                .from('fund_requests')
-                .update({ transaction_id: null })
-                .eq('pepi_book_id', bookId)
-                .not('transaction_id', 'is', null);
-                
-            if (clearError) throw new Error(`Failed to clear transaction references: ${clearError.message}`);
-            console.log(`[resetActivePepiBookAction] Cleared transaction references from fund requests`);
-        }
-        
-        console.log(`[resetActivePepiBookAction] Deleting CI Payments for book ${bookId}...`);
-        const { error: ciDeleteError } = await supabase
-            .from('ci_payments')
-            .delete()
-            .eq('book_id', bookId);
-        if (ciDeleteError) throw new Error(`Failed to delete CI Payments: ${ciDeleteError.message}`);
-        console.log(`[resetActivePepiBookAction] CI Payments deleted.`);
+    // 4. Revalidate relevant paths
+    revalidatePath("/dashboard", "layout"); // Revalidate all dashboard pages
+    // Consider more specific paths if needed: /dashboard/transactions, /dashboard/reports, etc.
 
-        console.log(`[resetActivePepiBookAction] Deleting Fund Requests for book ${bookId}...`);
-        const { error: frDeleteError } = await supabase
-            .from('fund_requests')
-            .delete()
-            .eq('pepi_book_id', bookId);
-        if (frDeleteError) throw new Error(`Failed to delete Fund Requests: ${frDeleteError.message}`);
-        console.log(`[resetActivePepiBookAction] Fund Requests deleted.`);
-        
-        console.log(`[resetActivePepiBookAction] Deleting Transactions for book ${bookId}...`);
-        const { error: txDeleteError } = await supabase
-            .from('transactions')
-            .delete()
-            .eq('pepi_book_id', bookId);
-        if (txDeleteError) throw new Error(`Failed to delete Transactions: ${txDeleteError.message}`);
-        console.log(`[resetActivePepiBookAction] Transactions deleted.`);
-
-        // Note: We don't update the pepi_books table itself. The balance is reset by removing transactions.
-
-        // 4. Revalidate relevant paths
-        revalidatePath("/dashboard", "layout"); // Revalidate all dashboard pages
-        // Consider more specific paths if needed: /dashboard/transactions, /dashboard/reports, etc.
-
-        console.log(`[resetActivePepiBookAction] Successfully reset PEPI Book ID: ${bookId} (Year: ${bookYear})`);
-        return { success: true, message: `Successfully reset PEPI Book for ${bookYear}. All transactions deleted.` };
-
-    } catch (error: any) {
-        console.error(`[resetActivePepiBookAction] Error during reset for Book ${bookId}:`, error);
-        return { success: false, error: `An unexpected error occurred during reset: ${error.message}` };
-    }
+    console.log(
+      `[resetActivePepiBookAction] Successfully reset PEPI Book ID: ${bookId} (Year: ${bookYear})`,
+    );
+    return {
+      success: true,
+      message: `Successfully reset PEPI Book for ${bookYear}. All transactions deleted.`,
+    };
+  } catch (error: any) {
+    console.error(
+      `[resetActivePepiBookAction] Error during reset for Book ${bookId}:`,
+      error,
+    );
+    return {
+      success: false,
+      error: `An unexpected error occurred during reset: ${error.message}`,
+    };
+  }
 }
 
 /**
  * Safely deletes an agent by first clearing references in dependent tables
  */
-export async function deleteAgentAction(agentId: string): Promise<{ success: boolean; message?: string; error?: string }> {
-    "use server";
-    const supabase = await createClient();
+export async function deleteAgentAction(
+  agentId: string,
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  "use server";
+  const supabase = await createClient();
 
+  try {
+    // Verify user is an admin
+    let user;
     try {
-        // Verify user is an admin
-        let user;
-        try {
-            const { data, error } = await supabase.auth.getUser();
-            if (error) {
-                console.error(`[deleteAgentAction] Authentication error: ${error.message}`);
-                return { success: false, error: `Authentication error: ${error.message}` };
-            }
-            user = data.user;
-        } catch (authError: any) {
-            console.error(`[deleteAgentAction] Authentication exception: ${authError.message}`);
-            return { success: false, error: `Authentication exception: ${authError.message}` };
-        }
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error(
+          `[deleteAgentAction] Authentication error: ${error.message}`,
+        );
+        return {
+          success: false,
+          error: `Authentication error: ${error.message}`,
+        };
+      }
+      user = data.user;
+    } catch (authError: any) {
+      console.error(
+        `[deleteAgentAction] Authentication exception: ${authError.message}`,
+      );
+      return {
+        success: false,
+        error: `Authentication exception: ${authError.message}`,
+      };
+    }
 
-        if (!user) {
-            return { success: false, error: "Authentication required. Please sign in again." };
-        }
+    if (!user) {
+      return {
+        success: false,
+        error: "Authentication required. Please sign in again.",
+      };
+    }
 
-        // Verify admin role
-        const { data: agentData, error: agentError } = await supabase
-            .from("agents")
-            .select("role, id")
-            .eq("user_id", user.id)
-            .single();
+    // Verify admin role
+    const { data: agentData, error: agentError } = await supabase
+      .from("agents")
+      .select("role, id")
+      .eq("user_id", user.id)
+      .single();
 
-        if (agentError) {
-            console.error(`[deleteAgentAction] Error fetching agent: ${agentError.message}`);
-            return { success: false, error: `Error fetching your agent details: ${agentError.message}` };
-        }
+    if (agentError) {
+      console.error(
+        `[deleteAgentAction] Error fetching agent: ${agentError.message}`,
+      );
+      return {
+        success: false,
+        error: `Error fetching your agent details: ${agentError.message}`,
+      };
+    }
 
-        if (!agentData || agentData.role !== 'admin') {
-            return { success: false, error: "Permission denied. Only admins can delete agents." };
-        }
+    if (!agentData || agentData.role !== "admin") {
+      return {
+        success: false,
+        error: "Permission denied. Only admins can delete agents.",
+      };
+    }
 
-        // ================================================================
-        // DIRECT SQL APPROACH using a custom function to delete everything
-        // ================================================================
-        
-        // Create a temporary single-use SQL function to diagnose and delete the agent
-        const tempFunctionName = `temp_delete_agent_${Date.now()}`;
-        
-        // Build a comprehensive SQL function that handles all aspects of deletion
-        const functionSQL = `
+    // ================================================================
+    // DIRECT SQL APPROACH using a custom function to delete everything
+    // ================================================================
+
+    // Create a temporary single-use SQL function to diagnose and delete the agent
+    const tempFunctionName = `temp_delete_agent_${Date.now()}`;
+
+    // Build a comprehensive SQL function that handles all aspects of deletion
+    const functionSQL = `
         CREATE OR REPLACE FUNCTION ${tempFunctionName}(agent_id_param UUID)
         RETURNS JSONB
         LANGUAGE plpgsql
@@ -2162,122 +2828,167 @@ export async function deleteAgentAction(agentId: string): Promise<{ success: boo
         END;
         $$;
         `;
-        
-        // Create the function
-        console.log(`[deleteAgentAction] Creating temporary SQL function to handle deletion`);
-        const { error: createFunctionError } = await supabase.rpc('exec_sql', { sql: functionSQL });
-        
-        if (createFunctionError) {
-            console.error(`[deleteAgentAction] Error creating SQL function: ${createFunctionError.message}`);
-            // Continue anyway, we'll fall back to the old approach
-        } else {
-            // Execute the function
-            console.log(`[deleteAgentAction] Executing direct SQL function for agent deletion`);
-            
-            // Call the function
-            const { data: sqlResult, error: sqlExecuteError } = await supabase.rpc(tempFunctionName, { agent_id_param: agentId });
-            
-            if (sqlExecuteError) {
-                console.error(`[deleteAgentAction] Error executing SQL function: ${sqlExecuteError.message}`);
-            } else {
-                console.log(`[deleteAgentAction] SQL function results:`, JSON.stringify(sqlResult, null, 2));
-                
-                // Check if agent was deleted
-                if (sqlResult.agent_deleted === true) {
-                    // Clean up the temporary function
-                    await supabase.rpc('exec_sql', { sql: `DROP FUNCTION IF EXISTS ${tempFunctionName}(UUID);` });
-                    
-                    return { success: true, message: `Successfully deleted agent through direct SQL.` };
-                }
-            }
+
+    // Create the function
+    console.log(
+      `[deleteAgentAction] Creating temporary SQL function to handle deletion`,
+    );
+    const { error: createFunctionError } = await supabase.rpc("exec_sql", {
+      sql: functionSQL,
+    });
+
+    if (createFunctionError) {
+      console.error(
+        `[deleteAgentAction] Error creating SQL function: ${createFunctionError.message}`,
+      );
+      // Continue anyway, we'll fall back to the old approach
+    } else {
+      // Execute the function
+      console.log(
+        `[deleteAgentAction] Executing direct SQL function for agent deletion`,
+      );
+
+      // Call the function
+      const { data: sqlResult, error: sqlExecuteError } = await supabase.rpc(
+        tempFunctionName,
+        { agent_id_param: agentId },
+      );
+
+      if (sqlExecuteError) {
+        console.error(
+          `[deleteAgentAction] Error executing SQL function: ${sqlExecuteError.message}`,
+        );
+      } else {
+        console.log(
+          `[deleteAgentAction] SQL function results:`,
+          JSON.stringify(sqlResult, null, 2),
+        );
+
+        // Check if agent was deleted
+        if (sqlResult.agent_deleted === true) {
+          // Clean up the temporary function
+          await supabase.rpc("exec_sql", {
+            sql: `DROP FUNCTION IF EXISTS ${tempFunctionName}(UUID);`,
+          });
+
+          return {
+            success: true,
+            message: `Successfully deleted agent through direct SQL.`,
+          };
         }
-        
-        // If we get here, the SQL approach didn't work completely
-        console.log(`[deleteAgentAction] SQL approach didn't fully succeed, falling back to standard approach`);
-        
-        // =====================================================================
-        // FALL BACK TO THE REGULAR APPROACH with better diagnostic information
-        // =====================================================================
-        
-        // Get detailed info about remaining fund requests
-        const { data: detailedRequests, error: detailError } = await supabase
-            .from('fund_requests')
-            .select('*')
-            .eq('agent_id', agentId);
-            
-        if (detailError) {
-            console.error(`[deleteAgentAction] Error fetching detailed request info: ${detailError.message}`);
-        } else if (detailedRequests && detailedRequests.length > 0) {
-            console.log(`[deleteAgentAction] VERY detailed examination of ${detailedRequests.length} problematic requests:`, 
-                JSON.stringify(detailedRequests, null, 2));
-                
-            // Try a radical approach - use 'known' hardcoded ID for "system agent"
-            // This could be replaced with a real system agent ID in your system
-            const systemAgentId = '00000000-0000-0000-0000-000000000000'; 
-            
-            console.log(`[deleteAgentAction] Attempting to reassign fund requests to system agent ID`);
-            const { error: reassignError } = await supabase
-                .from('fund_requests')
-                .update({ agent_id: systemAgentId })
-                .eq('agent_id', agentId);
-                
-            if (reassignError) {
-                console.error(`[deleteAgentAction] Error reassigning to system agent: ${reassignError.message}`);
-            }
-        }
-        
-        // Clear references in transactions
-        console.log(`[deleteAgentAction] Clearing transaction references`);
-        const { error: txError } = await supabase
-            .from('transactions')
-            .update({ agent_id: null })
-            .eq('agent_id', agentId);
-            
-        if (txError) {
-            console.error(`[deleteAgentAction] Error clearing transactions: ${txError.message}`);
-        }
-        
-        // Clear references in payments
-        console.log(`[deleteAgentAction] Clearing CI payment references`);
-        const { error: ciError } = await supabase
-            .from('ci_payments')
-            .update({ paying_agent_id: null })
-            .eq('paying_agent_id', agentId);
-            
-        if (ciError) {
-            console.error(`[deleteAgentAction] Error clearing payments: ${ciError.message}`);
-        }
-        
-        // Try to delete agent again
-        console.log(`[deleteAgentAction] Final attempt to delete agent ${agentId}`);
-        const { error: finalDeleteError } = await supabase
-            .from('agents')
-            .delete()
-            .eq('id', agentId);
-            
-        if (finalDeleteError) {
-            console.error(`[deleteAgentAction] Final delete failed: ${finalDeleteError.message}`);
-            
-            // One last diagnostic check
-            const { data: finalCheck } = await supabase
-                .from('fund_requests')
-                .select('id, status')
-                .eq('agent_id', agentId);
-                
-            if (finalCheck && finalCheck.length > 0) {
-                console.error(`[deleteAgentAction] STILL have ${finalCheck.length} fund requests:`, finalCheck);
-            }
-            
-            return { 
-                success: false, 
-                error: `Unable to delete agent due to database constraints. Please contact system administrator.`
-            };
-        }
-        
-        return { success: true, message: `Successfully deleted agent.` };
-        
-    } catch (error: any) {
-        console.error(`[deleteAgentAction] Error deleting agent ${agentId}:`, error);
-        return { success: false, error: `An unexpected error occurred: ${error.message}` };
+      }
     }
+
+    // If we get here, the SQL approach didn't work completely
+    console.log(
+      `[deleteAgentAction] SQL approach didn't fully succeed, falling back to standard approach`,
+    );
+
+    // =====================================================================
+    // FALL BACK TO THE REGULAR APPROACH with better diagnostic information
+    // =====================================================================
+
+    // Get detailed info about remaining fund requests
+    const { data: detailedRequests, error: detailError } = await supabase
+      .from("fund_requests")
+      .select("*")
+      .eq("agent_id", agentId);
+
+    if (detailError) {
+      console.error(
+        `[deleteAgentAction] Error fetching detailed request info: ${detailError.message}`,
+      );
+    } else if (detailedRequests && detailedRequests.length > 0) {
+      console.log(
+        `[deleteAgentAction] VERY detailed examination of ${detailedRequests.length} problematic requests:`,
+        JSON.stringify(detailedRequests, null, 2),
+      );
+
+      // Try a radical approach - use 'known' hardcoded ID for "system agent"
+      // This could be replaced with a real system agent ID in your system
+      const systemAgentId = "00000000-0000-0000-0000-000000000000";
+
+      console.log(
+        `[deleteAgentAction] Attempting to reassign fund requests to system agent ID`,
+      );
+      const { error: reassignError } = await supabase
+        .from("fund_requests")
+        .update({ agent_id: systemAgentId })
+        .eq("agent_id", agentId);
+
+      if (reassignError) {
+        console.error(
+          `[deleteAgentAction] Error reassigning to system agent: ${reassignError.message}`,
+        );
+      }
+    }
+
+    // Clear references in transactions
+    console.log(`[deleteAgentAction] Clearing transaction references`);
+    const { error: txError } = await supabase
+      .from("transactions")
+      .update({ agent_id: null })
+      .eq("agent_id", agentId);
+
+    if (txError) {
+      console.error(
+        `[deleteAgentAction] Error clearing transactions: ${txError.message}`,
+      );
+    }
+
+    // Clear references in payments
+    console.log(`[deleteAgentAction] Clearing CI payment references`);
+    const { error: ciError } = await supabase
+      .from("ci_payments")
+      .update({ paying_agent_id: null })
+      .eq("paying_agent_id", agentId);
+
+    if (ciError) {
+      console.error(
+        `[deleteAgentAction] Error clearing payments: ${ciError.message}`,
+      );
+    }
+
+    // Try to delete agent again
+    console.log(`[deleteAgentAction] Final attempt to delete agent ${agentId}`);
+    const { error: finalDeleteError } = await supabase
+      .from("agents")
+      .delete()
+      .eq("id", agentId);
+
+    if (finalDeleteError) {
+      console.error(
+        `[deleteAgentAction] Final delete failed: ${finalDeleteError.message}`,
+      );
+
+      // One last diagnostic check
+      const { data: finalCheck } = await supabase
+        .from("fund_requests")
+        .select("id, status")
+        .eq("agent_id", agentId);
+
+      if (finalCheck && finalCheck.length > 0) {
+        console.error(
+          `[deleteAgentAction] STILL have ${finalCheck.length} fund requests:`,
+          finalCheck,
+        );
+      }
+
+      return {
+        success: false,
+        error: `Unable to delete agent due to database constraints. Please contact system administrator.`,
+      };
+    }
+
+    return { success: true, message: `Successfully deleted agent.` };
+  } catch (error: any) {
+    console.error(
+      `[deleteAgentAction] Error deleting agent ${agentId}:`,
+      error,
+    );
+    return {
+      success: false,
+      error: `An unexpected error occurred: ${error.message}`,
+    };
+  }
 }
