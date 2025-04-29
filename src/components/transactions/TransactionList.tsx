@@ -783,7 +783,7 @@ export default function TransactionList() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
-                  <div className="text-right">
+                  <div className="text-right min-w-[150px]">
                     <div
                       className={`font-medium 
                         ${item.itemType === "transaction" && item.transaction_type === "issuance" ? "text-green-600" : ""}
