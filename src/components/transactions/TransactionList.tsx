@@ -95,6 +95,9 @@ export default function TransactionList() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isCiPaymentFormOpen, setIsCiPaymentFormOpen] = useState(false);
   const [currentAgentData, setCurrentAgentData] = useState<Agent | null>(null);
+  const [runningBalances, setRunningBalances] = useState<{
+    [key: string]: number;
+  }>({});
   const userId = currentAgentData?.user_id;
 
   useEffect(() => {
@@ -234,6 +237,10 @@ export default function TransactionList() {
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
       );
       setCombinedList(combined);
+
+      // Calculate running balances after fetching transactions
+      const { balances } = calculatePepiBookBalance();
+      setRunningBalances(balances);
     } catch (error: any) {
       console.error("Error fetching data:", error);
       toast({
@@ -379,10 +386,12 @@ export default function TransactionList() {
     return balance;
   }, [transactions, currentUserAgentId]);
 
-  const pepiBookBalance = useMemo(() => {
-    if (!activeBook || !transactions) return 0;
+  const calculatePepiBookBalance = () => {
+    if (!activeBook || !transactions) return { finalBalance: 0, balances: {} };
 
     let currentBalance = 0;
+    const balances: { [key: string]: number } = {};
+
     console.log(
       `[calculatePepiBookBalance] Starting calculation for Book ID: ${activeBook.id}`,
     );
@@ -390,7 +399,14 @@ export default function TransactionList() {
       `[calculatePepiBookBalance] Total transactions fetched: ${transactions.length}`,
     );
 
-    const initialFundingTx = transactions.find(
+    // Sort transactions by date for chronological processing
+    const sortedTransactions = [...transactions].sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    );
+
+    // Find initial funding transaction
+    const initialFundingTx = sortedTransactions.find(
       (tx) =>
         tx.pepi_book_id === activeBook.id &&
         tx.transaction_type === "issuance" &&
@@ -402,6 +418,7 @@ export default function TransactionList() {
 
     if (initialFundingTx) {
       currentBalance = initialFundingTx.amount;
+      balances[initialFundingTx.id] = currentBalance;
       console.log(
         `  [calculatePepiBookBalance] Initial Funding/Added Tx ID: ${initialFundingTx.id.substring(0, 8)}, Amount: ${initialFundingTx.amount}, Starting Balance: ${currentBalance}`,
       );
@@ -412,17 +429,17 @@ export default function TransactionList() {
       );
     }
 
-    let totalAdditions = 0;
-    let totalSpent = 0;
+    // Process all transactions to calculate running balances
+    sortedTransactions.forEach((transaction) => {
+      if (transaction.id === initialFundingTx?.id) return; // Skip initial funding tx as it's already processed
 
-    transactions.forEach((transaction) => {
-      if (transaction.id === initialFundingTx?.id) return;
       if (
         transaction.pepi_book_id === activeBook.id &&
         transaction.status === "approved"
       ) {
         let balanceChange = 0;
         let applied = false;
+
         if (
           transaction.transaction_type === "issuance" &&
           transaction.agent_id === null
@@ -437,28 +454,31 @@ export default function TransactionList() {
           currentBalance += balanceChange;
           applied = true;
         } else if (transaction.transaction_type === "return") {
-          // IMPORTANT CHANGE: Agent returns should NOT affect the PEPI book balance
+          // IMPORTANT: Agent returns should NOT affect the PEPI book balance
           // They only affect the agent's personal balance, not the overall book balance
-          // The money was already accounted for when it was issued to the agent
           applied = false; // Don't apply returns to the book balance
         }
+
         if (applied) {
           console.log(
             `  [calculatePepiBookBalance] Applied Tx ID: ${transaction.id.substring(0, 8)}, Type: ${transaction.transaction_type}, Change: ${balanceChange}, New Balance: ${currentBalance}`,
           );
         }
-        if (transaction.transaction_type === "issuance") {
-          totalAdditions += transaction.amount;
-        } else if (transaction.transaction_type === "spending") {
-          totalSpent += transaction.amount;
-        }
+
+        // Store the running balance for this transaction
+        balances[transaction.id] = currentBalance;
       }
     });
 
     console.log(
       `[calculatePepiBookBalance] Calculated balance: ${currentBalance}`,
     );
-    return currentBalance;
+    return { finalBalance: currentBalance, balances };
+  };
+
+  const pepiBookBalance = useMemo(() => {
+    const { finalBalance } = calculatePepiBookBalance();
+    return finalBalance;
   }, [transactions, activeBook]);
 
   const handleEditRequest = (request: FundRequest) => {
