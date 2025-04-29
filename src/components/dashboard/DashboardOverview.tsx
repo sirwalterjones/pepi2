@@ -204,12 +204,10 @@ export default function DashboardOverview() {
             } else if (transaction.receipt_number?.startsWith("ADD")) {
               // Additions to the book (receipt starts with ADD)
               totalAddedToBook += transaction.amount;
-              pepiBookBalance += transaction.amount;
             }
           } else if (transaction.transaction_type === "spending") {
             // All spending reduces the total balance
             totalSpentByAgents += transaction.amount;
-            pepiBookBalance -= transaction.amount;
 
             // If spent by an agent, reduce their cash on hand
             if (transaction.agent_id) {
@@ -224,6 +222,10 @@ export default function DashboardOverview() {
           }
         }
       });
+
+      // Calculate current balance: initial + additions - expenditures
+      let pepiBookBalance =
+        initialAmount + totalAddedToBook - totalSpentByAgents;
 
       // Calculate safe cash: current balance - what's issued to agents
       let safeCashBalance = pepiBookBalance - totalIssuedToAgents;

@@ -193,15 +193,7 @@ export default function PepiBookList({
                   <TableCell>
                     {book.is_closed && book.closing_balance
                       ? formatCurrency(book.closing_balance)
-                      : formatCurrency(
-                          (book.starting_amount || 0) +
-                            (book.additionalFunds || 0) -
-                            (book.currentBalance
-                              ? (book.starting_amount || 0) +
-                                (book.additionalFunds || 0) -
-                                book.currentBalance
-                              : 0),
-                        )}
+                      : formatCurrency(book.currentBalance || 0)}
                   </TableCell>
                   <TableCell>
                     {new Date(book.created_at).toLocaleDateString()}

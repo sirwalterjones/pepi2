@@ -2,7 +2,13 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "../../../supabase/client";
-import { Transaction, TransactionType, TransactionWithAgent, FundRequest, Agent } from "@/types/schema";
+import {
+  Transaction,
+  TransactionType,
+  TransactionWithAgent,
+  FundRequest,
+  Agent,
+} from "@/types/schema";
 import TransactionDetails from "./TransactionDetails";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
 import { Button } from "../ui/button";
@@ -52,16 +58,15 @@ import { deleteFundRequestAction } from "@/app/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import CiPaymentForm from "../ci-payments/CiPaymentForm";
 
-// Define a type for the combined list items
-type TransactionListItem = (TransactionWithAgent & { itemType: 'transaction' }) | 
-                         (FundRequest & { 
-                             itemType: 'request'; 
-                             created_at: string; // Ensure created_at exists for sorting 
-                             agent?: { id: string; name: string; badge_number: string | null } | null; // Make agent optional
-                         });
+type TransactionListItem =
+  | (TransactionWithAgent & { itemType: "transaction" })
+  | (FundRequest & {
+      itemType: "request";
+      created_at: string;
+      agent?: { id: string; name: string; badge_number: string | null } | null;
+    });
 
 export default function TransactionList() {
-  // Function to check if a transaction belongs to the current user
   const isOwnTransaction = (transaction: any) => {
     return currentUserAgentId && transaction.agent_id === currentUserAgentId;
   };
@@ -71,7 +76,8 @@ export default function TransactionList() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
-  const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithAgent | null>(null);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<TransactionWithAgent | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [currentUserAgentId, setCurrentUserAgentId] = useState<string | null>(
     null,
@@ -89,9 +95,8 @@ export default function TransactionList() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isCiPaymentFormOpen, setIsCiPaymentFormOpen] = useState(false);
   const [currentAgentData, setCurrentAgentData] = useState<Agent | null>(null);
-  const userId = currentAgentData?.user_id; // Derive userId
+  const userId = currentAgentData?.user_id;
 
-  // Fetch current user's agent ID and role
   useEffect(() => {
     const fetchCurrentUserAgent = async () => {
       try {
@@ -115,20 +120,22 @@ export default function TransactionList() {
             setCurrentUserAgentId(agentData.id);
             setIsAdmin(agentData.role === "admin");
 
-            // Fetch full agent data for passing to forms
-            const { data: fullAgentData, error: fullAgentError } = await supabase
-              .from("agents")
-              .select("*")
-              .eq("user_id", user.id)
-              .single();
+            const { data: fullAgentData, error: fullAgentError } =
+              await supabase
+                .from("agents")
+                .select("*")
+                .eq("user_id", user.id)
+                .single();
 
             if (fullAgentError) {
-              console.error("Error fetching full agent details:", fullAgentError);
+              console.error(
+                "Error fetching full agent details:",
+                fullAgentError,
+              );
             } else {
               setCurrentAgentData(fullAgentData as Agent);
             }
 
-            // Create a map for quick lookup
             const newUserAgentMap: { [key: string]: boolean } = {};
             newUserAgentMap[agentData.id] = true;
             setUserAgentMap(newUserAgentMap);
@@ -144,18 +151,20 @@ export default function TransactionList() {
 
   const fetchData = async () => {
     if ((!isAdmin && !currentUserAgentId) || !activeBook?.id) {
-        setLoading(false);
-        return;
+      setLoading(false);
+      return;
     }
-    
+
     setLoading(true);
     try {
       let transactionQuery = supabase
         .from("transactions")
-        .select(`
+        .select(
+          `
           *,
           agent:agents!transactions_agent_id_fkey ( id, name, badge_number )
-        `)
+        `,
+        )
         .order("created_at", { ascending: false });
 
       transactionQuery = transactionQuery.eq("pepi_book_id", activeBook.id);
@@ -168,54 +177,70 @@ export default function TransactionList() {
         transactionQuery = transactionQuery.eq("agent_id", currentUserAgentId);
       }
 
-      const { data: transactionData, error: transactionError } = await transactionQuery;
+      const { data: transactionData, error: transactionError } =
+        await transactionQuery;
 
       if (transactionError) {
         console.error("Error fetching transactions:", transactionError);
-        toast({ title: "Error fetching transactions", description: transactionError.message, variant: "destructive" });
+        toast({
+          title: "Error fetching transactions",
+          description: transactionError.message,
+          variant: "destructive",
+        });
       }
-      const fetchedTransactions = (transactionData as TransactionWithAgent[]) || [];
+      const fetchedTransactions =
+        (transactionData as TransactionWithAgent[]) || [];
       setTransactions(fetchedTransactions);
 
       let fetchedRequests: FundRequest[] = [];
       if (!isAdmin && currentUserAgentId) {
-          const { data: requestData, error: requestError } = await supabase
-              .from("fund_requests")
-              .select(`*, agent:agents!fund_requests_agent_id_fkey(id, name, badge_number)`)
-              .eq("agent_id", currentUserAgentId)
-              .eq("pepi_book_id", activeBook.id)
-              .in("status", ["pending", "rejected"]);
-          
-          if (requestError) {
-              console.error("Error fetching fund requests:", requestError);
-              toast({ title: "Error fetching fund requests", description: requestError.message, variant: "destructive" });
-          } else {
-              fetchedRequests = (requestData as FundRequest[]) || [];
-              setRequests(fetchedRequests);
-          }
-      }
-      
-      // Log the fetched requests specifically for agent view
-      if (!isAdmin && currentUserAgentId) {
-          console.log(`[TransactionList - Agent View] Fetched Requests Data:`, fetchedRequests);
+        const { data: requestData, error: requestError } = await supabase
+          .from("fund_requests")
+          .select(
+            `*, agent:agents!fund_requests_agent_id_fkey(id, name, badge_number)`,
+          )
+          .eq("agent_id", currentUserAgentId)
+          .eq("pepi_book_id", activeBook.id)
+          .in("status", ["pending", "rejected"]);
+
+        if (requestError) {
+          console.error("Error fetching fund requests:", requestError);
+          toast({
+            title: "Error fetching fund requests",
+            description: requestError.message,
+            variant: "destructive",
+          });
+        } else {
+          fetchedRequests = (requestData as FundRequest[]) || [];
+          setRequests(fetchedRequests);
+        }
       }
 
       const combined: TransactionListItem[] = [
-          ...fetchedTransactions.map(t => ({ ...t, itemType: 'transaction' as const })),
-          ...fetchedRequests.map(r => ({
-               ...r,
-               itemType: 'request' as const,
-               created_at: r.requested_at,
-               agent: (r as any).agent || null 
-           }))
+        ...fetchedTransactions.map((t) => ({
+          ...t,
+          itemType: "transaction" as const,
+        })),
+        ...fetchedRequests.map((r) => ({
+          ...r,
+          itemType: "request" as const,
+          created_at: r.requested_at,
+          agent: (r as any).agent || null,
+        })),
       ];
 
-      combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      combined.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
       setCombinedList(combined);
-
     } catch (error: any) {
       console.error("Error fetching data:", error);
-      toast({ title: "Error", description: error.message || "Failed to fetch data", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch data",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -229,16 +254,28 @@ export default function TransactionList() {
     if ((!isAdmin && !currentUserAgentId) || !activeBook?.id) return;
 
     const transactionChannel = supabase
-      .channel('transactions_list_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, 
-        () => { console.log('Transaction change detected, refetching data...'); fetchData(); }
-      ).subscribe();
-      
+      .channel("transactions_list_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "transactions" },
+        () => {
+          console.log("Transaction change detected, refetching data...");
+          fetchData();
+        },
+      )
+      .subscribe();
+
     const requestChannel = supabase
-      .channel('requests_list_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fund_requests' }, 
-        () => { console.log('Fund request change detected, refetching data...'); fetchData(); }
-      ).subscribe();
+      .channel("requests_list_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "fund_requests" },
+        () => {
+          console.log("Fund request change detected, refetching data...");
+          fetchData();
+        },
+      )
+      .subscribe();
 
     return () => {
       supabase.removeChannel(transactionChannel);
@@ -246,31 +283,33 @@ export default function TransactionList() {
     };
   }, [supabase, activeBook?.id, currentUserAgentId, isAdmin]);
 
-  // Filter the combined list now using the specific type
-  const filteredCombinedList = combinedList.filter((item: TransactionListItem) => {
+  const filteredCombinedList = combinedList.filter(
+    (item: TransactionListItem) => {
       if (!searchTerm) return true;
       const term = searchTerm.toLowerCase();
-      
-      // Base check for agent name/badge
-      const agentMatch = item.agent?.name?.toLowerCase().includes(term) || 
-                         item.agent?.badge_number?.toLowerCase().includes(term);
 
-      if (item.itemType === 'transaction') {
-          return (
-              agentMatch ||
-              item.description?.toLowerCase().includes(term) ||
-              item.receipt_number?.toLowerCase().includes(term)
-          );
-      } else { // item.itemType === 'request' guaranteed by type definition
-          return (
-              agentMatch ||
-              item.case_number?.toLowerCase().includes(term) ||
-              item.status?.toLowerCase().includes(term) ||
-              item.rejection_reason?.toLowerCase().includes(term) ||
-              item.amount?.toString().includes(term) 
-          );
+      const agentMatch =
+        item.agent?.name?.toLowerCase().includes(term) ||
+        item.agent?.badge_number?.toLowerCase().includes(term);
+
+      if (item.itemType === "transaction") {
+        return (
+          agentMatch ||
+          item.description?.toLowerCase().includes(term) ||
+          item.receipt_number?.toLowerCase().includes(term)
+        );
+      } else {
+        // item.itemType === 'request' guaranteed by type definition
+        return (
+          agentMatch ||
+          item.case_number?.toLowerCase().includes(term) ||
+          item.status?.toLowerCase().includes(term) ||
+          item.rejection_reason?.toLowerCase().includes(term) ||
+          item.amount?.toString().includes(term)
+        );
       }
-  });
+    },
+  );
 
   const getTransactionIcon = (type: TransactionType) => {
     switch (type) {
@@ -320,7 +359,6 @@ export default function TransactionList() {
     });
   };
 
-  // Calculate balances using useMemo
   const agentBalance = useMemo(() => {
     if (!currentUserAgentId || !transactions.length) return 0;
     let balance = 0;
@@ -342,99 +380,127 @@ export default function TransactionList() {
   }, [transactions, currentUserAgentId]);
 
   const pepiBookBalance = useMemo(() => {
-    if (!activeBook || !transactions) return 0; // Added !transactions check
+    if (!activeBook || !transactions) return 0;
 
     let currentBalance = 0;
-    console.log(`[calculatePepiBookBalance] Starting calculation for Book ID: ${activeBook.id}`);
-    console.log(`[calculatePepiBookBalance] Total transactions fetched: ${transactions.length}`);
+    console.log(
+      `[calculatePepiBookBalance] Starting calculation for Book ID: ${activeBook.id}`,
+    );
+    console.log(
+      `[calculatePepiBookBalance] Total transactions fetched: ${transactions.length}`,
+    );
 
-    const initialFundingTx = transactions.find(tx => 
+    const initialFundingTx = transactions.find(
+      (tx) =>
         tx.pepi_book_id === activeBook.id &&
-        tx.transaction_type === 'issuance' &&
-        tx.status === 'approved' &&
-        (tx.description?.toLowerCase().includes("initial funding") || tx.agent_id === null) &&
-        !tx.description?.toLowerCase().includes("approved fund request")
+        tx.transaction_type === "issuance" &&
+        tx.status === "approved" &&
+        (tx.description?.toLowerCase().includes("initial funding") ||
+          tx.agent_id === null) &&
+        !tx.description?.toLowerCase().includes("approved fund request"),
     );
 
     if (initialFundingTx) {
-        currentBalance = initialFundingTx.amount;
-        console.log(`  [calculatePepiBookBalance] Initial Funding/Added Tx ID: ${initialFundingTx.id.substring(0,8)}, Amount: ${initialFundingTx.amount}, Starting Balance: ${currentBalance}`);
+      currentBalance = initialFundingTx.amount;
+      console.log(
+        `  [calculatePepiBookBalance] Initial Funding/Added Tx ID: ${initialFundingTx.id.substring(0, 8)}, Amount: ${initialFundingTx.amount}, Starting Balance: ${currentBalance}`,
+      );
     } else {
-        // Fallback: Use the book's starting amount if initial TX not found
-        currentBalance = activeBook.starting_amount || 0;
-        console.log(`  [calculatePepiBookBalance] WARNING: Could not identify a specific initial funding transaction. Starting balance from book: ${currentBalance}`);
+      currentBalance = activeBook.starting_amount || 0;
+      console.log(
+        `  [calculatePepiBookBalance] WARNING: Could not identify a specific initial funding transaction. Starting balance from book: ${currentBalance}`,
+      );
     }
-    
+
+    let totalAdditions = 0;
+    let totalSpent = 0;
+
     transactions.forEach((transaction) => {
-        if (transaction.id === initialFundingTx?.id) return;
+      if (transaction.id === initialFundingTx?.id) return;
+      if (
+        transaction.pepi_book_id === activeBook.id &&
+        transaction.status === "approved"
+      ) {
+        let balanceChange = 0;
+        let applied = false;
         if (
-            transaction.pepi_book_id === activeBook.id &&
-            transaction.status === "approved"
+          transaction.transaction_type === "issuance" &&
+          transaction.agent_id === null
         ) {
-            let balanceChange = 0;
-            let applied = false;
-            // Consider ALL issuances without an agent as additions to book balance
-            if (transaction.transaction_type === "issuance" && transaction.agent_id === null) {
-                 balanceChange = transaction.amount;
-                 currentBalance += balanceChange;
-                 applied = true;
-            } else if (transaction.transaction_type === "spending") {
-                balanceChange = -transaction.amount;
-                currentBalance += balanceChange;
-                applied = true;
-            } else if (transaction.transaction_type === "return") {
-                balanceChange = transaction.amount;
-                currentBalance += balanceChange;
-                applied = true;
-            }
-            if (applied) {
-                console.log(`  [calculatePepiBookBalance] Applied Tx ID: ${transaction.id.substring(0,8)}, Type: ${transaction.transaction_type}, Change: ${balanceChange}, New Balance: ${currentBalance}`);
-            }
+          balanceChange = transaction.amount;
+          currentBalance += balanceChange;
+          applied = true;
+        } else if (transaction.transaction_type === "spending") {
+          balanceChange = -transaction.amount;
+          currentBalance += balanceChange;
+          applied = true;
+        } else if (transaction.transaction_type === "return") {
+          balanceChange = transaction.amount;
+          currentBalance += balanceChange;
+          applied = true;
         }
+        if (applied) {
+          console.log(
+            `  [calculatePepiBookBalance] Applied Tx ID: ${transaction.id.substring(0, 8)}, Type: ${transaction.transaction_type}, Change: ${balanceChange}, New Balance: ${currentBalance}`,
+          );
+        }
+        if (transaction.transaction_type === "issuance") {
+          totalAdditions += transaction.amount;
+        } else if (transaction.transaction_type === "spending") {
+          totalSpent += transaction.amount;
+        }
+      }
     });
 
-    console.log(`[calculatePepiBookBalance] Final Calculated Balance: ${currentBalance}`);
+    console.log(
+      `[calculatePepiBookBalance] Calculated balance: ${pepiBookBalance} = ${initialAmount} (initial) + ${totalAdditions} (additions) - ${totalSpent} (spent)`,
+    );
     return currentBalance;
-  }, [transactions, activeBook]); // Depend on transactions and activeBook
+  }, [transactions, activeBook]);
 
-  // Function to handle opening the edit form
   const handleEditRequest = (request: FundRequest) => {
-      setRequestToEdit(request);
-      setIsRequestFormOpen(true); // Open the same dialog used for new requests
+    setRequestToEdit(request);
+    setIsRequestFormOpen(true);
   };
-  
-  // Reset requestToEdit when dialog closes
-  const handleRequestFormOpenChange = (open: boolean) => {
-      setIsRequestFormOpen(open);
-      if (!open) {
-          setRequestToEdit(null);
-      }
-  }
 
-  // Re-purpose isOwnTransaction to check request/transaction ownership based on agent_id
-  const isOwnItem = (item: TransactionListItem | FundRequest | TransactionWithAgent | null): boolean => {
-    return !!currentUserAgentId && !!item && item.agent_id === currentUserAgentId;
+  const handleRequestFormOpenChange = (open: boolean) => {
+    setIsRequestFormOpen(open);
+    if (!open) {
+      setRequestToEdit(null);
+    }
+  };
+
+  const isOwnItem = (
+    item: TransactionListItem | FundRequest | TransactionWithAgent | null,
+  ): boolean => {
+    return (
+      !!currentUserAgentId && !!item && item.agent_id === currentUserAgentId
+    );
   };
 
   const handleDeleteRequest = async (requestId: string) => {
-    if (!confirm("Are you sure you want to permanently delete this fund request?")) {
+    if (
+      !confirm("Are you sure you want to permanently delete this fund request?")
+    ) {
       return;
     }
-    setProcessingId(requestId); // Use processing state
+    setProcessingId(requestId);
     try {
       const result = await deleteFundRequestAction(requestId);
       if (result?.error) {
         throw new Error(result.error);
       }
       toast({ title: "Success", description: "Fund request deleted." });
-      // Optimistically remove the item from the list
-      setCombinedList((prevList) => 
-        prevList.filter((item) => item.id !== requestId)
+      setCombinedList((prevList) =>
+        prevList.filter((item) => item.id !== requestId),
       );
-      // List should refresh via real-time subscription eventually anyway
     } catch (err: any) {
       console.error("Error deleting request:", err);
-      toast({ title: "Error", description: err.message || "Failed to delete request.", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message || "Failed to delete request.",
+        variant: "destructive",
+      });
     } finally {
       setProcessingId(null);
     }
@@ -456,68 +522,80 @@ export default function TransactionList() {
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <Button onClick={() => setIsFormOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                New Transaction
+              <Plus className="mr-2 h-4 w-4" />
+              New Transaction
             </Button>
 
             {isAdmin && activeBook?.id && (
-                <Dialog open={isCiPaymentFormOpen} onOpenChange={setIsCiPaymentFormOpen}>
-                   <DialogTrigger asChild>
-                       <Button variant="secondary">
-                           <PlusCircle className="mr-2 h-4 w-4" /> New CI Payment
-                       </Button>
-                   </DialogTrigger>
-                   <DialogContent className="w-full max-w-xs sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-4 md:p-6">
-                       <DialogHeader>
-                           <DialogTitle>New CI Payment (Admin)</DialogTitle>
-                           <DialogDescription>
-                               Fill out the form to record a Confidential Informant payment. It will be submitted for approval.
-                           </DialogDescription>
-                       </DialogHeader>
-                       {userId && activeBook && currentAgentData && ( 
-                            <CiPaymentForm
-                               userId={userId} 
-                               userRole={'admin'}
-                               activeBookId={activeBook.id}
-                               agentData={currentAgentData} 
-                               onFormSubmitSuccess={() => {
-                                   setIsCiPaymentFormOpen(false);
-                                   fetchData();
-                               }}
-                           />
-                       )}
-                   </DialogContent>
-               </Dialog>
+              <Dialog
+                open={isCiPaymentFormOpen}
+                onOpenChange={setIsCiPaymentFormOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button variant="secondary">
+                    <PlusCircle className="mr-2 h-4 w-4" /> New CI Payment
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="w-full max-w-xs sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-4 md:p-6">
+                  <DialogHeader>
+                    <DialogTitle>New CI Payment (Admin)</DialogTitle>
+                    <DialogDescription>
+                      Fill out the form to record a Confidential Informant
+                      payment. It will be submitted for approval.
+                    </DialogDescription>
+                  </DialogHeader>
+                  {userId && activeBook && currentAgentData && (
+                    <CiPaymentForm
+                      userId={userId}
+                      userRole={"admin"}
+                      activeBookId={activeBook.id}
+                      agentData={currentAgentData}
+                      onFormSubmitSuccess={() => {
+                        setIsCiPaymentFormOpen(false);
+                        fetchData();
+                      }}
+                    />
+                  )}
+                </DialogContent>
+              </Dialog>
             )}
 
             {!isAdmin && (
               <>
-                 {/* Agent: Request Funds Button */}
-                 <Dialog open={isRequestFormOpen} onOpenChange={handleRequestFormOpenChange}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline">
-                         <PlusCircle className="mr-2 h-4 w-4" /> {requestToEdit ? "Edit Fund Request" : "Request Funds"}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                      <DialogHeader>
-                        <DialogTitle>{requestToEdit ? 'Edit Fund Request' : 'Request Additional Funds'}</DialogTitle>
-                        <DialogDescription>
-                          {requestToEdit ? 'Update the details of your rejected request below.' : 'Submit a request for more funds. Enter the amount and reason below.'}
-                        </DialogDescription>
-                      </DialogHeader>
-                      {/* Pass initial data correctly */} 
-                      <FundRequestForm 
-                          initialData={requestToEdit || undefined} 
-                          onSuccess={() => {
-                              setIsRequestFormOpen(false);
-                              setRequestToEdit(null);
-                              fetchData(); 
-                          }} 
-                      />
-                    </DialogContent>
-                  </Dialog>
-               </>
+                <Dialog
+                  open={isRequestFormOpen}
+                  onOpenChange={handleRequestFormOpenChange}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <PlusCircle className="mr-2 h-4 w-4" />{" "}
+                      {requestToEdit ? "Edit Fund Request" : "Request Funds"}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {requestToEdit
+                          ? "Edit Fund Request"
+                          : "Request Additional Funds"}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {requestToEdit
+                          ? "Update the details of your rejected request below."
+                          : "Submit a request for more funds. Enter the amount and reason below."}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <FundRequestForm
+                      initialData={requestToEdit || undefined}
+                      onSuccess={() => {
+                        setIsRequestFormOpen(false);
+                        setRequestToEdit(null);
+                        fetchData();
+                      }}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </>
             )}
           </div>
         </div>
@@ -600,87 +678,116 @@ export default function TransactionList() {
               <div
                 key={item.id}
                 className={`flex items-center justify-between p-4 border rounded-lg 
-                  ${item.itemType === 'request' && item.status === 'pending' ? 'border-blue-300 bg-blue-50' : ''}
-                  ${item.itemType === 'request' && item.status === 'rejected' ? 'border-red-300 bg-red-50' : ''}
-                  ${item.itemType === 'transaction' && item.status === 'rejected' ? 'border-red-300 bg-red-50' : ''}
+                  ${item.itemType === "request" && item.status === "pending" ? "border-blue-300 bg-blue-50" : ""}
+                  ${item.itemType === "request" && item.status === "rejected" ? "border-red-300 bg-red-50" : ""}
+                  ${item.itemType === "transaction" && item.status === "rejected" ? "border-red-300 bg-red-50" : ""}
                 `}
               >
                 <div className="flex items-center gap-3 flex-1">
                   <div className="p-2 bg-muted rounded-full">
-                    {item.itemType === 'transaction' 
-                      ? getTransactionIcon(item.transaction_type) 
-                      : item.status === 'pending' 
-                          ? <Loader2 className="h-4 w-4 text-blue-600 animate-spin" /> 
-                          : item.status === 'rejected'
-                              ? <XCircle className="h-4 w-4 text-red-600" /> 
-                              : <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                    }
+                    {item.itemType === "transaction" ? (
+                      getTransactionIcon(item.transaction_type)
+                    ) : item.status === "pending" ? (
+                      <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                    ) : item.status === "rejected" ? (
+                      <XCircle className="h-4 w-4 text-red-600" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                    )}
                   </div>
                   <div className="flex-1">
                     <div className="font-medium">
-                      {item.itemType === 'transaction' 
-                        ? (item.description?.startsWith("Approved fund request for") 
-                            ? `Issuance (Approved Request)` 
-                            : (item.description || `Transaction ${item.id.substring(0, 8)}`))
-                        : `Fund Request (Case: ${item.case_number || 'N/A'})`}
+                      {item.itemType === "transaction"
+                        ? item.description?.startsWith(
+                            "Approved fund request for",
+                          )
+                          ? `Issuance (Approved Request)`
+                          : item.description ||
+                            `Transaction ${item.id.substring(0, 8)}`
+                        : `Fund Request (Case: ${item.case_number || "N/A"})`}
                     </div>
                     <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span>{formatDate(item.created_at)}</span>
                       {item.agent?.name && (
                         <>
                           <span>•</span>
-                          <span>Agent: {item.agent.name} {item.agent.badge_number ? `(#${item.agent.badge_number})` : ''}</span>
+                          <span>
+                            Agent: {item.agent.name}{" "}
+                            {item.agent.badge_number
+                              ? `(#${item.agent.badge_number})`
+                              : ""}
+                          </span>
                         </>
                       )}
-                      {item.itemType === 'transaction' && item.receipt_number && (
-                        <>
-                          <span>•</span>
-                          <span>Receipt: {item.receipt_number}</span>
-                        </>
-                      )}
-                      {/* Display Spending Category if applicable */}
-                      {item.itemType === 'transaction' && item.transaction_type === 'spending' && item.spending_category && (
+                      {item.itemType === "transaction" &&
+                        item.receipt_number && (
+                          <>
+                            <span>•</span>
+                            <span>Receipt: {item.receipt_number}</span>
+                          </>
+                        )}
+                      {item.itemType === "transaction" &&
+                        item.transaction_type === "spending" &&
+                        item.spending_category && (
                           <>
                             <span>•</span>
                             <span>Category: {item.spending_category}</span>
                           </>
-                      )}
+                        )}
                     </div>
-                    {item.itemType === 'request' && item.status === 'rejected' && item.rejection_reason && (
+                    {item.itemType === "request" &&
+                      item.status === "rejected" &&
+                      item.rejection_reason && (
                         <div className="mt-1 p-2 text-xs bg-red-100 border border-red-200 text-red-800 rounded">
-                            <strong>Rejection Reason:</strong> {item.rejection_reason}
+                          <strong>Rejection Reason:</strong>{" "}
+                          {item.rejection_reason}
                         </div>
-                    )}
+                      )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
                   <div className="text-right">
                     <div
                       className={`font-medium 
-                        ${item.itemType === 'transaction' && item.transaction_type === "issuance" ? "text-green-600" : ''}
-                        ${item.itemType === 'transaction' && item.transaction_type === "return" ? "text-green-600" : ''}
-                        ${item.itemType === 'transaction' && item.transaction_type === "spending" ? "text-red-600" : ''}
-                        ${item.itemType === 'request' ? 'text-blue-600' : ''}
+                        ${item.itemType === "transaction" && item.transaction_type === "issuance" ? "text-green-600" : ""}
+                        ${item.itemType === "transaction" && item.transaction_type === "return" ? "text-green-600" : ""}
+                        ${item.itemType === "transaction" && item.transaction_type === "spending" ? "text-red-600" : ""}
+                        ${item.itemType === "request" ? "text-blue-600" : ""}
                       `}
                     >
-                      {item.itemType === 'transaction' && (item.transaction_type === "issuance" || item.transaction_type === "return") ? "+" : ''}
-                      {item.itemType === 'transaction' && item.transaction_type === "spending" ? "-" : ''}
+                      {item.itemType === "transaction" &&
+                      (item.transaction_type === "issuance" ||
+                        item.transaction_type === "return")
+                        ? "+"
+                        : ""}
+                      {item.itemType === "transaction" &&
+                      item.transaction_type === "spending"
+                        ? "-"
+                        : ""}
                       {formatCurrency(Math.abs(item.amount))}
                     </div>
                     <div className="flex flex-col gap-1 items-end mt-1">
-                      {item.itemType === 'transaction' 
-                          ? getTransactionBadge(item.transaction_type) 
-                          : <Badge variant="outline">Request</Badge>
-                      }
-                      {item.status && <TransactionStatus status={item.status as any} />}
-                      {item.itemType === 'request' && item.status === "rejected" && isOwnItem(item) && (
-                        <Badge variant="destructive" className="animate-pulse">
-                          Action Required
-                        </Badge>
+                      {item.itemType === "transaction" ? (
+                        getTransactionBadge(item.transaction_type)
+                      ) : (
+                        <Badge variant="outline">Request</Badge>
                       )}
+                      {item.status && (
+                        <TransactionStatus status={item.status as any} />
+                      )}
+                      {item.itemType === "request" &&
+                        item.status === "rejected" &&
+                        isOwnItem(item) && (
+                          <Badge
+                            variant="destructive"
+                            className="animate-pulse"
+                          >
+                            Action Required
+                          </Badge>
+                        )}
                     </div>
                   </div>
-                  {item.itemType === 'transaction' ? (
+                  {item.itemType === "transaction" ? (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -691,34 +798,41 @@ export default function TransactionList() {
                     >
                       View
                     </Button>
-                  ) : item.itemType === 'request' && isOwnItem(item) && (item.status === 'pending' || item.status === 'rejected') ? (
+                  ) : item.itemType === "request" &&
+                    isOwnItem(item) &&
+                    (item.status === "pending" ||
+                      item.status === "rejected") ? (
                     <>
-                        {item.status === 'rejected' && (
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="w-full justify-start text-xs px-2 h-7 mb-1"
-                                onClick={() => handleEditRequest(item)}
-                                disabled={processingId === item.id}
-                            >
-                                <Edit className="mr-1 h-3 w-3" /> Edit
-                            </Button> 
-                        )}
-                         <Button
-                            variant="ghost" 
-                            size="sm"
-                            className="w-full justify-start text-red-600 hover:bg-red-100 hover:text-red-700 text-xs px-2 h-7"
-                            onClick={() => handleDeleteRequest(item.id)}
-                            disabled={processingId === item.id}
-                            title="Delete Request"
+                      {item.status === "rejected" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start text-xs px-2 h-7 mb-1"
+                          onClick={() => handleEditRequest(item)}
+                          disabled={processingId === item.id}
                         >
-                            {processingId === item.id ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Trash2 className="mr-1 h-3 w-3" /> }
-                            Delete
+                          <Edit className="mr-1 h-3 w-3" /> Edit
                         </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start text-red-600 hover:bg-red-100 hover:text-red-700 text-xs px-2 h-7"
+                        onClick={() => handleDeleteRequest(item.id)}
+                        disabled={processingId === item.id}
+                        title="Delete Request"
+                      >
+                        {processingId === item.id ? (
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="mr-1 h-3 w-3" />
+                        )}
+                        Delete
+                      </Button>
                     </>
                   ) : (
-                      <div className="w-[64px] h-[32px]"></div>
-                  ) }
+                    <div className="w-[64px] h-[32px]"></div>
+                  )}
                 </div>
               </div>
             ))}
