@@ -238,6 +238,7 @@ export default function TransactionForm({
         transaction_date: transactionDate
           ? format(transactionDate, "yyyy-MM-dd")
           : null,
+        document_url: fileUrl,
       };
 
       // Add spending-specific fields if applicable
