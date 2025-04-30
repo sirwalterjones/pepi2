@@ -424,7 +424,11 @@ export default function TransactionDetails({
           updated_at: updateData.updated_at,
           document_url: fileUrl, // Add the document URL
           transaction_date: editedTransaction.transaction_date
-            ? editedTransaction.transaction_date.toISOString().split("T")[0]
+            ? editedTransaction.transaction_date instanceof Date
+              ? editedTransaction.transaction_date.toISOString().split("T")[0]
+              : new Date(editedTransaction.transaction_date)
+                  .toISOString()
+                  .split("T")[0]
             : null,
           // Add spending fields if applicable
           ...(editedTransaction.transaction_type === "spending" && {
@@ -438,7 +442,13 @@ export default function TransactionDetails({
             date_to_evidence:
               editedTransaction.spending_category === "Evidence Purchase" &&
               editedTransaction.date_to_evidence
-                ? editedTransaction.date_to_evidence.toISOString().split("T")[0]
+                ? editedTransaction.date_to_evidence instanceof Date
+                  ? editedTransaction.date_to_evidence
+                      .toISOString()
+                      .split("T")[0]
+                  : new Date(editedTransaction.date_to_evidence)
+                      .toISOString()
+                      .split("T")[0]
                 : null,
           }),
           // If this is an agent editing their rejected transaction, reset to pending
