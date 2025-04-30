@@ -39,9 +39,9 @@ export default function MonthlyReport() {
           .select(
             "*, agents(id, name, badge_number), created_by_user:created_by(id, email, user_metadata)",
           )
-          .gte("created_at", startDate.toISOString())
-          .lte("created_at", endDate.toISOString())
-          .order("created_at", { ascending: false });
+          .gte("transaction_date", startDate.toISOString().split("T")[0])
+          .lte("transaction_date", endDate.toISOString().split("T")[0])
+          .order("transaction_date", { ascending: false });
 
         if (error) throw error;
 
