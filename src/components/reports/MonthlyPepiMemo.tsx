@@ -37,6 +37,12 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
     totalAdditionalUnitIssue: data?.totalAdditionalUnitIssue || 0,
     endingBalance: data?.endingBalance || 0,
     ytdExpenditures: data?.ytdExpenditures || 0,
+    // New dashboard metrics
+    initialFunding: data?.initialFunding || 0,
+    issuedToAgents: data?.issuedToAgents || 0,
+    spentByAgents: data?.spentByAgents || 0,
+    returnedByAgents: data?.returnedByAgents || 0,
+    bookBalance: data?.bookBalance || 0,
   };
 
   return (
@@ -162,6 +168,54 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
               </td>
               <td className="border border-black px-2 py-1 text-right">
                 {formatCurrency(memoData.ytdExpenditures)}
+              </td>
+            </tr>
+
+            {/* Dashboard Metrics Section */}
+            <tr className="border-t-4 border-black">
+              <td
+                colSpan={2}
+                className="border border-black px-2 py-1 font-bold text-center"
+              >
+                Dashboard Metrics
+              </td>
+            </tr>
+            <tr className="border border-black">
+              <td className="border border-black px-2 py-1">Initial Funding</td>
+              <td className="border border-black px-2 py-1 text-right">
+                {formatCurrency(memoData.initialFunding)}
+              </td>
+            </tr>
+            <tr className="border border-black">
+              <td className="border border-black px-2 py-1">
+                Issued To Agents
+              </td>
+              <td className="border border-black px-2 py-1 text-right">
+                {formatCurrency(memoData.issuedToAgents)}
+              </td>
+            </tr>
+            <tr className="border border-black">
+              <td className="border border-black px-2 py-1">
+                Total Spent By Agents
+              </td>
+              <td className="border border-black px-2 py-1 text-right">
+                {formatCurrency(memoData.spentByAgents)}
+              </td>
+            </tr>
+            <tr className="border border-black">
+              <td className="border border-black px-2 py-1">
+                Total Returned By Agents
+              </td>
+              <td className="border border-black px-2 py-1 text-right">
+                {formatCurrency(memoData.returnedByAgents)}
+              </td>
+            </tr>
+            <tr className="border border-black">
+              <td className="border border-black px-2 py-1">
+                Book Balance (Safe Cash)
+              </td>
+              <td className="border border-black px-2 py-1 text-right">
+                {formatCurrency(memoData.bookBalance)}
               </td>
             </tr>
           </tbody>

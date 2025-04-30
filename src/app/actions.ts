@@ -1935,6 +1935,12 @@ export type MonthlyPepiMemoData = {
   cashOnHand: number;
   endingBalance: number;
   ytdExpenditures: number;
+  // New fields to match dashboard metrics
+  initialFunding: number; // PEPI book starting amount
+  issuedToAgents: number; // Approved funds moved to agents
+  spentByAgents: number; // Approved spending by agents
+  returnedByAgents: number; // Approved funds returned by agents
+  bookBalance: number; // Remaining funds in PEPI Book (minus all spent items)
 };
 
 /**
@@ -2261,7 +2267,53 @@ export async function getMonthlyPepiMemoDataAction(
 
     console.log("[getMonthlyPepiMemoDataAction] All calculations complete.");
 
-    // 9. Prepare result data
+    // 9. Calculate dashboard-style metrics for the month
+    // Get the book's initial funding amount
+    const initialFunding = activeBook.starting_amount || 0;
+
+    // Calculate metrics using the same logic as DashboardOverview
+    let totalIssuedToAgents = 0;
+    let totalSpentByAgents = 0;
+    let totalReturnedByAgents = 0;
+    let totalAddedToBook = 0;
+
+    // Process all transactions for the month to calculate dashboard metrics
+    monthlyTransactions?.forEach((tx) => {
+      if (tx.status === "approved") {
+        if (tx.transaction_type === "issuance") {
+          if (tx.description?.toLowerCase().includes("approved fund request")) {
+            // Issuance TO an agent
+            totalIssuedToAgents += tx.amount;
+          } else if (
+            tx.receipt_number?.startsWith("ADD") ||
+            tx.description?.toLowerCase().includes("add funds")
+          ) {
+            // Additions to the book
+            totalAddedToBook += tx.amount;
+          }
+        } else if (tx.transaction_type === "spending") {
+          // All spending reduces the total balance
+          totalSpentByAgents += tx.amount;
+        } else if (tx.transaction_type === "return") {
+          // Returns affect agent cash on hand
+          totalReturnedByAgents += tx.amount;
+        }
+      }
+    });
+
+    // Calculate book balance: initial + additions - expenditures
+    const pepiBookBalance =
+      initialFunding + totalAddedToBook - totalSpentByAgents;
+
+    // Calculate safe cash: current balance - what's issued to agents
+    const safeCashBalance =
+      pepiBookBalance - totalIssuedToAgents + totalReturnedByAgents;
+
+    console.log(
+      `[getMonthlyPepiMemoDataAction] Dashboard metrics calculated: initialFunding=${initialFunding}, issuedToAgents=${totalIssuedToAgents}, spentByAgents=${totalSpentByAgents}, returnedByAgents=${totalReturnedByAgents}, bookBalance=${safeCashBalance}`,
+    );
+
+    // 10. Prepare result data
     const memoData: MonthlyPepiMemoData = {
       bookYear,
       monthName,
@@ -2276,6 +2328,12 @@ export async function getMonthlyPepiMemoDataAction(
       cashOnHand,
       endingBalance,
       ytdExpenditures,
+      // Add new dashboard-style metrics
+      initialFunding,
+      issuedToAgents: totalIssuedToAgents,
+      spentByAgents: totalSpentByAgents,
+      returnedByAgents: totalReturnedByAgents,
+      bookBalance: safeCashBalance,
     };
 
     return { success: true, data: memoData };
