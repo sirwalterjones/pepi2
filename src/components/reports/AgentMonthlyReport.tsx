@@ -39,22 +39,40 @@ export default function AgentMonthlyReport() {
   const { activeBook } = usePepiBooks();
   const supabase = createClient();
 
-  // Generate last 12 months options for the dropdown
+  // Generate month options for the dropdown based on the active PEPI book year
   const getMonthOptions = () => {
     const options = [];
     const today = new Date();
+    const currentYear = today.getFullYear();
 
-    for (let i = 0; i < 12; i++) {
-      const date = subMonths(today, i);
+    // If there's an active book, use its year, otherwise use current year
+    const bookYear = activeBook ? parseInt(activeBook.year) : currentYear;
+
+    // Create options for all months in the PEPI book year
+    for (let month = 0; month < 12; month++) {
+      const date = new Date(bookYear, month, 1);
+      // Skip future months
+      if (date > today) continue;
+
       const value = format(date, "yyyy-MM");
       const label = format(date, "MMMM yyyy");
       options.push({ value, label });
     }
 
-    return options;
+    // Sort in descending order (most recent first)
+    return options.sort((a, b) => {
+      return b.value.localeCompare(a.value);
+    });
   };
 
   const monthOptions = getMonthOptions();
+
+  // Set default selected month to the most recent month in the options
+  useEffect(() => {
+    if (monthOptions.length > 0) {
+      setSelectedMonth(monthOptions[0].value);
+    }
+  }, [activeBook?.year]);
 
   const generateMonthlyReport = async () => {
     setIsGenerating(true);
@@ -85,14 +103,20 @@ export default function AgentMonthlyReport() {
 
       // For each agent, get their transactions
       for (const agent of activeAgents) {
-        // Get transactions for this agent in the current month
-        const { data: transactions, error } = await supabase
+        // Get transactions for this agent in the selected month
+        // First try to filter by transaction_date if it exists
+        let query = supabase
           .from("transactions")
           .select("*")
           .eq("agent_id", agent.id)
-          .gte("created_at", formattedFirstDay)
-          .lte("created_at", formattedLastDay)
           .order("created_at", { ascending: true });
+
+        // Use transaction_date if available, otherwise fall back to created_at
+        query = query.or(
+          `transaction_date.gte.${formattedFirstDay},transaction_date.lte.${formattedLastDay},and(created_at.gte.${formattedFirstDay},created_at.lte.${formattedLastDay})`,
+        );
+
+        const { data: transactions, error } = await query;
 
         if (error) {
           console.error(
@@ -128,10 +152,21 @@ export default function AgentMonthlyReport() {
 
         // Add agents with transactions to the report, regardless of role
         if (transactions && transactions.length > 0) {
+          // Double-check that we're only including transactions from the selected month
+          const filteredTransactions = transactions.filter((transaction) => {
+            const transactionDate = new Date(
+              transaction.transaction_date || transaction.created_at,
+            );
+            return (
+              transactionDate >= firstDayOfMonth &&
+              transactionDate <= lastDayOfMonth
+            );
+          });
+
           // Add to report data
           reportByAgent[agent.id] = {
             agent,
-            transactions: transactions || [],
+            transactions: filteredTransactions || [],
             totals: {
               issuance: issuanceTotal,
               spending: spendingTotal,
@@ -226,7 +261,7 @@ export default function AgentMonthlyReport() {
           <h3>Transaction History</h3>
       `;
 
-      if (transactions.length === 0) {
+      if (filteredTransactions.length === 0) {
         htmlContent += `<p>No transactions recorded for this period.</p>`;
       } else {
         htmlContent += `
@@ -244,7 +279,7 @@ export default function AgentMonthlyReport() {
             <tbody>
         `;
 
-        transactions.forEach((transaction) => {
+        filteredTransactions.forEach((transaction) => {
           htmlContent += `
             <tr>
               <td>${format(new Date(transaction.transaction_date || transaction.created_at || new Date()), "MM/dd/yyyy")}</td>
