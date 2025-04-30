@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "../../../../supabase/client";
-import { PepiBook } from "@/types/schema";
+import { PepiBook, Transaction } from "@/types/schema";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
 import PepiBookForm from "@/components/pepi-books/PepiBookForm";
 import PepiBookList from "@/components/pepi-books/PepiBookList";
 import PepiBookAddFundsForm from "@/components/pepi-books/PepiBookAddFundsForm";
+import PepiBookFundAdditions from "@/components/pepi-books/PepiBookFundAdditions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,6 +34,8 @@ export default function PepiBooksPage() {
   const [isAddingFunds, setIsAddingFunds] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addFundsDialogOpen, setAddFundsDialogOpen] = useState(false);
+  const [fundAdditions, setFundAdditions] = useState<Transaction[]>([]);
+  const [loadingAdditions, setLoadingAdditions] = useState(false);
   const supabase = createClient();
 
   const handleCreatePepiBook = async (data: {
@@ -190,6 +193,41 @@ export default function PepiBooksPage() {
     }).format(amount);
   };
 
+  // Fetch fund additions when activeBook changes
+  useEffect(() => {
+    const fetchFundAdditions = async () => {
+      if (!activeBook) return;
+
+      setLoadingAdditions(true);
+      try {
+        const { data, error } = await supabase
+          .from("transactions")
+          .select("*")
+          .eq("pepi_book_id", activeBook.id)
+          .eq("transaction_type", "issuance")
+          .eq("status", "approved")
+          .or(`receipt_number.ilike.%ADD%,description.ilike.%add fund%`)
+          .order("created_at", { ascending: false });
+
+        if (error) throw new Error(error.message);
+
+        // Filter out initial funding transaction
+        const additions =
+          data?.filter(
+            (tx) => !tx.description?.toLowerCase().includes("initial funding"),
+          ) || [];
+
+        setFundAdditions(additions);
+      } catch (error) {
+        console.error("Error fetching fund additions:", error);
+      } finally {
+        setLoadingAdditions(false);
+      }
+    };
+
+    fetchFundAdditions();
+  }, [activeBook, supabase]);
+
   return (
     <div className="container py-6 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -307,6 +345,13 @@ export default function PepiBooksPage() {
         loading={loading}
         onRefresh={refresh}
       />
+
+      {activeBook && (
+        <PepiBookFundAdditions
+          fundAdditions={fundAdditions}
+          loading={loadingAdditions}
+        />
+      )}
 
       {error && (
         <Card className="border-destructive">
