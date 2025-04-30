@@ -48,6 +48,9 @@ export default function AgentMonthlyReport() {
     // If there's an active book, use its year, otherwise use current year
     const bookYear = activeBook ? parseInt(activeBook.year) : currentYear;
 
+    // Add "All Year" option
+    options.push({ value: `${bookYear}-all`, label: `All Year ${bookYear}` });
+
     // Create options for all months in the PEPI book year
     for (let month = 0; month < 12; month++) {
       const date = new Date(bookYear, month, 1);
@@ -61,6 +64,9 @@ export default function AgentMonthlyReport() {
 
     // Sort in descending order (most recent first)
     return options.sort((a, b) => {
+      // Keep "All Year" at the top
+      if (a.value.includes("-all")) return -1;
+      if (b.value.includes("-all")) return 1;
       return b.value.localeCompare(a.value);
     });
   };
@@ -79,17 +85,29 @@ export default function AgentMonthlyReport() {
     setReportData(null);
 
     try {
-      // Parse the selected month
-      const [year, month] = selectedMonth.split("-").map(Number);
-      const selectedDate = new Date(year, month - 1); // month is 0-indexed in JS Date
+      // Check if "All Year" is selected
+      const isAllYear = selectedMonth.includes("-all");
+      let firstDayOfMonth, lastDayOfMonth, formattedFirstDay, formattedLastDay;
 
-      // Get date range for the selected month
-      const firstDayOfMonth = startOfMonth(selectedDate);
-      const lastDayOfMonth = endOfMonth(selectedDate);
+      if (isAllYear) {
+        // Parse the year from the "All Year" option
+        const year = parseInt(selectedMonth.split("-")[0]);
+        // Get date range for the entire year
+        firstDayOfMonth = new Date(year, 0, 1); // January 1st
+        lastDayOfMonth = new Date(year, 11, 31); // December 31st
+      } else {
+        // Parse the selected month
+        const [year, month] = selectedMonth.split("-").map(Number);
+        const selectedDate = new Date(year, month - 1); // month is 0-indexed in JS Date
+
+        // Get date range for the selected month
+        firstDayOfMonth = startOfMonth(selectedDate);
+        lastDayOfMonth = endOfMonth(selectedDate);
+      }
 
       // Format dates properly for Supabase query
-      const formattedFirstDay = firstDayOfMonth.toISOString();
-      const formattedLastDay = lastDayOfMonth.toISOString();
+      formattedFirstDay = firstDayOfMonth.toISOString();
+      formattedLastDay = lastDayOfMonth.toISOString();
 
       console.log(
         `Fetching transactions from ${formattedFirstDay} to ${formattedLastDay}`,
@@ -200,9 +218,15 @@ export default function AgentMonthlyReport() {
     if (!printWindow) return;
 
     // Get selected month and year for the header
-    const [year, month] = selectedMonth.split("-").map(Number);
-    const selectedDate = new Date(year, month - 1);
-    const currentMonth = format(selectedDate, "MMMM yyyy");
+    let currentMonth;
+    if (selectedMonth.includes("-all")) {
+      const year = selectedMonth.split("-")[0];
+      currentMonth = `Full Year ${year}`;
+    } else {
+      const [year, month] = selectedMonth.split("-").map(Number);
+      const selectedDate = new Date(year, month - 1);
+      currentMonth = format(selectedDate, "MMMM yyyy");
+    }
 
     // Start building the HTML content
     let htmlContent = `
