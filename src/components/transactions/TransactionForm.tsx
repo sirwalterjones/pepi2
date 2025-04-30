@@ -279,7 +279,7 @@ export default function TransactionForm({
         status: isAdmin ? "approved" : "pending",
         review_notes: null,
         transaction_date: transactionDate
-          ? transactionDate.toISOString().split("T")[0]
+          ? new Date(transactionDate).toISOString().split("T")[0]
           : null,
         document_url: fileUrl,
       };
