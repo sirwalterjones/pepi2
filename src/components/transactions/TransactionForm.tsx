@@ -99,6 +99,13 @@ export default function TransactionForm({
     setEcrNumber("");
     setDateToEvidence(undefined);
     setTransactionDate(undefined);
+
+    // Reset file upload state
+    setSelectedFile(null);
+    setUploadError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   // Generate a receipt number for all transaction types
@@ -402,6 +409,21 @@ export default function TransactionForm({
     if (!open) {
       setSelectedFile(null);
       setUploadError(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }, [open]);
+
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (open) {
+      // Reset file upload state when opening a new transaction form
+      setSelectedFile(null);
+      setUploadError(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   }, [open]);
 
