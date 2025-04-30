@@ -13,25 +13,61 @@ import {
 } from "../ui/card";
 import { useAgents } from "@/hooks/useAgents";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
-import { Download, Printer, Loader2 } from "lucide-react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { Download, Printer, Loader2, CalendarIcon } from "lucide-react";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+  addMonths,
+} from "date-fns";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 
 export default function AgentMonthlyReport() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportData, setReportData] = useState<any>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    format(new Date(), "yyyy-MM"),
+  );
   const { agents } = useAgents();
   const { activeBook } = usePepiBooks();
   const supabase = createClient();
+
+  // Generate last 12 months options for the dropdown
+  const getMonthOptions = () => {
+    const options = [];
+    const today = new Date();
+
+    for (let i = 0; i < 12; i++) {
+      const date = subMonths(today, i);
+      const value = format(date, "yyyy-MM");
+      const label = format(date, "MMMM yyyy");
+      options.push({ value, label });
+    }
+
+    return options;
+  };
+
+  const monthOptions = getMonthOptions();
 
   const generateMonthlyReport = async () => {
     setIsGenerating(true);
     setReportData(null);
 
     try {
-      // Get current month date range
-      const today = new Date();
-      const firstDayOfMonth = startOfMonth(today);
-      const lastDayOfMonth = endOfMonth(today);
+      // Parse the selected month
+      const [year, month] = selectedMonth.split("-").map(Number);
+      const selectedDate = new Date(year, month - 1); // month is 0-indexed in JS Date
+
+      // Get date range for the selected month
+      const firstDayOfMonth = startOfMonth(selectedDate);
+      const lastDayOfMonth = endOfMonth(selectedDate);
 
       // Format dates properly for Supabase query
       const formattedFirstDay = firstDayOfMonth.toISOString();
@@ -128,8 +164,10 @@ export default function AgentMonthlyReport() {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
-    // Get current month and year for the header
-    const currentMonth = format(new Date(), "MMMM yyyy");
+    // Get selected month and year for the header
+    const [year, month] = selectedMonth.split("-").map(Number);
+    const selectedDate = new Date(year, month - 1);
+    const currentMonth = format(selectedDate, "MMMM yyyy");
 
     // Start building the HTML content
     let htmlContent = `
@@ -278,10 +316,34 @@ export default function AgentMonthlyReport() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+          <div className="flex items-center space-x-4 mb-6">
+            <div className="flex-1">
+              <label
+                htmlFor="month-select"
+                className="block text-sm font-medium mb-1"
+              >
+                Select Month
+              </label>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select month" />
+                </SelectTrigger>
+                <SelectContent>
+                  {monthOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <p>
             This report will generate a printable document for each active agent
             and administrator who has transactions, showing their activity for
-            the current month, with totals and signature lines for verification.
+            the selected month, with totals and signature lines for
+            verification.
           </p>
 
           {reportData !== null && (
@@ -317,7 +379,14 @@ export default function AgentMonthlyReport() {
               </p>
               <p className="text-sm mt-1">
                 Found {Object.keys(reportData).length} personnel with
-                transactions for {format(new Date(), "MMMM yyyy")}
+                transactions for{" "}
+                {format(
+                  new Date(
+                    selectedMonth.split("-")[0],
+                    parseInt(selectedMonth.split("-")[1]) - 1,
+                  ),
+                  "MMMM yyyy",
+                )}
               </p>
               {Object.keys(reportData).length > 0 ? (
                 <p className="text-sm mt-2">
