@@ -382,9 +382,10 @@ export default function TransactionList() {
 
   // Helper function to get the display date (transaction_date if available, otherwise created_at)
   const getDisplayDate = (item: any) => {
+    if (!item) return "";
     return item.transaction_date
       ? formatDate(item.transaction_date)
-      : formatDate(item.created_at);
+      : formatDate(item.created_at || new Date().toISOString());
   };
 
   const agentBalance = useMemo(() => {

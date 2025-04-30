@@ -7,6 +7,14 @@ interface ReceiptTemplateProps {
 }
 
 export default function ReceiptTemplate({ transaction }: ReceiptTemplateProps) {
+  // Return a placeholder if transaction is undefined
+  if (!transaction) {
+    return (
+      <div className="border rounded-lg p-6 bg-white">
+        No transaction data available
+      </div>
+    );
+  }
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -24,9 +32,10 @@ export default function ReceiptTemplate({ transaction }: ReceiptTemplateProps) {
 
   // Use transaction_date if available, otherwise fall back to created_at
   const getDisplayDate = (transaction: any) => {
+    if (!transaction) return "";
     return transaction.transaction_date
       ? formatDate(transaction.transaction_date)
-      : formatDate(transaction.created_at);
+      : formatDate(transaction.created_at || new Date().toISOString());
   };
 
   const getTransactionTypeLabel = (type: TransactionType) => {

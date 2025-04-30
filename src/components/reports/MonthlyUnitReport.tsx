@@ -187,7 +187,9 @@ export default function MonthlyUnitReport() {
                 <TableRow key={tx.id}>
                   <TableCell className="whitespace-nowrap">
                     {format(
-                      new Date(tx.transaction_date || tx.created_at),
+                      new Date(
+                        tx.transaction_date || tx.created_at || new Date(),
+                      ),
                       "P p",
                     )}
                   </TableCell>
