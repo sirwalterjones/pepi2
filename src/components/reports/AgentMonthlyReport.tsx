@@ -261,7 +261,7 @@ export default function AgentMonthlyReport() {
           <h3>Transaction History</h3>
       `;
 
-      if (filteredTransactions.length === 0) {
+      if (transactions.length === 0) {
         htmlContent += `<p>No transactions recorded for this period.</p>`;
       } else {
         htmlContent += `
@@ -279,7 +279,7 @@ export default function AgentMonthlyReport() {
             <tbody>
         `;
 
-        filteredTransactions.forEach((transaction) => {
+        transactions.forEach((transaction) => {
           htmlContent += `
             <tr>
               <td>${format(new Date(transaction.transaction_date || transaction.created_at || new Date()), "MM/dd/yyyy")}</td>
