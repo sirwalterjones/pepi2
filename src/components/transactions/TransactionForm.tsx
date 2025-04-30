@@ -519,13 +519,13 @@ export default function TransactionForm({
                     selected={transactionDate}
                     onSelect={(date) => {
                       if (date) {
-                        // Ensure date is set to noon to avoid timezone issues
                         // Create date at noon UTC to avoid timezone issues
+                        // Add one day to compensate for timezone offset
                         const adjustedDate = new Date(
                           Date.UTC(
                             date.getFullYear(),
                             date.getMonth(),
-                            date.getDate(),
+                            date.getDate() + 1,
                             12,
                             0,
                             0,
@@ -713,13 +713,13 @@ export default function TransactionForm({
                             selected={dateToEvidence}
                             onSelect={(date) => {
                               if (date) {
-                                // Ensure date is set to noon to avoid timezone issues
                                 // Create date at noon UTC to avoid timezone issues
+                                // Add one day to compensate for timezone offset
                                 const adjustedDate = new Date(
                                   Date.UTC(
                                     date.getFullYear(),
                                     date.getMonth(),
-                                    date.getDate(),
+                                    date.getDate() + 1,
                                     12,
                                     0,
                                     0,
