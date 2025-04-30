@@ -279,7 +279,7 @@ export default function TransactionForm({
         status: isAdmin ? "approved" : "pending",
         review_notes: null,
         transaction_date: transactionDate
-          ? format(transactionDate, "yyyy-MM-dd")
+          ? transactionDate.toISOString().split("T")[0]
           : null,
         document_url: fileUrl,
       };
@@ -296,10 +296,13 @@ export default function TransactionForm({
         transactionData.paid_to = paidTo.trim() || null;
         if (spendingCategory === "Evidence Purchase") {
           transactionData.ecr_number = ecrNumber.trim();
-          // Format date as YYYY-MM-DD for the database
-          transactionData.date_to_evidence = dateToEvidence
-            ? format(dateToEvidence, "yyyy-MM-dd")
-            : null;
+          // Store the date as-is without timezone adjustments
+          const adjustedDate = new Date(dateToEvidence);
+          // Set to noon to avoid any time issues
+          adjustedDate.setHours(12, 0, 0, 0);
+          transactionData.date_to_evidence = adjustedDate
+            .toISOString()
+            .split("T")[0];
         }
       }
 
@@ -519,19 +522,10 @@ export default function TransactionForm({
                     selected={transactionDate}
                     onSelect={(date) => {
                       if (date) {
-                        // Create date at noon UTC to avoid timezone issues
-                        // Add one day to compensate for timezone offset
-                        const adjustedDate = new Date(
-                          Date.UTC(
-                            date.getFullYear(),
-                            date.getMonth(),
-                            date.getDate() + 1,
-                            12,
-                            0,
-                            0,
-                            0,
-                          ),
-                        );
+                        // Store the date as-is without timezone adjustments
+                        const adjustedDate = new Date(date);
+                        // Set to noon to avoid any time issues
+                        adjustedDate.setHours(12, 0, 0, 0);
                         setTransactionDate(adjustedDate);
                       } else {
                         setTransactionDate(undefined);
@@ -713,19 +707,10 @@ export default function TransactionForm({
                             selected={dateToEvidence}
                             onSelect={(date) => {
                               if (date) {
-                                // Create date at noon UTC to avoid timezone issues
-                                // Add one day to compensate for timezone offset
-                                const adjustedDate = new Date(
-                                  Date.UTC(
-                                    date.getFullYear(),
-                                    date.getMonth(),
-                                    date.getDate() + 1,
-                                    12,
-                                    0,
-                                    0,
-                                    0,
-                                  ),
-                                );
+                                // Store the date as-is without timezone adjustments
+                                const adjustedDate = new Date(date);
+                                // Set to noon to avoid any time issues
+                                adjustedDate.setHours(12, 0, 0, 0);
                                 setDateToEvidence(adjustedDate);
                               } else {
                                 setDateToEvidence(undefined);

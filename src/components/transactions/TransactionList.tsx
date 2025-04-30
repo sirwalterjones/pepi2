@@ -369,13 +369,14 @@ export default function TransactionList() {
   };
 
   const formatDate = (dateString: string) => {
-    // Parse the date string and format it consistently
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    if (!dateString) return "";
+    // Create a date object without timezone conversion
+    const [year, month, day] = dateString.split("T")[0].split("-").map(Number);
+    // Month is 0-indexed in JavaScript Date
+    return new Date(year, month - 1, day).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
-      timeZone: "UTC", // Use UTC to ensure consistent date display
     });
   };
 
