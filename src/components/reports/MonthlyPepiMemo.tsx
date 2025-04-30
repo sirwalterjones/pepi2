@@ -21,16 +21,21 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
   // Ensure all values are properly calculated and displayed
   const memoData = {
     ...data,
-    // Make sure cashOnHand is calculated correctly
-    cashOnHand: data.endingBalance,
+    // Make sure cashOnHand is calculated correctly and handle undefined data
+    cashOnHand: data?.endingBalance || 0,
     // Ensure all values are numbers (not null/undefined)
-    beginningBalance: data.beginningBalance || 0,
-    totalAgentIssues: data.totalAgentIssues || 0,
-    totalAgentReturns: data.totalAgentReturns || 0,
-    totalExpenditures: data.totalExpenditures || 0,
-    totalAdditionalUnitIssue: data.totalAdditionalUnitIssue || 0,
-    endingBalance: data.endingBalance || 0,
-    ytdExpenditures: data.ytdExpenditures || 0,
+    commanderName: data?.commanderName || "Commander",
+    memoDate: data?.memoDate || "-",
+    monthName: data?.monthName || "-",
+    bookYear: data?.bookYear || "-",
+    reconciliationDate: data?.reconciliationDate || "-",
+    beginningBalance: data?.beginningBalance || 0,
+    totalAgentIssues: data?.totalAgentIssues || 0,
+    totalAgentReturns: data?.totalAgentReturns || 0,
+    totalExpenditures: data?.totalExpenditures || 0,
+    totalAdditionalUnitIssue: data?.totalAdditionalUnitIssue || 0,
+    endingBalance: data?.endingBalance || 0,
+    ytdExpenditures: data?.ytdExpenditures || 0,
   };
 
   return (
