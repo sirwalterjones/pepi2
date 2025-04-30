@@ -251,7 +251,6 @@ export default function TransactionList() {
       // Calculate running balances after fetching transactions
       const { balances } = calculatePepiBookBalance();
       setRunningBalances(balances);
-      console.log("Updated running balances:", balances);
     } catch (error: any) {
       console.error("Error fetching data:", error);
       toast({
@@ -415,16 +414,10 @@ export default function TransactionList() {
     );
 
     // Sort transactions by date for chronological processing
-    const sortedTransactions = [...transactions].sort((a, b) => {
-      // Use transaction_date if available, otherwise fall back to created_at
-      const dateA = a.transaction_date
-        ? new Date(a.transaction_date).getTime()
-        : new Date(a.created_at).getTime();
-      const dateB = b.transaction_date
-        ? new Date(b.transaction_date).getTime()
-        : new Date(b.created_at).getTime();
-      return dateA - dateB;
-    });
+    const sortedTransactions = [...transactions].sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    );
 
     // Find initial funding transaction
     const initialFundingTx = sortedTransactions.find(
@@ -459,38 +452,35 @@ export default function TransactionList() {
         transaction.status === "approved"
       ) {
         let balanceChange = 0;
+        let applied = false;
 
-        // Calculate balance change based on transaction type
-        if (transaction.transaction_type === "issuance") {
-          // All issuances add to the book balance
+        if (
+          transaction.transaction_type === "issuance" &&
+          transaction.agent_id === null
+        ) {
+          // Only add to book balance if it's an issuance to the book itself (not to an agent)
           balanceChange = transaction.amount;
+          currentBalance += balanceChange;
+          applied = true;
         } else if (transaction.transaction_type === "spending") {
           // All spending reduces the book balance
           balanceChange = -transaction.amount;
+          currentBalance += balanceChange;
+          applied = true;
         } else if (transaction.transaction_type === "return") {
-          // Returns add to the book balance
-          balanceChange = transaction.amount;
+          // IMPORTANT: Agent returns should NOT affect the PEPI book balance
+          // They only affect the agent's personal balance, not the overall book balance
+          applied = false; // Don't apply returns to the book balance
         }
 
-        // Update the current balance
-        currentBalance += balanceChange;
-
-        console.log(
-          `  [calculatePepiBookBalance] Applied Tx ID: ${transaction.id.substring(0, 8)}, Type: ${transaction.transaction_type}, Change: ${balanceChange}, New Balance: ${currentBalance}`,
-        );
+        if (applied) {
+          console.log(
+            `  [calculatePepiBookBalance] Applied Tx ID: ${transaction.id.substring(0, 8)}, Type: ${transaction.transaction_type}, Change: ${balanceChange}, New Balance: ${currentBalance}`,
+          );
+        }
 
         // Store the running balance for this transaction
         balances[transaction.id] = currentBalance;
-      } else {
-        // For non-approved transactions, maintain the previous balance
-        const prevTxIndex =
-          sortedTransactions.findIndex((tx) => tx.id === transaction.id) - 1;
-        if (prevTxIndex >= 0) {
-          const prevTxId = sortedTransactions[prevTxIndex].id;
-          balances[transaction.id] = balances[prevTxId] || currentBalance;
-        } else {
-          balances[transaction.id] = currentBalance;
-        }
       }
     });
 
