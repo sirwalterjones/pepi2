@@ -2231,4 +2231,4 @@ export async function getMonthlyPepiMemoDataAction(
       totalAgentIssues -
       totalExpenditures;
     console.log(
-      `[getMonthlyPepiMemoDataAction] Ending Balance Calculate
+      `[getMonthlyPepiMemoDataAction] Ending Balance Calculated: ${endingBalance}`
