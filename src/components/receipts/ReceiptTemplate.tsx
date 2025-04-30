@@ -22,6 +22,13 @@ export default function ReceiptTemplate({ transaction }: ReceiptTemplateProps) {
     });
   };
 
+  // Use transaction_date if available, otherwise fall back to created_at
+  const getDisplayDate = (transaction: any) => {
+    return transaction.transaction_date
+      ? formatDate(transaction.transaction_date)
+      : formatDate(transaction.created_at);
+  };
+
   const getTransactionTypeLabel = (type: TransactionType) => {
     switch (type) {
       case "issuance":
@@ -50,7 +57,7 @@ export default function ReceiptTemplate({ transaction }: ReceiptTemplateProps) {
 
         <div className="flex justify-between">
           <span className="font-medium">Date:</span>
-          <span>{formatDate(transaction.created_at)}</span>
+          <span>{getDisplayDate(transaction)}</span>
         </div>
 
         <div className="flex justify-between">
@@ -59,7 +66,7 @@ export default function ReceiptTemplate({ transaction }: ReceiptTemplateProps) {
         </div>
 
         {/* Spending Specific Fields START */}
-        {transaction.transaction_type === 'spending' && (
+        {transaction.transaction_type === "spending" && (
           <>
             {transaction.spending_category && (
               <div className="flex justify-between">
@@ -68,25 +75,25 @@ export default function ReceiptTemplate({ transaction }: ReceiptTemplateProps) {
               </div>
             )}
             {transaction.case_number && (
-               <div className="flex justify-between">
+              <div className="flex justify-between">
                 <span className="font-medium">Case #:</span>
                 <span>{transaction.case_number}</span>
               </div>
             )}
-             {transaction.paid_to && (
-               <div className="flex justify-between">
+            {transaction.paid_to && (
+              <div className="flex justify-between">
                 <span className="font-medium">Paid To:</span>
                 <span>{transaction.paid_to}</span>
               </div>
             )}
-             {transaction.ecr_number && (
-               <div className="flex justify-between">
+            {transaction.ecr_number && (
+              <div className="flex justify-between">
                 <span className="font-medium">ECR #:</span>
                 <span>{transaction.ecr_number}</span>
               </div>
             )}
-             {transaction.date_to_evidence && (
-               <div className="flex justify-between">
+            {transaction.date_to_evidence && (
+              <div className="flex justify-between">
                 <span className="font-medium">Date to Evidence:</span>
                 <span>{formatDate(transaction.date_to_evidence)}</span>
               </div>

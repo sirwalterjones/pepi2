@@ -209,7 +209,7 @@ export default function AgentMonthlyReport() {
         transactions.forEach((transaction) => {
           htmlContent += `
             <tr>
-              <td>${format(new Date(transaction.created_at), "MM/dd/yyyy")}</td>
+              <td>${format(new Date(transaction.transaction_date || transaction.created_at), "MM/dd/yyyy")}</td>
               <td>${transaction.transaction_type.charAt(0).toUpperCase() + transaction.transaction_type.slice(1)}</td>
               <td>$${parseFloat(transaction.amount).toFixed(2)}</td>
               <td>${transaction.receipt_number || "N/A"}</td>

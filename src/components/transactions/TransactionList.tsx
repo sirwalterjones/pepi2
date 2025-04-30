@@ -380,6 +380,13 @@ export default function TransactionList() {
     });
   };
 
+  // Helper function to get the display date (transaction_date if available, otherwise created_at)
+  const getDisplayDate = (item: any) => {
+    return item.transaction_date
+      ? formatDate(item.transaction_date)
+      : formatDate(item.created_at);
+  };
+
   const agentBalance = useMemo(() => {
     if (!currentUserAgentId || !transactions.length) return 0;
     let balance = 0;
@@ -745,9 +752,8 @@ export default function TransactionList() {
                     </div>
                     <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span>
-                        {item.itemType === "transaction" &&
-                        item.transaction_date
-                          ? formatDate(item.transaction_date)
+                        {item.itemType === "transaction"
+                          ? getDisplayDate(item)
                           : formatDate(item.created_at)}
                       </span>
                       {item.agent?.name && (

@@ -38,18 +38,18 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
     bookYear: data?.bookYear || "-",
     reconciliationDate: data?.reconciliationDate || "-",
     beginningBalance: data?.beginningBalance ?? 0,
-    totalAgentIssues: data?.totalAgentIssues ?? 0,
-    totalAgentReturns: data?.totalAgentReturns ?? 0,
-    totalExpenditures: data?.totalExpenditures ?? 0,
-    totalAdditionalUnitIssue: data?.totalAdditionalUnitIssue ?? 0,
+    totalAgentIssues: data?.monthlyAgentIssues ?? 0, // Use monthly values instead of totals
+    totalAgentReturns: data?.monthlyAgentReturns ?? 0, // Use monthly values instead of totals
+    totalExpenditures: data?.monthlyExpenditures ?? 0, // Use monthly values instead of totals
+    totalAdditionalUnitIssue: data?.monthlyAdditionalUnitIssue ?? 0, // Use monthly values instead of totals
     endingBalance: data?.endingBalance ?? 0,
     ytdExpenditures: data?.ytdExpenditures ?? 0,
-    // New dashboard metrics
-    initialFunding: data?.initialFunding ?? 0,
-    issuedToAgents: data?.issuedToAgents ?? 0,
-    spentByAgents: data?.spentByAgents ?? 0,
-    returnedByAgents: data?.returnedByAgents ?? 0,
-    bookBalance: data?.bookBalance ?? 0,
+    // New dashboard metrics - use monthly values
+    initialFunding: data?.monthlyInitialFunding ?? 0,
+    issuedToAgents: data?.monthlyIssuedToAgents ?? 0,
+    spentByAgents: data?.monthlySpentByAgents ?? 0,
+    returnedByAgents: data?.monthlyReturnedByAgents ?? 0,
+    bookBalance: data?.endingBalance ?? 0,
   };
 
   return (
