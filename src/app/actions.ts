@@ -1038,11 +1038,9 @@ export async function deleteFundRequestAction(requestId: string) {
 
 // Define the schema for CI Payment form data using Zod
 const ciPaymentSchema = z.object({
-  date: z
-    .string()
-    .refine((val) => !isNaN(Date.parse(val)), {
-      message: "Invalid date format",
-    }),
+  date: z.string().refine((val) => !isNaN(Date.parse(val)), {
+    message: "Invalid date format",
+  }),
   paying_agent_id: z.string().uuid().optional(), // Optional: Admin might select this
   amount_paid: z.number().positive({ message: "Amount must be positive" }),
   case_number: z.string().optional(),
@@ -2090,7 +2088,7 @@ export async function getMonthlyPepiMemoDataAction(
     // Get all approved transactions before the month start date
     const { data: priorTransactions, error: priorTxError } = await supabase
       .from("transactions")
-      .select("transaction_type, amount, description")
+      .select("transaction_type, amount, description, status")
       .eq("pepi_book_id", bookId)
       .eq("status", "approved")
       .lt("created_at", monthStartDateISO);
@@ -2147,11 +2145,21 @@ export async function getMonthlyPepiMemoDataAction(
     // Get all approved transactions within the month
     const { data: monthlyTransactions, error: monthlyTxError } = await supabase
       .from("transactions")
-      .select("transaction_type, amount, description")
+      .select("transaction_type, amount, description, status")
       .eq("pepi_book_id", bookId)
       .eq("status", "approved")
       .gte("created_at", monthStartDateISO)
       .lte("created_at", monthEndDateISO);
+
+    console.log(
+      `[getMonthlyPepiMemoDataAction] Found ${monthlyTransactions?.length || 0} transactions for the month`,
+    );
+    if (monthlyTransactions && monthlyTransactions.length > 0) {
+      console.log(
+        `[getMonthlyPepiMemoDataAction] Sample transaction:`,
+        monthlyTransactions[0],
+      );
+    }
 
     if (monthlyTxError) {
       console.error(
@@ -2171,15 +2179,15 @@ export async function getMonthlyPepiMemoDataAction(
     // Process each transaction to calculate monthly totals
     for (const tx of monthlyTransactions || []) {
       if (tx.transaction_type === "issuance") {
-        if (tx.description?.includes("Approved fund request")) {
+        if (tx.description?.toLowerCase().includes("approved fund request")) {
           // Agent issues
           totalAgentIssues += tx.amount;
           console.log(
             `[getMonthlyPepiMemoDataAction] + Monthly Agent Issue: ${tx.amount}`,
           );
         } else if (
-          tx.description?.includes("Add funds") ||
-          tx.description?.includes("Initial funding")
+          tx.description?.toLowerCase().includes("add funds") ||
+          tx.description?.toLowerCase().includes("initial funding")
         ) {
           // Additional unit issue
           totalAdditionalUnitIssue += tx.amount;
