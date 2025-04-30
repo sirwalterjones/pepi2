@@ -195,7 +195,8 @@ export default function MonthlyReport() {
                           <tr key={transaction.id} className="border-b">
                             <td className="py-2 px-4">
                               {new Date(
-                                transaction.created_at,
+                                transaction.transaction_date ||
+                                  transaction.created_at,
                               ).toLocaleDateString()}
                             </td>
                             <td className="py-2 px-4 capitalize">
@@ -246,7 +247,8 @@ export default function MonthlyReport() {
                             <tr key={transaction.id} className="border-b">
                               <td className="py-2 px-4">
                                 {new Date(
-                                  transaction.created_at,
+                                  transaction.transaction_date ||
+                                    transaction.created_at,
                                 ).toLocaleDateString()}
                               </td>
                               <td className="py-2 px-4">
@@ -291,7 +293,8 @@ export default function MonthlyReport() {
                             <tr key={transaction.id} className="border-b">
                               <td className="py-2 px-4">
                                 {new Date(
-                                  transaction.created_at,
+                                  transaction.transaction_date ||
+                                    transaction.created_at,
                                 ).toLocaleDateString()}
                               </td>
                               <td className="py-2 px-4">
@@ -336,7 +339,8 @@ export default function MonthlyReport() {
                             <tr key={transaction.id} className="border-b">
                               <td className="py-2 px-4">
                                 {new Date(
-                                  transaction.created_at,
+                                  transaction.transaction_date ||
+                                    transaction.created_at,
                                 ).toLocaleDateString()}
                               </td>
                               <td className="py-2 px-4">
