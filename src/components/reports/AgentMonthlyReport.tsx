@@ -439,13 +439,15 @@ export default function AgentMonthlyReport() {
               <p className="text-sm mt-1">
                 Found {Object.keys(reportData).length} personnel with
                 transactions for{" "}
-                {format(
-                  new Date(
-                    selectedMonth.split("-")[0],
-                    parseInt(selectedMonth.split("-")[1]) - 1,
-                  ),
-                  "MMMM yyyy",
-                )}
+                {selectedMonth.includes("-all")
+                  ? `Full Year ${selectedMonth.split("-")[0]}`
+                  : format(
+                      new Date(
+                        parseInt(selectedMonth.split("-")[0]),
+                        parseInt(selectedMonth.split("-")[1]) - 1,
+                      ),
+                      "MMMM yyyy",
+                    )}
               </p>
               {Object.keys(reportData).length > 0 ? (
                 <p className="text-sm mt-2">
