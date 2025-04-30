@@ -520,8 +520,18 @@ export default function TransactionForm({
                     onSelect={(date) => {
                       if (date) {
                         // Ensure date is set to noon to avoid timezone issues
-                        const adjustedDate = new Date(date);
-                        adjustedDate.setHours(12, 0, 0, 0);
+                        // Create date at noon UTC to avoid timezone issues
+                        const adjustedDate = new Date(
+                          Date.UTC(
+                            date.getFullYear(),
+                            date.getMonth(),
+                            date.getDate(),
+                            12,
+                            0,
+                            0,
+                            0,
+                          ),
+                        );
                         setTransactionDate(adjustedDate);
                       } else {
                         setTransactionDate(undefined);
@@ -704,8 +714,18 @@ export default function TransactionForm({
                             onSelect={(date) => {
                               if (date) {
                                 // Ensure date is set to noon to avoid timezone issues
-                                const adjustedDate = new Date(date);
-                                adjustedDate.setHours(12, 0, 0, 0);
+                                // Create date at noon UTC to avoid timezone issues
+                                const adjustedDate = new Date(
+                                  Date.UTC(
+                                    date.getFullYear(),
+                                    date.getMonth(),
+                                    date.getDate(),
+                                    12,
+                                    0,
+                                    0,
+                                    0,
+                                  ),
+                                );
                                 setDateToEvidence(adjustedDate);
                               } else {
                                 setDateToEvidence(undefined);
