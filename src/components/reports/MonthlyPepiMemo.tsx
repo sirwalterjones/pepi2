@@ -22,6 +22,7 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
   const memoData = {
     ...data,
     // Make sure cashOnHand is calculated correctly and handle undefined data
+    // Cash on hand should always equal the ending balance
     cashOnHand: data?.endingBalance || 0,
     // Ensure all values are numbers (not null/undefined)
     commanderName: data?.commanderName || "Commander",
@@ -83,7 +84,7 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
           {memoData.monthName} {memoData.bookYear}. Agents returned{" "}
           {formatCurrency(memoData.totalAgentReturns)} for the month of{" "}
           {memoData.monthName} {memoData.bookYear}. Cash on hand was counted and
-          verified at {formatCurrency(memoData.endingBalance)}. CMANS Agents
+          verified at {formatCurrency(memoData.cashOnHand)}. CMANS Agents
           expended {formatCurrency(memoData.totalExpenditures)} for{" "}
           {memoData.monthName} {memoData.bookYear}.
           {memoData.totalAdditionalUnitIssue > 0 && (
@@ -130,7 +131,7 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
             <tr className="border border-black">
               <td className="border border-black px-2 py-1">Cash on Hand</td>
               <td className="border border-black px-2 py-1 text-right">
-                {formatCurrency(memoData.endingBalance)}
+                {formatCurrency(memoData.cashOnHand)}
               </td>
             </tr>
             <tr className="border border-black">
