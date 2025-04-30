@@ -427,6 +427,9 @@ export default function TransactionForm({
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+
+      // Generate a new receipt number when the form opens
+      setReceiptNumber(generateReceiptNumber());
     }
   }, [open]);
 
