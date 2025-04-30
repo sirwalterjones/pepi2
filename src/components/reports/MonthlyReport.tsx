@@ -353,10 +353,13 @@ export default function MonthlyReport() {
                             .map((transaction) => (
                               <tr key={transaction.id} className="border-b">
                                 <td className="py-2 px-4">
-                                  {new Date(
-                                    transaction.transaction_date ||
-                                      transaction.created_at,
-                                  ).toLocaleDateString()}
+                                  {transaction.transaction_date
+                                    ? new Date(
+                                        transaction.transaction_date,
+                                      ).toLocaleDateString()
+                                    : new Date(
+                                        transaction.created_at,
+                                      ).toLocaleDateString()}
                                 </td>
                                 <td className="py-2 px-4">
                                   {formatCurrency(
@@ -414,10 +417,13 @@ export default function MonthlyReport() {
                             .map((transaction) => (
                               <tr key={transaction.id} className="border-b">
                                 <td className="py-2 px-4">
-                                  {new Date(
-                                    transaction.transaction_date ||
-                                      transaction.created_at,
-                                  ).toLocaleDateString()}
+                                  {transaction.transaction_date
+                                    ? new Date(
+                                        transaction.transaction_date,
+                                      ).toLocaleDateString()
+                                    : new Date(
+                                        transaction.created_at,
+                                      ).toLocaleDateString()}
                                 </td>
                                 <td className="py-2 px-4">
                                   {formatCurrency(
@@ -475,10 +481,13 @@ export default function MonthlyReport() {
                             .map((transaction) => (
                               <tr key={transaction.id} className="border-b">
                                 <td className="py-2 px-4">
-                                  {new Date(
-                                    transaction.transaction_date ||
-                                      transaction.created_at,
-                                  ).toLocaleDateString()}
+                                  {transaction.transaction_date
+                                    ? new Date(
+                                        transaction.transaction_date,
+                                      ).toLocaleDateString()
+                                    : new Date(
+                                        transaction.created_at,
+                                      ).toLocaleDateString()}
                                 </td>
                                 <td className="py-2 px-4">
                                   {formatCurrency(
