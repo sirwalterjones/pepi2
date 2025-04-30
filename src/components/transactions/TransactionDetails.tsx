@@ -149,13 +149,27 @@ export default function TransactionDetails({
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    // Parse the date string directly without timezone conversion
+    if (dateString.includes("T")) {
+      const [year, month, day] = dateString
+        .split("T")[0]
+        .split("-")
+        .map(Number);
+      // Month is 0-indexed in JavaScript Date
+      return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } else {
+      // Handle date-only strings
+      const [year, month, day] = dateString.split("-").map(Number);
+      return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
   };
 
   const getTransactionTypeLabel = (type: TransactionType) => {
@@ -410,7 +424,7 @@ export default function TransactionDetails({
           updated_at: updateData.updated_at,
           document_url: fileUrl, // Add the document URL
           transaction_date: editedTransaction.transaction_date
-            ? format(new Date(editedTransaction.transaction_date), "yyyy-MM-dd")
+            ? editedTransaction.transaction_date.toISOString().split("T")[0]
             : null,
           // Add spending fields if applicable
           ...(editedTransaction.transaction_type === "spending" && {
@@ -424,10 +438,7 @@ export default function TransactionDetails({
             date_to_evidence:
               editedTransaction.spending_category === "Evidence Purchase" &&
               editedTransaction.date_to_evidence
-                ? format(
-                    new Date(editedTransaction.date_to_evidence),
-                    "yyyy-MM-dd",
-                  )
+                ? editedTransaction.date_to_evidence.toISOString().split("T")[0]
                 : null,
           }),
           // If this is an agent editing their rejected transaction, reset to pending
