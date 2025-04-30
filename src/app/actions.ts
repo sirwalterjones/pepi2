@@ -2231,4 +2231,38 @@ export async function getMonthlyPepiMemoDataAction(
       totalAgentIssues -
       totalExpenditures;
     console.log(
-      `[getMonthlyPepiMemoDataAction] Ending Balance Calculated: ${endingBalance}`
+      `[getMonthlyPepiMemoDataAction] Ending Balance Calculated: ${endingBalance}`,
+    );
+
+    // 7. Return the calculated data
+    return {
+      success: true,
+      data: {
+        bookYear,
+        monthName,
+        memoDate: memoDateFormatted,
+        reconciliationDate: reconciliationDateFormatted,
+        commanderName,
+        beginningBalance,
+        totalAgentIssues,
+        totalAgentReturns,
+        totalExpenditures,
+        totalAdditionalUnitIssue,
+        cashOnHand: endingBalance, // Assuming cash on hand equals ending balance
+        endingBalance,
+        ytdExpenditures: totalExpenditures, // This should be calculated for YTD, not just month
+        initialFunding: bookData.starting_amount,
+        issuedToAgents: totalAgentIssues,
+        spentByAgents: totalExpenditures,
+        returnedByAgents: totalAgentReturns,
+        bookBalance: endingBalance,
+      },
+    };
+  } catch (error: any) {
+    console.error(`[getMonthlyPepiMemoDataAction] Error: ${error.message}`);
+    return {
+      success: false,
+      error: `Failed to generate report: ${error.message}`,
+    };
+  }
+}
