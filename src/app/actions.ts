@@ -2269,7 +2269,7 @@ export async function getMonthlyPepiMemoDataAction(
 
     // 9. Calculate dashboard-style metrics for the month
     // Get the book's initial funding amount
-    const initialFunding = activeBook.starting_amount || 0;
+    const initialFunding = bookData.starting_amount || 0;
 
     // Calculate metrics using the same logic as DashboardOverview
     let totalIssuedToAgents = 0;
