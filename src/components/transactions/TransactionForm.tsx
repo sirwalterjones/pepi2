@@ -397,6 +397,14 @@ export default function TransactionForm({
     }
   }, [transactionType]);
 
+  // Reset selectedFile when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setSelectedFile(null);
+      setUploadError(null);
+    }
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] w-full max-h-[90vh] overflow-y-auto">
