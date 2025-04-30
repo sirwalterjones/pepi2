@@ -1,5 +1,5 @@
 // src/components/reports/MonthlyPepiMemo.tsx
-import React from "react";
+import React, { useEffect } from "react";
 import { MonthlyPepiMemoData } from "@/app/actions"; // Assuming type is exported from actions
 import { formatCurrency } from "@/lib/utils"; // Assuming you have a currency formatting util
 
@@ -18,31 +18,41 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
     return num.toLocaleString("en-US");
   };
 
+  // Debug log to check incoming data
+  useEffect(() => {
+    console.log("MonthlyPepiMemo received data:", data);
+  }, [data]);
+
+  // Debug log to check incoming data
+  useEffect(() => {
+    console.log("MonthlyPepiMemo received data:", data);
+  }, [data]);
+
   // Ensure all values are properly calculated and displayed
   const memoData = {
     ...data,
     // Make sure cashOnHand is calculated correctly and handle undefined data
     // Cash on hand should always equal the ending balance
-    cashOnHand: data?.endingBalance || 0,
+    cashOnHand: data?.endingBalance ?? 0,
     // Ensure all values are numbers (not null/undefined)
     commanderName: data?.commanderName || "Commander",
     memoDate: data?.memoDate || "-",
     monthName: data?.monthName || "-",
     bookYear: data?.bookYear || "-",
     reconciliationDate: data?.reconciliationDate || "-",
-    beginningBalance: data?.beginningBalance || 0,
-    totalAgentIssues: data?.totalAgentIssues || 0,
-    totalAgentReturns: data?.totalAgentReturns || 0,
-    totalExpenditures: data?.totalExpenditures || 0,
-    totalAdditionalUnitIssue: data?.totalAdditionalUnitIssue || 0,
-    endingBalance: data?.endingBalance || 0,
-    ytdExpenditures: data?.ytdExpenditures || 0,
+    beginningBalance: data?.beginningBalance ?? 0,
+    totalAgentIssues: data?.totalAgentIssues ?? 0,
+    totalAgentReturns: data?.totalAgentReturns ?? 0,
+    totalExpenditures: data?.totalExpenditures ?? 0,
+    totalAdditionalUnitIssue: data?.totalAdditionalUnitIssue ?? 0,
+    endingBalance: data?.endingBalance ?? 0,
+    ytdExpenditures: data?.ytdExpenditures ?? 0,
     // New dashboard metrics
-    initialFunding: data?.initialFunding || 0,
-    issuedToAgents: data?.issuedToAgents || 0,
-    spentByAgents: data?.spentByAgents || 0,
-    returnedByAgents: data?.returnedByAgents || 0,
-    bookBalance: data?.bookBalance || 0,
+    initialFunding: data?.initialFunding ?? 0,
+    issuedToAgents: data?.issuedToAgents ?? 0,
+    spentByAgents: data?.spentByAgents ?? 0,
+    returnedByAgents: data?.returnedByAgents ?? 0,
+    bookBalance: data?.bookBalance ?? 0,
   };
 
   return (
