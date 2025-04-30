@@ -115,72 +115,6 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
           </thead>
           <tbody>
             <tr className="border border-black">
-              <td className="border border-black px-2 py-1">
-                Beginning Balance
-              </td>
-              <td className="border border-black px-2 py-1 text-right">
-                {formatCurrency(memoData.beginningBalance)}
-              </td>
-            </tr>
-            <tr className="border border-black">
-              <td className="border border-black px-2 py-1">Agent Issue</td>
-              <td className="border border-black px-2 py-1 text-right">
-                {formatCurrency(memoData.totalAgentIssues)}
-              </td>
-            </tr>
-            <tr className="border border-black">
-              <td className="border border-black px-2 py-1">Agent Return</td>
-              <td className="border border-black px-2 py-1 text-right">
-                {formatCurrency(memoData.totalAgentReturns)}
-              </td>
-            </tr>
-            <tr className="border border-black">
-              <td className="border border-black px-2 py-1">Cash on Hand</td>
-              <td className="border border-black px-2 py-1 text-right">
-                {formatCurrency(memoData.cashOnHand)}
-              </td>
-            </tr>
-            <tr className="border border-black">
-              <td className="border border-black px-2 py-1">Expenditures</td>
-              <td className="border border-black px-2 py-1 text-right">
-                {formatCurrency(memoData.totalExpenditures)}
-              </td>
-            </tr>
-            {memoData.totalAdditionalUnitIssue > 0 && (
-              <tr className="border border-black">
-                <td className="border border-black px-2 py-1">
-                  Additional Unit Issue
-                </td>
-                <td className="border border-black px-2 py-1 text-right">
-                  {formatCurrency(memoData.totalAdditionalUnitIssue)}
-                </td>
-              </tr>
-            )}
-            <tr className="border border-black">
-              <td className="border border-black px-2 py-1">Ending Balance</td>
-              <td className="border border-black px-2 py-1 text-right">
-                {formatCurrency(memoData.endingBalance)}
-              </td>
-            </tr>
-            <tr className="border border-black">
-              <td className="border border-black px-2 py-1">
-                Expenditures CY {memoData.bookYear}
-              </td>
-              <td className="border border-black px-2 py-1 text-right">
-                {formatCurrency(memoData.ytdExpenditures)}
-              </td>
-            </tr>
-
-            {/* Dashboard Metrics Section */}
-            <tr className="border-t-4 border-black">
-              <td
-                colSpan={2}
-                className="border border-black px-2 py-1 font-bold text-center"
-              >
-                Dashboard Metrics
-              </td>
-            </tr>
-            <tr className="border border-black">
               <td className="border border-black px-2 py-1">Initial Funding</td>
               <td className="border border-black px-2 py-1 text-right">
                 {formatCurrency(memoData.initialFunding)}
@@ -216,6 +150,24 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
               </td>
               <td className="border border-black px-2 py-1 text-right">
                 {formatCurrency(memoData.bookBalance)}
+              </td>
+            </tr>
+            {memoData.totalAdditionalUnitIssue > 0 && (
+              <tr className="border border-black">
+                <td className="border border-black px-2 py-1">
+                  Additional Unit Issue
+                </td>
+                <td className="border border-black px-2 py-1 text-right">
+                  {formatCurrency(memoData.totalAdditionalUnitIssue)}
+                </td>
+              </tr>
+            )}
+            <tr className="border border-black">
+              <td className="border border-black px-2 py-1">
+                Expenditures CY {memoData.bookYear}
+              </td>
+              <td className="border border-black px-2 py-1 text-right">
+                {formatCurrency(memoData.ytdExpenditures)}
               </td>
             </tr>
           </tbody>
