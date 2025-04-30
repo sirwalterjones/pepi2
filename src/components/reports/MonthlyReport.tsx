@@ -46,9 +46,7 @@ export default function MonthlyReport() {
       // Fetch transactions for the selected month
       const { data: transactions, error } = await supabase
         .from("transactions")
-        .select(
-          "*, agents(id, name, badge_number), created_by_user:created_by(id, email, user_metadata)",
-        )
+        .select("*, agents(id, name, badge_number)")
         .gte("created_at", startDate.toISOString())
         .lte("created_at", endDate.toISOString())
         .order("created_at", { ascending: false });
