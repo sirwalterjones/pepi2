@@ -1,3 +1,5 @@
+"use client";
+
 // src/components/reports/MonthlyPepiMemo.tsx
 import React, { useEffect } from "react";
 import { MonthlyPepiMemoData } from "@/app/actions"; // Assuming type is exported from actions
