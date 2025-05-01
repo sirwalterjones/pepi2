@@ -60,19 +60,10 @@ export default function PendingRequestsList() {
     );
     fetchRequests();
 
-    // Set up an interval to refresh data every 5 seconds
-    const intervalId = setInterval(() => {
-      console.log(
-        "[PendingRequestsList] Interval triggered, refreshing data...",
-      );
-      fetchRequests();
-    }, 5000);
+    // No automatic refresh interval - removed to prevent disruption
 
     return () => {
-      console.log(
-        "[PendingRequestsList] Component unmounting, clearing interval",
-      );
-      clearInterval(intervalId);
+      console.log("[PendingRequestsList] Component unmounting");
     };
   }, []);
 

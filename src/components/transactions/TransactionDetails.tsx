@@ -554,11 +554,9 @@ export default function TransactionDetails({
       if (onEdit) onEdit();
       if (onDelete) onDelete(); // Refresh the transaction list
 
-      // Force the dialog to close and reopen to ensure fresh data is displayed
-      onOpenChange(false);
-      setTimeout(() => {
-        onOpenChange(true);
-      }, 100);
+      // Keep dialog open but refresh the data
+      // This ensures changes are visible without closing the dialog
+      fetchUpdatedTransaction();
     } catch (error: any) {
       console.error("Error editing transaction:", error);
       toast({
@@ -755,6 +753,51 @@ export default function TransactionDetails({
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Function to fetch the latest transaction data
+  const fetchUpdatedTransaction = async () => {
+    if (!transaction?.id) return;
+
+    try {
+      console.log("Manually fetching updated transaction data...");
+      const { data: updatedData, error } = await supabase
+        .from("transactions")
+        .select("*, agents:agent_id (id, name, badge_number)")
+        .eq("id", transaction.id)
+        .single();
+
+      if (error) {
+        console.error("Error fetching updated transaction:", error);
+        return;
+      }
+
+      if (updatedData) {
+        console.log("Fetched fresh transaction data:", updatedData);
+
+        // Create a completely new transaction object with the updated data
+        const updatedTransaction = {
+          ...updatedData,
+          amount: parseFloat(updatedData.amount),
+          description: updatedData.description || "",
+          receipt_number: updatedData.receipt_number || "",
+          agent_id: updatedData.agent_id || null,
+        };
+
+        // Update the original transaction object
+        Object.assign(transaction, updatedTransaction);
+
+        // Update all related state variables
+        setReviewNotes(updatedData.review_notes || "");
+        setStatus(updatedData.status || "pending");
+        setEditedTransaction(updatedTransaction);
+
+        // Force parent component to update
+        if (onEdit) onEdit();
+      }
+    } catch (err) {
+      console.error("Error in fetchUpdatedTransaction:", err);
     }
   };
 

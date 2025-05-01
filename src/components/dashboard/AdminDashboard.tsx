@@ -52,13 +52,9 @@ export default function AdminDashboard() {
 
     getUserData();
 
-    // Set up a refresh interval for the dashboard
-    const intervalId = setInterval(() => {
-      setRefreshKey(Date.now());
-      router.refresh();
-    }, 30000); // Refresh every 30 seconds
+    // Automatic refresh disabled
 
-    return () => clearInterval(intervalId);
+    return () => {};
   }, [router]);
 
   return (
