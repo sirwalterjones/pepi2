@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle, Trash2 } from "lucide-react";
+import { Loader2, AlertCircle, Trash2, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -45,7 +45,10 @@ export default function PendingRequestsList() {
   const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(
+    null,
+  );
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const supabase = createClient();
   const { toast } = useToast();
   const { activeBook } = usePepiBooks();
@@ -66,11 +69,14 @@ export default function PendingRequestsList() {
 
     setLoading(true);
     setError(null);
-    console.log(`[PendingRequestsList] Fetching requests for PEPI Book: ${activeBook.id}...`);
+    console.log(
+      `[PendingRequestsList] Fetching requests for PEPI Book: ${activeBook.id}...`,
+    );
     try {
       const { data, error: fetchError } = await supabase
         .from("fund_requests")
-        .select(`
+        .select(
+          `
           id,
           agent_id,
           pepi_book_id,
@@ -79,7 +85,8 @@ export default function PendingRequestsList() {
           requested_at,
           agent:agents!fund_requests_agent_id_fkey ( name ),
           pepi_book:pepi_books!fund_requests_pepi_book_id_fkey ( year )
-        `)
+        `,
+        )
         .eq("status", "pending")
         .eq("pepi_book_id", activeBook.id)
         .order("requested_at", { ascending: true });
@@ -87,7 +94,13 @@ export default function PendingRequestsList() {
       if (fetchError) {
         throw fetchError;
       }
-      console.log(`[PendingRequestsList] Fetched raw data count: ${data?.length || 0}`);
+      console.log(
+        `[PendingRequestsList] Fetched raw data count: ${data?.length || 0}`,
+      );
+      console.log(
+        "[PendingRequestsList] Raw data:",
+        JSON.stringify(data, null, 2),
+      );
 
       // Map data to include agent_name and pepi_book_year directly
       const formattedData: PendingRequest[] = data.map((req: any) => ({
@@ -97,13 +110,15 @@ export default function PendingRequestsList() {
         amount: req.amount,
         case_number: req.case_number,
         requested_at: req.requested_at,
-        agent_name: req.agent?.name || 'Unknown Agent',
+        agent_name: req.agent?.name || "Unknown Agent",
         pepi_book_year: req.pepi_book?.year || 0,
       }));
-      console.log("[PendingRequestsList] Formatted Data:", JSON.stringify(formattedData, null, 2));
+      console.log(
+        "[PendingRequestsList] Formatted Data:",
+        JSON.stringify(formattedData, null, 2),
+      );
 
       setRequests(formattedData);
-
     } catch (err: any) {
       console.error("Error fetching pending requests:", err);
       setError(err.message || "Failed to load pending requests.");
@@ -112,27 +127,39 @@ export default function PendingRequestsList() {
     }
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchRequests();
+    setIsRefreshing(false);
+    toast({
+      title: "Refreshed",
+      description: "Pending requests have been refreshed.",
+    });
+  };
+
   useEffect(() => {
     const channel = supabase
-      .channel('fund_requests_changes')
+      .channel("fund_requests_changes")
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'fund_requests' },
+        "postgres_changes",
+        { event: "*", schema: "public", table: "fund_requests" },
         (payload) => {
-          console.log('[PendingRequestsList] Change received!', payload);
-          console.log("[PendingRequestsList] Refetching data due to change (with delay)...");
+          console.log("[PendingRequestsList] Change received!", payload);
+          console.log(
+            "[PendingRequestsList] Refetching data due to change (with delay)...",
+          );
           setTimeout(() => {
             console.log("[PendingRequestsList] Executing delayed fetch...");
             fetchRequests();
           }, 500);
-        }
+        },
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase]);
+  }, [supabase, activeBook]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -153,14 +180,21 @@ export default function PendingRequestsList() {
       if (result?.error) {
         throw new Error(result.error);
       }
-      toast({ title: "Success", description: "Fund request approved and transaction created." });
+      toast({
+        title: "Success",
+        description: "Fund request approved and transaction created.",
+      });
       // Optimistically remove the approved request from the list
-      setRequests((prevRequests) => 
-        prevRequests.filter((req) => req.id !== requestId)
+      setRequests((prevRequests) =>
+        prevRequests.filter((req) => req.id !== requestId),
       );
     } catch (err: any) {
       console.error("Error approving request:", err);
-      toast({ title: "Error", description: err.message || "Failed to approve request.", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message || "Failed to approve request.",
+        variant: "destructive",
+      });
     } finally {
       setProcessingRequestId(null);
     }
@@ -168,9 +202,11 @@ export default function PendingRequestsList() {
 
   const handleReject = async (requestId: string) => {
     // Prompt for rejection reason
-    const reason = prompt("Please enter the reason for rejecting this request (optional):");
+    const reason = prompt(
+      "Please enter the reason for rejecting this request (optional):",
+    );
     // If user cancels the prompt, reason will be null, which is handled by the server action
-    
+
     setProcessingRequestId(requestId);
     try {
       // Pass the reason to the server action
@@ -180,19 +216,25 @@ export default function PendingRequestsList() {
       }
       toast({ title: "Success", description: "Fund request rejected." });
       // Optimistically remove the rejected request from the list
-      setRequests((prevRequests) => 
-        prevRequests.filter((req) => req.id !== requestId)
+      setRequests((prevRequests) =>
+        prevRequests.filter((req) => req.id !== requestId),
       );
     } catch (err: any) {
       console.error("Error rejecting request:", err);
-      toast({ title: "Error", description: err.message || "Failed to reject request.", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message || "Failed to reject request.",
+        variant: "destructive",
+      });
     } finally {
       setProcessingRequestId(null);
     }
   };
 
   const handleDelete = async (requestId: string) => {
-    if (!confirm("Are you sure you want to permanently delete this fund request?")) {
+    if (
+      !confirm("Are you sure you want to permanently delete this fund request?")
+    ) {
       return;
     }
     setProcessingRequestId(requestId);
@@ -202,9 +244,17 @@ export default function PendingRequestsList() {
         throw new Error(result.error);
       }
       toast({ title: "Success", description: "Fund request deleted." });
+      // Optimistically remove the deleted request from the list
+      setRequests((prevRequests) =>
+        prevRequests.filter((req) => req.id !== requestId),
+      );
     } catch (err: any) {
       console.error("Error deleting request:", err);
-      toast({ title: "Error", description: err.message || "Failed to delete request.", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message || "Failed to delete request.",
+        variant: "destructive",
+      });
     } finally {
       setProcessingRequestId(null);
     }
@@ -215,7 +265,9 @@ export default function PendingRequestsList() {
       <Card>
         <CardHeader>
           <CardTitle>Pending Fund Requests</CardTitle>
-          <CardDescription>Review and process requests for funds.</CardDescription>
+          <CardDescription>
+            Review and process requests for funds.
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center items-center p-8">
           <Loader2 className="h-6 w-6 animate-spin" />
@@ -227,15 +279,32 @@ export default function PendingRequestsList() {
   if (error) {
     return (
       <Card>
-         <CardHeader>
+        <CardHeader>
           <CardTitle>Pending Fund Requests</CardTitle>
-          <CardDescription>Review and process requests for funds.</CardDescription>
+          <CardDescription>
+            Review and process requests for funds.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-           <Alert variant="destructive">
+          <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
+          <div className="mt-4 flex justify-center">
+            <Button onClick={handleRefresh} disabled={isRefreshing}>
+              {isRefreshing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh
+                </>
+              )}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
@@ -243,13 +312,55 @@ export default function PendingRequestsList() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Pending Fund Requests</CardTitle>
-        <CardDescription>Review and process requests for funds.</CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Pending Fund Requests</CardTitle>
+          <CardDescription>
+            Review and process requests for funds.
+          </CardDescription>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="ml-auto"
+        >
+          {isRefreshing ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Refreshing...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </>
+          )}
+        </Button>
       </CardHeader>
       <CardContent>
         {requests.length === 0 ? (
-          <p className="text-center text-muted-foreground py-4">No pending requests.</p>
+          <div className="text-center py-8">
+            <p className="text-muted-foreground mb-4">No pending requests.</p>
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              {isRefreshing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh Requests
+                </>
+              )}
+            </Button>
+          </div>
         ) : (
           <Table>
             <TableHeader>
@@ -277,7 +388,11 @@ export default function PendingRequestsList() {
                       onClick={() => handleApprove(request.id)}
                       disabled={processingRequestId === request.id}
                     >
-                      {processingRequestId === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Approve'}
+                      {processingRequestId === request.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Approve"
+                      )}
                     </Button>
                     <Button
                       variant="destructive"
@@ -285,7 +400,11 @@ export default function PendingRequestsList() {
                       onClick={() => handleReject(request.id)}
                       disabled={processingRequestId === request.id}
                     >
-                      {processingRequestId === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Reject'}
+                      {processingRequestId === request.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Reject"
+                      )}
                     </Button>
                     <Button
                       variant="ghost"
@@ -295,7 +414,11 @@ export default function PendingRequestsList() {
                       disabled={processingRequestId === request.id}
                       title="Delete Request"
                     >
-                      {processingRequestId === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" /> }
+                      {processingRequestId === request.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -306,4 +429,4 @@ export default function PendingRequestsList() {
       </CardContent>
     </Card>
   );
-} 
+}
