@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
+import { createClient } from "../../../../supabase/client";
 import {
   getMonthlyPepiMemoDataAction,
   MonthlyPepiMemoData,
@@ -136,6 +137,104 @@ export default function CbMemoReportPage() {
     setMemoData(null);
 
     try {
+      // First, get the monthly filtered transactions to calculate the correct monthly totals
+      const supabase = createClient();
+      const firstDayOfMonth = new Date(activeBook.year, selectedMonth - 1, 1);
+      const lastDayOfMonth = new Date(activeBook.year, selectedMonth, 0);
+
+      // Format dates for query
+      const formattedFirstDay = firstDayOfMonth.toISOString();
+      const formattedLastDay = lastDayOfMonth.toISOString();
+
+      // Get transactions for the selected month
+      const { data: monthlyTransactions, error: txError } = await supabase
+        .from("transactions")
+        .select("*")
+        .or(
+          `transaction_date.gte.${formattedFirstDay},transaction_date.lte.${formattedLastDay},and(created_at.gte.${formattedFirstDay},created_at.lte.${formattedLastDay})`,
+        )
+        .order("created_at", { ascending: true });
+
+      if (txError) {
+        throw new Error(`Error fetching transactions: ${txError.message}`);
+      }
+
+      // Calculate monthly totals from the filtered transactions
+      let monthlyIssuance = 0;
+      let monthlySpending = 0;
+      let monthlyReturned = 0;
+      let monthlyAgentIssues = 0;
+
+      // Also calculate current balances (not filtered by month)
+      let totalIssuedToAgents = 0;
+      let totalSpentByAgents = 0;
+      let totalReturnedByAgents = 0;
+      let totalAddedToBook = 0;
+      let initialAmount = activeBook?.starting_amount || 0;
+
+      // Get all transactions for current balances
+      const { data: allTransactions } = await supabase
+        .from("transactions")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+      // Process all transactions to calculate current balances
+      allTransactions?.forEach((transaction) => {
+        if (transaction.status === "approved") {
+          const amount = parseFloat(transaction.amount.toString());
+
+          if (transaction.transaction_type === "issuance") {
+            if (transaction.agent_id !== null) {
+              // Issuance TO an agent
+              totalIssuedToAgents += amount;
+              // Does NOT affect book balance directly
+            } else if (transaction.receipt_number?.startsWith("ADD")) {
+              // Additions to the book (receipt starts with ADD)
+              totalAddedToBook += amount;
+            }
+          } else if (transaction.transaction_type === "spending") {
+            // All spending reduces the total balance
+            totalSpentByAgents += amount;
+
+            // If spent by an agent, reduce their cash on hand
+            if (transaction.agent_id) {
+              totalIssuedToAgents -= amount;
+            }
+          } else if (transaction.transaction_type === "return") {
+            // Returns only affect agent cash on hand
+            if (transaction.agent_id) {
+              totalIssuedToAgents -= amount;
+              totalReturnedByAgents += amount;
+            }
+          }
+        }
+      });
+
+      // Calculate current balance: initial + additions - expenditures
+      let pepiBookBalance =
+        initialAmount + totalAddedToBook - totalSpentByAgents;
+
+      // Calculate safe cash: current balance - what's issued to agents
+      let safeCashBalance = pepiBookBalance - totalIssuedToAgents;
+
+      // Process filtered transactions to calculate monthly stats
+      monthlyTransactions?.forEach((tx) => {
+        if (tx.status === "approved") {
+          const amount = parseFloat(tx.amount.toString());
+
+          if (tx.transaction_type === "issuance") {
+            monthlyIssuance += amount;
+            if (tx.agent_id) {
+              monthlyAgentIssues += amount;
+            }
+          } else if (tx.transaction_type === "spending") {
+            monthlySpending += amount;
+          } else if (tx.transaction_type === "return") {
+            monthlyReturned += amount;
+          }
+        }
+      });
+
       // Pass selected commander name and memo date (as ISO string)
       const result = await getMonthlyPepiMemoDataAction(
         activeBook.id,
@@ -143,10 +242,23 @@ export default function CbMemoReportPage() {
         selectedCommanderName,
         selectedMemoDate.toISOString(),
       );
+
       if (result.success && result.data) {
-        // Ensure we're marking which values are filtered by month vs. current totals
+        // Override the monthly values with our calculated values from filtered transactions
         const enhancedData = {
           ...result.data,
+          // Use our calculated monthly values
+          monthlyIssuedToAgents: monthlyAgentIssues,
+          monthlySpentByAgents: monthlySpending,
+          monthlyReturnedByAgents: monthlyReturned,
+          monthlyAgentIssues: monthlyAgentIssues,
+          monthlyExpenditures: monthlySpending,
+          monthlyAgentReturns: monthlyReturned,
+          // Current balances (not filtered by month)
+          currentBalance: pepiBookBalance,
+          cashOnHand: safeCashBalance,
+          agentCashBalance: totalIssuedToAgents,
+          endingBalance: pepiBookBalance,
           // Add flags to indicate which values are filtered by month vs. current totals
           isMonthlyFiltered: true,
           selectedMonth: selectedMonth,

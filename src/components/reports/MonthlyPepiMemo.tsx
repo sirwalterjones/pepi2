@@ -33,8 +33,8 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
   const memoData = {
     ...data,
     // Make sure cashOnHand is calculated correctly and handle undefined data
-    // Cash on hand should always equal the ending balance - this is a CURRENT value, not filtered by month
-    cashOnHand: data?.endingBalance ?? 0,
+    // Cash on hand should always equal the safe cash balance - this is a CURRENT value, not filtered by month
+    cashOnHand: data?.cashOnHand ?? 0,
     // Ensure all values are numbers (not null/undefined)
     commanderName: data?.commanderName || "Commander",
     memoDate: data?.memoDate || "-",
@@ -48,7 +48,7 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
     totalExpenditures: data?.monthlyExpenditures ?? 0,
     totalAdditionalUnitIssue: data?.monthlyAdditionalUnitIssue ?? 0,
     // These values are NOT filtered by month - they show current totals
-    endingBalance: data?.endingBalance ?? 0, // Current total balance
+    endingBalance: data?.currentBalance ?? 0, // Current total balance
     ytdExpenditures: data?.ytdExpenditures ?? 0, // Year-to-date total
     // New dashboard metrics - use monthly values for filtered data
     initialFunding: data?.monthlyInitialFunding ?? 0,
@@ -56,7 +56,9 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
     spentByAgents: data?.monthlySpentByAgents ?? 0,
     returnedByAgents: data?.monthlyReturnedByAgents ?? 0,
     // Book balance is a current total, not filtered by month
-    bookBalance: data?.endingBalance ?? 0,
+    bookBalance: data?.cashOnHand ?? 0,
+    // Agent cash balance
+    agentCashBalance: data?.agentCashBalance ?? 0,
   };
 
   return (
