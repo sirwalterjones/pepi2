@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { createClient } from "../../supabase/client";
 import { Agent } from "@/types/schema";
-import { deleteAgentAction } from "@/app/actions"; // Import the new server action
 
 export function useAgents() {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -42,11 +41,14 @@ export function useAgents() {
     setDeleteLoading(true);
     setDeleteError(null);
     try {
-      // Use the server action instead of direct database operation
-      const result = await deleteAgentAction(agentId);
+      // Direct database operation since server action is not available
+      const { error } = await supabase
+        .from("agents")
+        .delete()
+        .eq("id", agentId);
 
-      if (!result.success) {
-        throw new Error(result.error || "Failed to delete agent");
+      if (error) {
+        throw new Error(error.message || "Failed to delete agent");
       }
 
       // No need to manually update the agents array as the real-time subscription will trigger a refetch

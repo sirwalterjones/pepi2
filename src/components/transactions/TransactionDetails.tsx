@@ -328,7 +328,7 @@ export default function TransactionDetails({
       }
       // --- End Validation ---
 
-      // If an agent is editing a rejected transaction, reset the status to pending
+      // If an agent is editing a rejected transaction, reset to pending
       const updateData: any = {
         amount:
           typeof editedTransaction.amount === "string"
@@ -345,6 +345,9 @@ export default function TransactionDetails({
         updateData.status = "pending";
         // Clear review notes when resubmitting
         updateData.review_notes = null;
+        console.log(
+          "Agent is editing a rejected transaction - resetting to pending status",
+        );
       }
 
       console.log("Saving transaction with data:", updateData);
@@ -1114,7 +1117,7 @@ export default function TransactionDetails({
                 {displayTransaction.review_notes}
               </div>
               {displayTransaction.status === "rejected" &&
-                isOwnTransaction &&
+                (isOwnTransaction || isAdmin) &&
                 !isEditing && (
                   <div className="mt-2">
                     <Button
