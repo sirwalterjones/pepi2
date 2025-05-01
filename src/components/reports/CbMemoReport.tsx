@@ -45,14 +45,19 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
 
   return (
     <div
-      className="font-serif p-4 max-w-4xl mx-auto bg-white text-black print:shadow-none print:p-8 print:max-w-none print:w-full print:text-black"
-      style={{ fontFamily: "serif" }}
+      className="font-serif p-4 max-w-4xl mx-auto bg-white text-black print:shadow-none print:p-0 print:max-w-none print:w-full print:text-black"
+      style={{ fontFamily: "'Times New Roman', serif" }}
     >
       {/* Header Section */}
       <div className="text-center mb-6 print:mb-6">
         <h1
           className="text-xl font-bold tracking-wider uppercase border-b-2 border-black pb-1 mb-6 inline-block"
-          style={{ fontSize: "24px", letterSpacing: "1px" }}
+          style={{
+            fontSize: "24px",
+            letterSpacing: "1px",
+            textAlign: "center",
+            display: "inline-block",
+          }}
         >
           MEMORANDUM
         </h1>
@@ -150,20 +155,45 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
         >
           TOTALS
         </h2>
-        <table className="w-full border-collapse border border-black text-sm print:w-full print:border-collapse print:border print:border-black print:text-sm">
+        <table
+          className="w-full border-collapse border border-black text-sm print:w-full print:border-collapse print:border print:border-black print:text-sm"
+          style={{ width: "100%", borderCollapse: "collapse" }}
+        >
           <tbody>
             <tr className="border border-black">
-              <td className="border border-black px-2 py-1">Initial Funding</td>
-              <td className="border border-black px-2 py-1 text-right">
+              <td
+                className="border border-black px-2 py-1"
+                style={{ border: "1px solid black", padding: "8px" }}
+              >
+                Initial Funding
+              </td>
+              <td
+                className="border border-black px-2 py-1 text-right"
+                style={{
+                  border: "1px solid black",
+                  padding: "8px",
+                  textAlign: "right",
+                }}
+              >
                 {formatCurrency(data.initialFunding)}
                 <span className="text-xs ml-1 text-gray-600">(Overall)</span>
               </td>
             </tr>
             <tr className="border border-black">
-              <td className="border border-black px-2 py-1">
+              <td
+                className="border border-black px-2 py-1"
+                style={{ border: "1px solid black", padding: "8px" }}
+              >
                 Issued To Agents
               </td>
-              <td className="border border-black px-2 py-1 text-right">
+              <td
+                className="border border-black px-2 py-1 text-right"
+                style={{
+                  border: "1px solid black",
+                  padding: "8px",
+                  textAlign: "right",
+                }}
+              >
                 {formatCurrency(data.issuedToAgents)}
                 <span className="text-xs ml-1 text-gray-600">
                   ({data.monthName})
@@ -171,10 +201,20 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
               </td>
             </tr>
             <tr className="border border-black">
-              <td className="border border-black px-2 py-1">
+              <td
+                className="border border-black px-2 py-1"
+                style={{ border: "1px solid black", padding: "8px" }}
+              >
                 Total Spent By Agents
               </td>
-              <td className="border border-black px-2 py-1 text-right">
+              <td
+                className="border border-black px-2 py-1 text-right"
+                style={{
+                  border: "1px solid black",
+                  padding: "8px",
+                  textAlign: "right",
+                }}
+              >
                 {formatCurrency(data.spentByAgents)}
                 <span className="text-xs ml-1 text-gray-600">
                   ({data.monthName})
@@ -182,10 +222,20 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
               </td>
             </tr>
             <tr className="border border-black">
-              <td className="border border-black px-2 py-1">
+              <td
+                className="border border-black px-2 py-1"
+                style={{ border: "1px solid black", padding: "8px" }}
+              >
                 Total Returned By Agents
               </td>
-              <td className="border border-black px-2 py-1 text-right">
+              <td
+                className="border border-black px-2 py-1 text-right"
+                style={{
+                  border: "1px solid black",
+                  padding: "8px",
+                  textAlign: "right",
+                }}
+              >
                 {formatCurrency(data.returnedByAgents)}
                 <span className="text-xs ml-1 text-gray-600">
                   ({data.monthName})
@@ -193,10 +243,20 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
               </td>
             </tr>
             <tr className="border border-black">
-              <td className="border border-black px-2 py-1">
+              <td
+                className="border border-black px-2 py-1"
+                style={{ border: "1px solid black", padding: "8px" }}
+              >
                 Book Balance (Safe Cash)
               </td>
-              <td className="border border-black px-2 py-1 text-right">
+              <td
+                className="border border-black px-2 py-1 text-right"
+                style={{
+                  border: "1px solid black",
+                  padding: "8px",
+                  textAlign: "right",
+                }}
+              >
                 {formatCurrency(data.bookBalance)}
                 <span className="text-xs ml-1 text-gray-600">(Current)</span>
               </td>
@@ -215,10 +275,20 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
               </tr>
             )}
             <tr className="border border-black">
-              <td className="border border-black px-2 py-1">
+              <td
+                className="border border-black px-2 py-1"
+                style={{ border: "1px solid black", padding: "8px" }}
+              >
                 Expenditures CY {data.bookYear}
               </td>
-              <td className="border border-black px-2 py-1 text-right">
+              <td
+                className="border border-black px-2 py-1 text-right"
+                style={{
+                  border: "1px solid black",
+                  padding: "8px",
+                  textAlign: "right",
+                }}
+              >
                 {formatCurrency(data.ytdExpenditures)}
                 <span className="text-xs ml-1 text-gray-600">(Total)</span>
               </td>

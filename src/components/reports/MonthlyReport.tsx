@@ -315,8 +315,77 @@ export default function MonthlyReport() {
         );
         printWindow.document.write("<style>");
         printWindow.document.write(`
-          body { font-family: serif; margin: 0; padding: 0; }
+          @import url('https://fonts.googleapis.com/css2?family=Times+New+Roman&display=swap');
+          body { 
+            font-family: 'Times New Roman', serif; 
+            margin: 0; 
+            padding: 0; 
+            background-color: white;
+          }
           @page { size: letter; margin: 1in; }
+          .memo-container {
+            width: 8.5in;
+            padding: 0.5in;
+            margin: 0 auto;
+            box-sizing: border-box;
+          }
+          .memo-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            border-bottom: 2px solid black;
+            padding-bottom: 5px;
+            display: inline-block;
+            margin-left: auto;
+            margin-right: auto;
+          }
+          .memo-header {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+            position: relative;
+          }
+          .memo-header-label {
+            font-weight: bold;
+          }
+          .memo-cmans {
+            position: absolute;
+            top: 0;
+            right: 0;
+            font-size: 32px;
+            font-weight: bold;
+          }
+          .memo-body {
+            margin-bottom: 30px;
+            line-height: 1.5;
+          }
+          .memo-totals-title {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+          }
+          .memo-table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          .memo-table td {
+            border: 1px solid black;
+            padding: 8px;
+          }
+          .memo-table td:last-child {
+            text-align: right;
+          }
+          .memo-footer {
+            margin-top: 20px;
+          }
+          .memo-label {
+            color: #666;
+            font-size: 0.8em;
+            margin-left: 5px;
+          }
         `);
         printWindow.document.write("</style>");
         printWindow.document.write("</head><body>");

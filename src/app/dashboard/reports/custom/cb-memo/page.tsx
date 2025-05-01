@@ -301,11 +301,85 @@ export default function CbMemoReportPage() {
 
   const handlePrint = () => {
     if (memoData) {
-      // Add a class to the body or a wrapper div to control print styles via CSS
-      document.body.classList.add("printing-memo");
-      window.print();
-      // Remove class after print dialog is likely closed
-      setTimeout(() => document.body.classList.remove("printing-memo"), 500);
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write("<html><head><title>PEPI CB Memo</title>");
+        printWindow.document.write('<meta charset="UTF-8">');
+        printWindow.document.write(
+          '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+        );
+        printWindow.document.write(
+          '<link href="https://fonts.googleapis.com/css2?family=Times+New+Roman&display=swap" rel="stylesheet">',
+        );
+        printWindow.document.write("<style>");
+        printWindow.document.write(`
+          body { 
+            font-family: 'Times New Roman', serif; 
+            margin: 0; 
+            padding: 0; 
+            background-color: white;
+            color: black;
+          }
+          @page { size: letter; margin: 0.75in; }
+          .memo-container {
+            width: 100%;
+            max-width: 8.5in;
+            margin: 0 auto;
+            padding: 0;
+          }
+          h1 {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            border-bottom: 2px solid black;
+            padding-bottom: 5px;
+            display: inline-block;
+          }
+          .text-center {
+            text-align: center;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+          }
+          td {
+            border: 1px solid black;
+            padding: 8px;
+          }
+          td:last-child {
+            text-align: right;
+          }
+          .text-xs {
+            font-size: 0.75rem;
+          }
+          .text-gray-600 {
+            color: #666;
+          }
+        `);
+        printWindow.document.write("</style>");
+        printWindow.document.write("</head><body>");
+
+        // Get the memo content
+        const memoContent = document.getElementById("memo-content-area");
+        if (memoContent) {
+          printWindow.document.write(memoContent.innerHTML);
+        }
+
+        printWindow.document.write("</body></html>");
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      } else {
+        // Fallback to standard print if window.open fails
+        document.body.classList.add("printing-memo");
+        window.print();
+        setTimeout(() => document.body.classList.remove("printing-memo"), 500);
+      }
     } else {
       toast({
         title: "Cannot Print",
@@ -494,10 +568,16 @@ export default function CbMemoReportPage() {
       {/* Print-specific styles (can be moved to global CSS or a layout component later) */}
       <style jsx global>{`
         @media print {
+          @page {
+            size: letter;
+            margin: 0.75in;
+          }
           body.printing-memo {
             margin: 0;
             padding: 0;
-            font-family: serif !important;
+            font-family: "Times New Roman", serif !important;
+            background-color: white;
+            color: black;
           }
           body.printing-memo .hide-on-print {
             display: none;
@@ -509,8 +589,18 @@ export default function CbMemoReportPage() {
             padding: 0;
             border: none;
             box-shadow: none;
-            background-color: transparent;
-            font-family: serif !important;
+            background-color: white;
+            font-family: "Times New Roman", serif !important;
+          }
+          body.printing-memo h1.text-xl {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            border-bottom: 2px solid black;
+            padding-bottom: 5px;
+            display: inline-block;
           }
           body.printing-memo table {
             border-collapse: collapse;
@@ -523,7 +613,12 @@ export default function CbMemoReportPage() {
             border: 1px solid black;
             padding: 8px;
           }
-          /* Add any other print-specific overrides here */
+          body.printing-memo .text-xs {
+            font-size: 0.75rem;
+          }
+          body.printing-memo .text-gray-600 {
+            color: #666;
+          }
         }
       `}</style>
     </div>
