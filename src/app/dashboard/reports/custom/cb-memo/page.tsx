@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
-import { createClient } from "../../../../../../supabase/client";
+import { createClient } from "../../../../../supabase/client";
 import {
   getMonthlyPepiMemoDataAction,
   MonthlyPepiMemoData,
@@ -164,6 +164,8 @@ export default function CbMemoReportPage() {
       let monthlySpending = 0;
       let monthlyReturned = 0;
       let monthlyAgentIssues = 0;
+      let monthlyInitialFunding = 0;
+      let monthlyAdditionalUnitIssue = 0;
 
       // Also calculate current balances (not filtered by month)
       let totalIssuedToAgents = 0;
@@ -226,6 +228,10 @@ export default function CbMemoReportPage() {
             monthlyIssuance += amount;
             if (tx.agent_id) {
               monthlyAgentIssues += amount;
+            } else if (tx.receipt_number?.startsWith("ADD")) {
+              // Count additions to the book in the selected month
+              monthlyAdditionalUnitIssue += amount;
+              monthlyInitialFunding += amount;
             }
           } else if (tx.transaction_type === "spending") {
             monthlySpending += amount;
@@ -254,6 +260,14 @@ export default function CbMemoReportPage() {
           monthlyAgentIssues: monthlyAgentIssues,
           monthlyExpenditures: monthlySpending,
           monthlyAgentReturns: monthlyReturned,
+          monthlyInitialFunding: monthlyInitialFunding,
+          monthlyAdditionalUnitIssue: monthlyAdditionalUnitIssue,
+          // For the memo, use monthly values for the main display
+          totalAgentIssues: monthlyAgentIssues,
+          totalAgentReturns: monthlyReturned,
+          totalExpenditures: monthlySpending,
+          totalAdditionalUnitIssue: monthlyAdditionalUnitIssue,
+          initialFunding: monthlyInitialFunding,
           // Current balances (not filtered by month)
           currentBalance: pepiBookBalance,
           cashOnHand: safeCashBalance,

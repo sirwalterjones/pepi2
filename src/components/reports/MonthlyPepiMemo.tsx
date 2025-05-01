@@ -42,19 +42,23 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
     bookYear: data?.bookYear || "-",
     reconciliationDate: data?.reconciliationDate || "-",
     beginningBalance: data?.beginningBalance ?? 0,
-    // These values ARE filtered by month - use monthly values
-    totalAgentIssues: data?.monthlyAgentIssues ?? 0,
-    totalAgentReturns: data?.monthlyAgentReturns ?? 0,
-    totalExpenditures: data?.monthlyExpenditures ?? 0,
-    totalAdditionalUnitIssue: data?.monthlyAdditionalUnitIssue ?? 0,
+    // These values ARE filtered by month - use monthly values or explicitly provided filtered values
+    totalAgentIssues: data?.totalAgentIssues ?? data?.monthlyAgentIssues ?? 0,
+    totalAgentReturns:
+      data?.totalAgentReturns ?? data?.monthlyAgentReturns ?? 0,
+    totalExpenditures:
+      data?.totalExpenditures ?? data?.monthlyExpenditures ?? 0,
+    totalAdditionalUnitIssue:
+      data?.totalAdditionalUnitIssue ?? data?.monthlyAdditionalUnitIssue ?? 0,
     // These values are NOT filtered by month - they show current totals
     endingBalance: data?.currentBalance ?? 0, // Current total balance
     ytdExpenditures: data?.ytdExpenditures ?? 0, // Year-to-date total
-    // New dashboard metrics - use monthly values for filtered data
-    initialFunding: data?.monthlyInitialFunding ?? 0,
-    issuedToAgents: data?.monthlyIssuedToAgents ?? 0,
-    spentByAgents: data?.monthlySpentByAgents ?? 0,
-    returnedByAgents: data?.monthlyReturnedByAgents ?? 0,
+    // New dashboard metrics - use monthly values for filtered data or explicitly provided filtered values
+    initialFunding: data?.initialFunding ?? data?.monthlyInitialFunding ?? 0,
+    issuedToAgents: data?.issuedToAgents ?? data?.monthlyIssuedToAgents ?? 0,
+    spentByAgents: data?.spentByAgents ?? data?.monthlySpentByAgents ?? 0,
+    returnedByAgents:
+      data?.returnedByAgents ?? data?.monthlyReturnedByAgents ?? 0,
     // Book balance is a current total, not filtered by month
     bookBalance: data?.cashOnHand ?? 0,
     // Agent cash balance
