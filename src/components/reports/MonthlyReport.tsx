@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createClient } from "../../../supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { Printer, Loader2 } from "lucide-react";
 import { Transaction } from "@/types/schema";
+import PrintableReport from "./PrintableReport";
+import { formatCurrency } from "@/lib/utils";
 
 export default function MonthlyReport() {
   const [loading, setLoading] = useState(true);
@@ -141,12 +143,7 @@ export default function MonthlyReport() {
     });
   }, [transactions, selectedMonth, selectedYear]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  };
+  // Use the formatCurrency utility function from utils.ts
 
   const formatDate = (dateString: string) => {
     try {
@@ -156,8 +153,31 @@ export default function MonthlyReport() {
     }
   };
 
+  const printableReportRef = useRef<HTMLDivElement>(null);
+
   const handlePrint = () => {
-    window.print();
+    if (printableReportRef.current) {
+      // Focus on the printable report and print it
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write("<html><head><title>Monthly Report</title>");
+        printWindow.document.write(
+          '<link rel="stylesheet" href="/globals.css" type="text/css" media="print"/>',
+        );
+        printWindow.document.write("</head><body>");
+        printWindow.document.write(printableReportRef.current.innerHTML);
+        printWindow.document.write("</body></html>");
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+        // printWindow.close();
+      } else {
+        // Fallback to standard print if window.open fails
+        window.print();
+      }
+    } else {
+      window.print();
+    }
   };
 
   const getMonthName = (month: number) => {
@@ -231,20 +251,24 @@ export default function MonthlyReport() {
         </Button>
       </div>
 
-      {/* Print-only header */}
-      <div className="hidden print:block mb-6">
-        <h1 className="text-2xl font-bold text-center">
-          Monthly Transaction Report - {getMonthName(selectedMonth)}{" "}
-          {selectedYear}
-        </h1>
-        {activePepiBook && (
-          <p className="text-center text-muted-foreground">
-            PEPI Book: {activePepiBook.year}
-          </p>
-        )}
-        <p className="text-center text-sm text-muted-foreground">
-          Generated on {new Date().toLocaleDateString()}
-        </p>
+      {/* Printable Report (hidden but used for printing) */}
+      <div className="hidden" ref={printableReportRef}>
+        <PrintableReport
+          reportData={filteredTransactions}
+          stats={{
+            totalAgents: 0, // This could be calculated if needed
+            totalTransactions: filteredTransactions.length,
+            totalIssuance: stats.totalIssuance,
+            totalReturned: stats.totalReturned,
+            currentBalance: stats.safeCashBalance + stats.agentCashBalance,
+            cashOnHand: stats.safeCashBalance,
+            spendingTotal: stats.totalSpending,
+            activePepiBookYear: activePepiBook?.year || null,
+          }}
+          startDate={new Date(selectedYear, selectedMonth, 1)}
+          endDate={new Date(selectedYear, selectedMonth + 1, 0)}
+          isMonthlyReport={true}
+        />
       </div>
 
       {loading ? (
