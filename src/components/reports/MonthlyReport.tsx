@@ -160,17 +160,40 @@ export default function MonthlyReport() {
       // Focus on the printable report and print it
       const printWindow = window.open("", "_blank");
       if (printWindow) {
-        printWindow.document.write("<html><head><title>Monthly Report</title>");
+        printWindow.document.write(
+          "<html><head><title>Monthly Transaction Report</title>",
+        );
+        printWindow.document.write('<meta charset="UTF-8">');
+        printWindow.document.write(
+          '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+        );
         printWindow.document.write(
           '<link rel="stylesheet" href="/globals.css" type="text/css" media="print"/>',
         );
+        printWindow.document.write("<style>");
+        printWindow.document.write(`
+          body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+          table { border-collapse: collapse; width: 100%; }
+          th, td { border: 1px solid #ddd; padding: 8px; }
+          th { background-color: #f2f2f2; text-align: left; }
+          .header { margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+          .footer { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px; text-align: center; font-size: 12px; }
+          h1, h2, h3 { margin: 0; padding: 0; }
+          .executive-summary { background-color: #f9f9f9; padding: 15px; margin-bottom: 20px; border: 1px solid #ddd; }
+          .financial-summary table { margin-bottom: 20px; }
+          .signature-section { margin-top: 50px; }
+          .signature-line { border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px; }
+          @page { size: letter; margin: 0.5in; }
+        `);
+        printWindow.document.write("</style>");
         printWindow.document.write("</head><body>");
         printWindow.document.write(printableReportRef.current.innerHTML);
         printWindow.document.write("</body></html>");
         printWindow.document.close();
         printWindow.focus();
-        printWindow.print();
-        // printWindow.close();
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
       } else {
         // Fallback to standard print if window.open fails
         window.print();
