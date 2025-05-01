@@ -254,9 +254,9 @@ export default function CbMemoReportPage() {
         const enhancedData = {
           ...result.data,
           // Use our calculated monthly values
-          monthlyIssuedToAgents: monthlyAgentIssues,
-          monthlySpentByAgents: monthlySpending,
-          monthlyReturnedByAgents: monthlyReturned,
+          monthlyIssuance: monthlyIssuance,
+          monthlySpending: monthlySpending,
+          monthlyReturned: monthlyReturned,
           monthlyAgentIssues: monthlyAgentIssues,
           monthlyExpenditures: monthlySpending,
           monthlyAgentReturns: monthlyReturned,
@@ -313,60 +313,206 @@ export default function CbMemoReportPage() {
         );
         printWindow.document.write("<style>");
         printWindow.document.write(`
-          body { 
-            font-family: 'Times New Roman', serif; 
-            margin: 0; 
-            padding: 0; 
-            background-color: white;
+          @import url('https://fonts.googleapis.com/css2?family=Times+New+Roman&display=swap');
+          
+          body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Times New Roman', serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            background: white;
             color: black;
           }
-          @page { size: letter; margin: 0.75in; }
+          
+          @page { size: letter; margin: 1in; }
+          
           .memo-container {
             width: 100%;
             max-width: 8.5in;
             margin: 0 auto;
             padding: 0;
           }
-          h1 {
+          
+          .memo-title {
             text-align: center;
-            font-size: 24px;
+            font-size: 24pt;
             font-weight: bold;
             margin-bottom: 30px;
             text-transform: uppercase;
-            border-bottom: 2px solid black;
-            padding-bottom: 5px;
-            display: inline-block;
           }
-          .text-center {
+          
+          .memo-header {
+            display: grid;
+            grid-template-columns: 60px 1fr;
+            gap: 10px;
+            margin-bottom: 30px;
+            position: relative;
+          }
+          
+          .memo-header-label {
+            font-weight: bold;
+          }
+          
+          .memo-cmans {
+            position: absolute;
+            top: 0;
+            right: 0;
+            font-size: 32pt;
+            font-weight: bold;
+          }
+          
+          .memo-body {
+            margin-bottom: 30px;
+            line-height: 1.5;
+          }
+          
+          .memo-totals-title {
             text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
           }
-          table {
+          
+          .memo-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
           }
-          td {
+          
+          .memo-table td {
             border: 1px solid black;
             padding: 8px;
           }
-          td:last-child {
+          
+          .memo-table td:last-child {
             text-align: right;
           }
-          .text-xs {
-            font-size: 0.75rem;
+          
+          .memo-footer {
+            margin-top: 20px;
           }
-          .text-gray-600 {
+          
+          .memo-label {
             color: #666;
+            font-size: 0.8em;
+            margin-left: 5px;
           }
         `);
         printWindow.document.write("</style>");
         printWindow.document.write("</head><body>");
 
-        // Get the memo content
-        const memoContent = document.getElementById("memo-content-area");
-        if (memoContent) {
-          printWindow.document.write(memoContent.innerHTML);
-        }
+        // Render the PrintableCbMemo component directly
+        printWindow.document.write(`
+          <div class="memo-container">
+            <h1 class="memo-title">MEMORANDUM</h1>
+            
+            <div class="memo-header">
+              <div class="memo-header-label">TO:</div>
+              <div>PEPI Account File</div>
+              
+              <div class="memo-header-label">FROM:</div>
+              <div>${memoData.commanderName}, Commander</div>
+              
+              <div class="memo-header-label">DATE:</div>
+              <div>${memoData.memoDate}</div>
+              
+              <div class="memo-header-label">RE:</div>
+              <div>PEPI for ${memoData.monthName} ${memoData.bookYear}</div>
+              
+              <div class="memo-cmans">CMANS</div>
+            </div>
+            
+            <div class="memo-body">
+              <p>
+                On ${memoData.reconciliationDate}, the CMANS PEPI account was reconciled
+                for the month of ${memoData.monthName} ${memoData.bookYear}.
+              </p>
+              <p>
+                The current overall balance is $${memoData.beginningBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.
+                CMANS Agents were issued $${memoData.totalAgentIssues.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} during ${memoData.monthName} ${memoData.bookYear}.
+                Agents returned $${memoData.totalAgentReturns.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for the month of ${memoData.monthName} ${memoData.bookYear}.
+                Cash on hand was counted and verified at $${memoData.cashOnHand.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (current balance).
+                CMANS Agents expended $${memoData.totalExpenditures.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for ${memoData.monthName} ${memoData.bookYear}.
+                ${memoData.totalAdditionalUnitIssue > 0 ? `Additional Unit issue of PEPI was $${memoData.totalAdditionalUnitIssue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.` : ""}
+                The CMANS PEPI balance at the end of ${memoData.monthName} was $${memoData.endingBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (current balance).
+                The total expenditures for ${memoData.bookYear} are $${memoData.ytdExpenditures.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.
+              </p>
+            </div>
+            
+            <div class="memo-totals">
+              <h2 class="memo-totals-title">TOTALS</h2>
+              <table class="memo-table">
+                <tbody>
+                  <tr>
+                    <td>Initial Funding</td>
+                    <td>
+                      $${memoData.initialFunding.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <span class="memo-label">(Overall)</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Issued To Agents</td>
+                    <td>
+                      $${memoData.issuedToAgents.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <span class="memo-label">(${memoData.monthName})</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Total Spent By Agents</td>
+                    <td>
+                      $${memoData.spentByAgents.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <span class="memo-label">(${memoData.monthName})</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Total Returned By Agents</td>
+                    <td>
+                      $${memoData.returnedByAgents.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <span class="memo-label">(${memoData.monthName})</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Book Balance (Safe Cash)</td>
+                    <td>
+                      $${memoData.bookBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <span class="memo-label">(Current)</span>
+                    </td>
+                  </tr>
+                  ${
+                    memoData.totalAdditionalUnitIssue > 0
+                      ? `
+                  <tr>
+                    <td>Additional Unit Issue</td>
+                    <td>
+                      $${memoData.totalAdditionalUnitIssue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <span class="memo-label">(${memoData.monthName})</span>
+                    </td>
+                  </tr>`
+                      : ""
+                  }
+                  <tr>
+                    <td>Expenditures CY ${memoData.bookYear}</td>
+                    <td>
+                      $${memoData.ytdExpenditures.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <span class="memo-label">(Total)</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="memo-footer">
+              ${memoData.commanderName
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase()}/${memoData.commanderName
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toLowerCase()}
+            </div>
+          </div>
+        `);
 
         printWindow.document.write("</body></html>");
         printWindow.document.close();
@@ -570,7 +716,7 @@ export default function CbMemoReportPage() {
         @media print {
           @page {
             size: letter;
-            margin: 0.75in;
+            margin: 1in;
           }
           body.printing-memo {
             margin: 0;
@@ -578,6 +724,7 @@ export default function CbMemoReportPage() {
             font-family: "Times New Roman", serif !important;
             background-color: white;
             color: black;
+            font-size: 12pt;
           }
           body.printing-memo .hide-on-print {
             display: none;
@@ -592,32 +739,51 @@ export default function CbMemoReportPage() {
             background-color: white;
             font-family: "Times New Roman", serif !important;
           }
-          body.printing-memo h1.text-xl {
+          body.printing-memo h1 {
             text-align: center;
-            font-size: 24px;
+            font-size: 24pt;
             font-weight: bold;
             margin-bottom: 30px;
             text-transform: uppercase;
-            border-bottom: 2px solid black;
-            padding-bottom: 5px;
-            display: inline-block;
+          }
+          body.printing-memo .memo-header {
+            display: grid;
+            grid-template-columns: 60px 1fr;
+            gap: 10px;
+            margin-bottom: 30px;
+            position: relative;
+          }
+          body.printing-memo .memo-header-label {
+            font-weight: bold;
+          }
+          body.printing-memo .memo-cmans {
+            position: absolute;
+            top: 0;
+            right: 0;
+            font-size: 32pt;
+            font-weight: bold;
           }
           body.printing-memo table {
             border-collapse: collapse;
-            width: 80%;
-            margin-left: auto;
-            margin-right: auto;
+            width: 100%;
+            margin: 20px 0;
           }
-          body.printing-memo th,
           body.printing-memo td {
             border: 1px solid black;
             padding: 8px;
           }
-          body.printing-memo .text-xs {
-            font-size: 0.75rem;
+          body.printing-memo td:last-child {
+            text-align: right;
           }
-          body.printing-memo .text-gray-600 {
+          body.printing-memo .memo-totals-title {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+          }
+          body.printing-memo .memo-label {
             color: #666;
+            font-size: 0.8em;
+            margin-left: 5px;
           }
         }
       `}</style>

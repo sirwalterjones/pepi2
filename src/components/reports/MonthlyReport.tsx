@@ -311,76 +311,88 @@ export default function MonthlyReport() {
           '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
         );
         printWindow.document.write(
-          '<link rel="stylesheet" href="/globals.css" type="text/css" media="print"/>',
+          '<link href="https://fonts.googleapis.com/css2?family=Times+New+Roman&display=swap" rel="stylesheet">',
         );
         printWindow.document.write("<style>");
         printWindow.document.write(`
           @import url('https://fonts.googleapis.com/css2?family=Times+New+Roman&display=swap');
-          body { 
-            font-family: 'Times New Roman', serif; 
-            margin: 0; 
-            padding: 0; 
-            background-color: white;
+          
+          body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Times New Roman', serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            background: white;
+            color: black;
           }
+          
           @page { size: letter; margin: 1in; }
+          
           .memo-container {
-            width: 8.5in;
-            padding: 0.5in;
+            width: 100%;
+            max-width: 8.5in;
             margin: 0 auto;
-            box-sizing: border-box;
+            padding: 0;
           }
+          
           .memo-title {
             text-align: center;
-            font-size: 24px;
+            font-size: 24pt;
             font-weight: bold;
             margin-bottom: 30px;
             text-transform: uppercase;
-            border-bottom: 2px solid black;
-            padding-bottom: 5px;
-            display: inline-block;
-            margin-left: auto;
-            margin-right: auto;
           }
+          
           .memo-header {
             display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 20px;
+            grid-template-columns: 60px 1fr;
+            gap: 10px;
             margin-bottom: 30px;
             position: relative;
           }
+          
           .memo-header-label {
             font-weight: bold;
           }
+          
           .memo-cmans {
             position: absolute;
             top: 0;
             right: 0;
-            font-size: 32px;
+            font-size: 32pt;
             font-weight: bold;
           }
+          
           .memo-body {
             margin-bottom: 30px;
             line-height: 1.5;
           }
+          
           .memo-totals-title {
             text-align: center;
             font-weight: bold;
             margin-bottom: 10px;
           }
+          
           .memo-table {
             width: 100%;
             border-collapse: collapse;
           }
+          
           .memo-table td {
             border: 1px solid black;
             padding: 8px;
           }
+          
           .memo-table td:last-child {
             text-align: right;
           }
+          
           .memo-footer {
             margin-top: 20px;
           }
+          
           .memo-label {
             color: #666;
             font-size: 0.8em;
@@ -389,7 +401,152 @@ export default function MonthlyReport() {
         `);
         printWindow.document.write("</style>");
         printWindow.document.write("</head><body>");
-        printWindow.document.write(cbMemoRef.current.innerHTML);
+
+        // Generate the memo HTML directly
+        const data = {
+          commanderName: commanderName,
+          memoDate: format(new Date(), "MMMM d, yyyy"),
+          monthName: getMonthName(selectedMonth),
+          bookYear: selectedYear.toString(),
+          reconciliationDate: format(new Date(), "MMMM d, yyyy"),
+          beginningBalance: stats.currentBalance,
+          totalAgentIssues: stats.totalIssuance,
+          totalAgentReturns: stats.totalReturned,
+          cashOnHand: stats.cashOnHand,
+          totalExpenditures: stats.spendingTotal,
+          totalAdditionalUnitIssue: 0,
+          endingBalance: stats.currentBalance,
+          ytdExpenditures: totalSpentByAgents,
+          initialFunding: activePepiBook?.starting_amount || 0,
+          issuedToAgents: stats.totalIssuance,
+          spentByAgents: stats.spendingTotal,
+          returnedByAgents: stats.totalReturned,
+          bookBalance: stats.cashOnHand,
+        };
+
+        const formatMoney = (amount) => {
+          return amount.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+        };
+
+        const upperInitials = commanderName
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .toUpperCase();
+        const lowerInitials = commanderName
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .toLowerCase();
+
+        printWindow.document.write(`
+          <div class="memo-container">
+            <h1 class="memo-title">MEMORANDUM</h1>
+            
+            <div class="memo-header">
+              <div class="memo-header-label">TO:</div>
+              <div>PEPI Account File</div>
+              
+              <div class="memo-header-label">FROM:</div>
+              <div>${data.commanderName}, Commander</div>
+              
+              <div class="memo-header-label">DATE:</div>
+              <div>${data.memoDate}</div>
+              
+              <div class="memo-header-label">RE:</div>
+              <div>PEPI for ${data.monthName} ${data.bookYear}</div>
+              
+              <div class="memo-cmans">CMANS</div>
+            </div>
+            
+            <div class="memo-body">
+              <p>
+                On ${data.reconciliationDate}, the CMANS PEPI account was reconciled
+                for the month of ${data.monthName} ${data.bookYear}.
+              </p>
+              <p>
+                The current overall balance is ${formatMoney(data.beginningBalance)}.
+                CMANS Agents were issued ${formatMoney(data.totalAgentIssues)} during ${data.monthName} ${data.bookYear}.
+                Agents returned ${formatMoney(data.totalAgentReturns)} for the month of ${data.monthName} ${data.bookYear}.
+                Cash on hand was counted and verified at ${formatMoney(data.cashOnHand)} (current balance).
+                CMANS Agents expended ${formatMoney(data.totalExpenditures)} for ${data.monthName} ${data.bookYear}.
+                ${data.totalAdditionalUnitIssue > 0 ? `Additional Unit issue of PEPI was ${formatMoney(data.totalAdditionalUnitIssue)}.` : ""}
+                The CMANS PEPI balance at the end of ${data.monthName} was ${formatMoney(data.endingBalance)} (current balance).
+                The total expenditures for ${data.bookYear} are ${formatMoney(data.ytdExpenditures)}.
+              </p>
+            </div>
+            
+            <div class="memo-totals">
+              <h2 class="memo-totals-title">TOTALS</h2>
+              <table class="memo-table">
+                <tbody>
+                  <tr>
+                    <td>Initial Funding</td>
+                    <td>
+                      ${formatMoney(data.initialFunding)}
+                      <span class="memo-label">(Overall)</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Issued To Agents</td>
+                    <td>
+                      ${formatMoney(data.issuedToAgents)}
+                      <span class="memo-label">(${data.monthName})</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Total Spent By Agents</td>
+                    <td>
+                      ${formatMoney(data.spentByAgents)}
+                      <span class="memo-label">(${data.monthName})</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Total Returned By Agents</td>
+                    <td>
+                      ${formatMoney(data.returnedByAgents)}
+                      <span class="memo-label">(${data.monthName})</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Book Balance (Safe Cash)</td>
+                    <td>
+                      ${formatMoney(data.bookBalance)}
+                      <span class="memo-label">(Current)</span>
+                    </td>
+                  </tr>
+                  ${
+                    data.totalAdditionalUnitIssue > 0
+                      ? `
+                  <tr>
+                    <td>Additional Unit Issue</td>
+                    <td>
+                      ${formatMoney(data.totalAdditionalUnitIssue)}
+                      <span class="memo-label">(${data.monthName})</span>
+                    </td>
+                  </tr>`
+                      : ""
+                  }
+                  <tr>
+                    <td>Expenditures CY ${data.bookYear}</td>
+                    <td>
+                      ${formatMoney(data.ytdExpenditures)}
+                      <span class="memo-label">(Total)</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="memo-footer">
+              ${upperInitials}/${lowerInitials}
+            </div>
+          </div>
+        `);
+
         printWindow.document.write("</body></html>");
         printWindow.document.close();
         printWindow.focus();
