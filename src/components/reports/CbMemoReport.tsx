@@ -44,39 +44,74 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
   const lowerInitials = getInitials(data.commanderName).toLowerCase();
 
   return (
-    <div className="font-serif p-4 max-w-4xl mx-auto bg-white text-black print:shadow-none print:p-8 print:max-w-none print:w-full print:text-black">
+    <div
+      className="font-serif p-4 max-w-4xl mx-auto bg-white text-black print:shadow-none print:p-8 print:max-w-none print:w-full print:text-black"
+      style={{ fontFamily: "serif" }}
+    >
       {/* Header Section */}
       <div className="text-center mb-6 print:mb-6">
-        <h1 className="text-xl font-bold tracking-wider uppercase border-b-2 border-black pb-1 mb-6 inline-block">
+        <h1
+          className="text-xl font-bold tracking-wider uppercase border-b-2 border-black pb-1 mb-6 inline-block"
+          style={{ fontSize: "24px", letterSpacing: "1px" }}
+        >
           MEMORANDUM
         </h1>
       </div>
 
       {/* Memo Metadata */}
-      <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 mb-6 text-sm relative print:mb-6 print:text-sm">
-        <span className="font-bold">TO:</span>
+      <div
+        className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 mb-6 text-sm relative print:mb-6 print:text-sm"
+        style={{ marginLeft: "10%", marginRight: "10%" }}
+      >
+        <span
+          className="font-bold"
+          style={{ fontWeight: "bold", paddingRight: "10px" }}
+        >
+          TO:
+        </span>
         <span>PEPI Account File</span>
-        <span className="font-bold">FROM:</span>
+        <span
+          className="font-bold"
+          style={{ fontWeight: "bold", paddingRight: "10px" }}
+        >
+          FROM:
+        </span>
         <span className="flex items-center justify-between">
           <span>{data.commanderName}, Commander</span>
         </span>
-        <span className="font-bold">DATE:</span>
+        <span
+          className="font-bold"
+          style={{ fontWeight: "bold", paddingRight: "10px" }}
+        >
+          DATE:
+        </span>
         <span>{data.memoDate}</span>
-        <span className="font-bold">RE:</span>
+        <span
+          className="font-bold"
+          style={{ fontWeight: "bold", paddingRight: "10px" }}
+        >
+          RE:
+        </span>
         <span>
           PEPI for {data.monthName} {data.bookYear}
         </span>
 
         {/* CMANS Text Block */}
         <div className="absolute top-0 right-0 flex items-center justify-center p-1 print:absolute print:top-0 print:right-0">
-          <span className="font-bold text-2xl text-black tracking-wider print:font-bold print:text-2xl print:text-black">
+          <span
+            className="font-bold text-2xl text-black tracking-wider print:font-bold print:text-2xl print:text-black"
+            style={{ fontSize: "32px", fontWeight: "bold" }}
+          >
             CMANS
           </span>
         </div>
       </div>
 
       {/* Narrative Body */}
-      <div className="mb-8 text-sm leading-relaxed space-y-3 print:mb-8 print:text-sm print:leading-relaxed">
+      <div
+        className="mb-8 text-sm leading-relaxed space-y-3 print:mb-8 print:text-sm print:leading-relaxed"
+        style={{ marginLeft: "10%", marginRight: "10%" }}
+      >
         <p>
           On {data.reconciliationDate}, the CMANS PEPI account was reconciled
           for the month of {data.monthName} {data.bookYear}.
@@ -105,8 +140,14 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
       </div>
 
       {/* Totals Table */}
-      <div className="mb-8 print:mb-8">
-        <h2 className="text-center font-bold mb-2 text-sm print:text-sm print:font-bold">
+      <div
+        className="mb-8 print:mb-8"
+        style={{ marginLeft: "10%", marginRight: "10%" }}
+      >
+        <h2
+          className="text-center font-bold mb-2 text-sm print:text-sm print:font-bold"
+          style={{ fontSize: "16px", fontWeight: "bold" }}
+        >
           TOTALS
         </h2>
         <table className="w-full border-collapse border border-black text-sm print:w-full print:border-collapse print:border print:border-black print:text-sm">
@@ -187,7 +228,10 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
       </div>
 
       {/* Footer Initials */}
-      <div className="text-sm print:text-sm">
+      <div
+        className="text-sm print:text-sm"
+        style={{ marginLeft: "10%", marginRight: "10%" }}
+      >
         {upperInitials}/{lowerInitials}
       </div>
     </div>

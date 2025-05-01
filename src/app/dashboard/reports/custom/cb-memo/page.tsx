@@ -497,6 +497,7 @@ export default function CbMemoReportPage() {
           body.printing-memo {
             margin: 0;
             padding: 0;
+            font-family: serif !important;
           }
           body.printing-memo .hide-on-print {
             display: none;
@@ -509,6 +510,18 @@ export default function CbMemoReportPage() {
             border: none;
             box-shadow: none;
             background-color: transparent;
+            font-family: serif !important;
+          }
+          body.printing-memo table {
+            border-collapse: collapse;
+            width: 80%;
+            margin-left: auto;
+            margin-right: auto;
+          }
+          body.printing-memo th,
+          body.printing-memo td {
+            border: 1px solid black;
+            padding: 8px;
           }
           /* Add any other print-specific overrides here */
         }
