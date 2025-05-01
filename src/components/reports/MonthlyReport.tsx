@@ -112,7 +112,8 @@ export default function MonthlyReport() {
     );
     setFilteredTransactions(filtered);
 
-    // Calculate statistics using the refined logic from DashboardOverview
+    // Calculate statistics for ALL transactions (not filtered by month)
+    // This ensures the cash balances show the current totals
     let totalIssuedToAgents = 0;
     let totalSpentByAgents = 0;
     let totalReturnedByAgents = 0;
@@ -120,7 +121,7 @@ export default function MonthlyReport() {
     let initialAmount = activePepiBook?.starting_amount || 0;
 
     // Process all transactions to calculate balances
-    filtered.forEach((transaction) => {
+    transactions.forEach((transaction) => {
       if (transaction.status === "approved") {
         const amount = parseFloat(transaction.amount.toString());
 
@@ -165,10 +166,14 @@ export default function MonthlyReport() {
         .select("*", { count: "exact", head: true })
         .eq("is_active", true);
 
+      // Calculate monthly transaction stats for display in the table
+      const monthlyTransactionCount = filtered.filter(
+        (t) => t.status === "approved",
+      ).length;
+
       setStats({
         totalAgents: agentsCount || 0,
-        totalTransactions: filtered.filter((t) => t.status === "approved")
-          .length,
+        totalTransactions: monthlyTransactionCount,
         totalIssuance: totalIssuedToAgents,
         totalReturned: totalReturnedByAgents,
         currentBalance: pepiBookBalance,
@@ -276,6 +281,10 @@ export default function MonthlyReport() {
               </span>
             )}
           </h1>
+          <p className="text-sm text-muted-foreground mb-2">
+            Note: Transaction list is filtered by month, but balance totals show
+            current overall balances
+          </p>
           <div className="flex items-center gap-2">
             <select
               className="border rounded px-2 py-1"
@@ -375,7 +384,7 @@ export default function MonthlyReport() {
                     {formatCurrency(stats.totalIssuance)}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Approved funds moved to agents
+                    Current funds with agents (total, not filtered by month)
                   </p>
                 </CardContent>
               </Card>
@@ -391,7 +400,7 @@ export default function MonthlyReport() {
                     {formatCurrency(stats.spendingTotal)}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Approved spending by agents
+                    All-time approved spending (total, not filtered by month)
                   </p>
                 </CardContent>
               </Card>
@@ -407,7 +416,7 @@ export default function MonthlyReport() {
                     {formatCurrency(stats.totalReturned)}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Approved funds returned by agents
+                    All-time funds returned (total, not filtered by month)
                   </p>
                 </CardContent>
               </Card>
@@ -423,7 +432,7 @@ export default function MonthlyReport() {
                     {formatCurrency(stats.cashOnHand)}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Remaining funds in PEPI Book (minus all spent items)
+                    Remaining funds in PEPI Book (total, not filtered by month)
                   </p>
                 </CardContent>
               </Card>
