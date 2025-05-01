@@ -54,7 +54,7 @@ export default function PendingRequestsList() {
   const { activeBook } = usePepiBooks();
 
   useEffect(() => {
-    if (activeBook !== undefined) {
+    if (activeBook?.id) {
       fetchRequests();
     }
   }, [activeBook]);
@@ -66,6 +66,10 @@ export default function PendingRequestsList() {
       setLoading(false);
       return;
     }
+    console.log(
+      "[PendingRequestsList] Fetching requests for active book ID:",
+      activeBook.id,
+    );
 
     setLoading(true);
     setError(null);
