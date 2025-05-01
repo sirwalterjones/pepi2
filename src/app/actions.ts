@@ -940,7 +940,7 @@ export async function deleteFundRequestAction(requestId: string) {
   // 2. Fetch the request to check ownership and status
   const { data: requestToDelete, error: fetchError } = await supabase
     .from("fund_requests")
-    .select("id, agent_id, status")
+    .select("id, agent_id, status, transaction_id")
     .eq("id", requestId)
     .single();
 
@@ -996,44 +996,78 @@ export async function deleteFundRequestAction(requestId: string) {
     return { error: "Authorization failed." };
   }
 
-  // 4. Perform Deletion
-  console.log(
-    `[Server Action] Performing deletion for request ${requestId}...`,
-  );
-  const { error: deleteError, count: deleteCount } = await supabase // Capture count
-    .from("fund_requests")
-    .delete()
-    .eq("id", requestId);
+  try {
+    // 4. If the request has a linked transaction, first clear the transaction_id reference
+    if (requestToDelete.transaction_id) {
+      console.log(
+        `[Server Action] Request ${requestId} has linked transaction ${requestToDelete.transaction_id}. Clearing reference before deletion.`,
+      );
 
-  if (deleteError) {
+      const { error: updateError } = await supabase
+        .from("fund_requests")
+        .update({ transaction_id: null })
+        .eq("id", requestId);
+
+      if (updateError) {
+        console.error(
+          `[Server Action] Error clearing transaction reference for request ${requestId}:`,
+          updateError,
+        );
+        return {
+          error: "Failed to clear transaction reference before deletion.",
+        };
+      }
+
+      console.log(
+        `[Server Action] Successfully cleared transaction reference for request ${requestId}.`,
+      );
+    }
+
+    // 5. Perform Deletion
+    console.log(
+      `[Server Action] Performing deletion for request ${requestId}...`,
+    );
+    const { error: deleteError, count: deleteCount } = await supabase // Capture count
+      .from("fund_requests")
+      .delete()
+      .eq("id", requestId);
+
+    if (deleteError) {
+      console.error(
+        `[Server Action] Error deleting fund request ${requestId}:`,
+        deleteError,
+      );
+      return { error: "Failed to delete fund request from database." };
+    }
+
+    // Log the count of deleted rows
+    console.log(
+      `[Server Action] Delete operation completed for ${requestId}. Rows affected: ${deleteCount}`,
+    );
+
+    if (deleteCount === 0) {
+      console.warn(
+        `[Server Action] Delete operation for ${requestId} completed without error, but 0 rows were affected. RLS or timing issue?`,
+      );
+      // Optionally return an error here if 0 affected rows is unexpected
+      // return { error: "Delete operation completed but did not remove the request." };
+    }
+
+    console.log(
+      `[Server Action] Successfully confirmed deletion of request ${requestId}.`,
+    ); // Modified log message
+
+    // 6. Revalidate paths
+    revalidatePath("/dashboard");
+
+    return { success: true };
+  } catch (error: any) {
     console.error(
-      `[Server Action] Error deleting fund request ${requestId}:`,
-      deleteError,
+      `[Server Action] Unexpected error deleting request ${requestId}:`,
+      error,
     );
-    return { error: "Failed to delete fund request from database." };
+    return { error: `An unexpected error occurred: ${error.message}` };
   }
-
-  // Log the count of deleted rows
-  console.log(
-    `[Server Action] Delete operation completed for ${requestId}. Rows affected: ${deleteCount}`,
-  );
-
-  if (deleteCount === 0) {
-    console.warn(
-      `[Server Action] Delete operation for ${requestId} completed without error, but 0 rows were affected. RLS or timing issue?`,
-    );
-    // Optionally return an error here if 0 affected rows is unexpected
-    // return { error: "Delete operation completed but did not remove the request." };
-  }
-
-  console.log(
-    `[Server Action] Successfully confirmed deletion of request ${requestId}.`,
-  ); // Modified log message
-
-  // 5. Revalidate paths
-  revalidatePath("/dashboard");
-
-  return { success: true };
 }
 
 // Define the schema for CI Payment form data using Zod

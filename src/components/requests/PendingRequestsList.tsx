@@ -40,6 +40,7 @@ type PendingRequest = {
   agent_name: string; // Added agent name
   pepi_book_year: number; // Added book year for context
   status?: string; // Added status field
+  transaction_id?: string | null; // Added transaction_id field
 };
 
 export default function PendingRequestsList() {
@@ -88,6 +89,7 @@ export default function PendingRequestsList() {
           case_number,
           requested_at,
           status,
+          transaction_id,
           agent:agents!fund_requests_agent_id_fkey ( name ),
           pepi_book:pepi_books!fund_requests_pepi_book_id_fkey ( year )
         `,
@@ -117,6 +119,7 @@ export default function PendingRequestsList() {
         case_number: req.case_number,
         requested_at: req.requested_at,
         status: req.status,
+        transaction_id: req.transaction_id,
         agent_name: req.agent?.name || "Unknown Agent",
         pepi_book_year: req.pepi_book?.year || 0,
       }));
@@ -247,6 +250,9 @@ export default function PendingRequestsList() {
     }
     setProcessingRequestId(requestId);
     try {
+      console.log(
+        `[PendingRequestsList] Attempting to delete request ID: ${requestId}`,
+      );
       const result = await deleteFundRequestAction(requestId);
       if (result?.error) {
         throw new Error(result.error);
@@ -255,6 +261,9 @@ export default function PendingRequestsList() {
       // Optimistically remove the deleted request from the list
       setRequests((prevRequests) =>
         prevRequests.filter((req) => req.id !== requestId),
+      );
+      console.log(
+        `[PendingRequestsList] Successfully deleted request ID: ${requestId}`,
       );
     } catch (err: any) {
       console.error("Error deleting request:", err);

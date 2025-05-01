@@ -472,10 +472,16 @@ export default function TransactionDetails({
       const transactionId = String(transaction.id);
       console.log("Ensuring transaction ID is string:", transactionId);
 
+      console.log("About to call updateTransaction with ID:", transactionId);
+      console.log("Update object being sent:", updateObject);
+
       // Use the dedicated transaction update handler
       const result = await updateTransaction(transactionId, updateObject);
 
+      console.log("Update transaction result:", result);
+
       if (!result.success) {
+        console.error("Transaction update failed:", result.error);
         throw new Error(result.error);
       }
 
@@ -485,8 +491,10 @@ export default function TransactionDetails({
         description: result.message || "Transaction has been updated",
       });
 
+      // CRITICAL FIX: Always update the transaction object with the result data
+      // or with the update object if result data is incomplete
       if (result.data) {
-        console.log("Using result data directly:", result.data);
+        console.log("Using result data to update UI:", result.data);
 
         // Replace the entire transaction object with the updated data
         Object.keys(transaction).forEach((key) => {
@@ -500,8 +508,28 @@ export default function TransactionDetails({
         setStatus(result.data.status || "pending");
         setEditedTransaction(null); // Clear edited transaction
       } else {
+        console.log(
+          "No result data returned, using update object to update UI",
+        );
+
+        // Use the update object to update the transaction
+        Object.keys(updateObject).forEach((key) => {
+          if (key in transaction) {
+            transaction[key] = updateObject[key];
+          }
+        });
+
+        // Ensure status is set to pending
+        transaction.status = "pending";
+        transaction.updated_at = new Date().toISOString();
+
+        // Update state variables
+        setReviewNotes(updateObject.review_notes || "");
+        setStatus("pending");
+        setEditedTransaction(null); // Clear edited transaction
+
         // Fallback to fetching fresh data if result.data is missing
-        console.log("Fallback: fetching fresh transaction data");
+        console.log("Attempting to fetch fresh transaction data");
         const { data: freshData, error: fetchError } = await supabase
           .from("transactions")
           .select("*, agents:agent_id (id, name, badge_number)")
@@ -526,7 +554,6 @@ export default function TransactionDetails({
           // Update state variables
           setReviewNotes(freshData.review_notes || "");
           setStatus(freshData.status || "pending");
-          setEditedTransaction(null); // Clear edited transaction
         }
       }
 
@@ -712,6 +739,40 @@ export default function TransactionDetails({
       console.log(
         `[Client] Attempting to delete transaction ID: ${transaction.id}`,
       );
+
+      // First, check if there are any fund requests referencing this transaction
+      const { data: linkedRequests, error: checkError } = await supabase
+        .from("fund_requests")
+        .select("id")
+        .eq("transaction_id", transaction.id);
+
+      if (checkError) {
+        console.error("Error checking for linked fund requests:", checkError);
+        throw new Error("Failed to check for linked fund requests");
+      }
+
+      // If there are linked fund requests, clear the transaction_id reference first
+      if (linkedRequests && linkedRequests.length > 0) {
+        console.log(
+          `[Client] Found ${linkedRequests.length} fund requests linked to this transaction. Clearing references...`,
+        );
+
+        const { error: updateError } = await supabase
+          .from("fund_requests")
+          .update({ transaction_id: null })
+          .eq("transaction_id", transaction.id);
+
+        if (updateError) {
+          console.error("Error clearing transaction references:", updateError);
+          throw new Error("Failed to clear references to this transaction");
+        }
+
+        console.log(
+          `[Client] Successfully cleared transaction references from ${linkedRequests.length} fund requests`,
+        );
+      }
+
+      // Now proceed with deleting the transaction
       const { error } = await supabase
         .from("transactions")
         .delete()
@@ -731,9 +792,17 @@ export default function TransactionDetails({
       if (onDelete) onDelete();
     } catch (error: any) {
       console.error("Error deleting transaction:", error);
+
+      // Provide a more helpful error message for foreign key constraint violations
+      let errorMessage = error.message || "Failed to delete transaction";
+      if (error.code === "23503" && error.details?.includes("fund_requests")) {
+        errorMessage =
+          "This transaction is linked to one or more fund requests. Please try again.";
+      }
+
       toast({
         title: "Error",
-        description: error.message || "Failed to delete transaction",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
