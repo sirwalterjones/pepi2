@@ -617,7 +617,7 @@ export default function TransactionList() {
                       agentData={currentAgentData}
                       onFormSubmitSuccess={() => {
                         setIsCiPaymentFormOpen(false);
-                        fetchData();
+                        fetchTransactions();
                       }}
                     />
                   )}
@@ -655,7 +655,7 @@ export default function TransactionList() {
                       onSuccess={() => {
                         setIsRequestFormOpen(false);
                         setRequestToEdit(null);
-                        fetchData();
+                        fetchTransactions();
                       }}
                     />
                   </DialogContent>
@@ -936,7 +936,7 @@ export default function TransactionList() {
       <TransactionForm
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
-        onTransactionCreated={fetchData}
+        onTransactionCreated={fetchTransactions}
       />
 
       {selectedTransaction && (
@@ -944,11 +944,11 @@ export default function TransactionList() {
           transaction={selectedTransaction}
           open={isDetailsOpen}
           onOpenChange={setIsDetailsOpen}
-          onDelete={fetchData}
+          onDelete={fetchTransactions}
           onEdit={() => {
             // Force a complete refresh of the data when a transaction is edited
             console.log("Transaction edited, refreshing data...");
-            fetchData();
+            fetchTransactions();
             // Don't automatically close the dialog - let the TransactionDetails component handle this
           }}
         />
