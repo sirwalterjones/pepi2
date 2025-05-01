@@ -55,10 +55,25 @@ export default function PendingRequestsList() {
   const { activeBook } = usePepiBooks();
 
   useEffect(() => {
+    console.log(
+      "[PendingRequestsList] Component mounted, fetching requests...",
+    );
     fetchRequests();
-    // Set up an interval to refresh data every 10 seconds
-    const intervalId = setInterval(fetchRequests, 10000);
-    return () => clearInterval(intervalId);
+
+    // Set up an interval to refresh data every 5 seconds
+    const intervalId = setInterval(() => {
+      console.log(
+        "[PendingRequestsList] Interval triggered, refreshing data...",
+      );
+      fetchRequests();
+    }, 5000);
+
+    return () => {
+      console.log(
+        "[PendingRequestsList] Component unmounting, clearing interval",
+      );
+      clearInterval(intervalId);
+    };
   }, []);
 
   const fetchRequests = async () => {
@@ -67,7 +82,8 @@ export default function PendingRequestsList() {
     console.log("[PendingRequestsList] Fetching all pending requests...");
 
     try {
-      // Direct fetch from fund_requests table with no filters except status
+      // Direct fetch from fund_requests table with no filters
+      console.log("[PendingRequestsList] Executing database query...");
       const { data, error: fetchError } = await supabase
         .from("fund_requests")
         .select(
@@ -83,8 +99,9 @@ export default function PendingRequestsList() {
           pepi_book:pepi_books!fund_requests_pepi_book_id_fkey ( year )
         `,
         )
-        .eq("status", "pending")
-        .order("requested_at", { ascending: true });
+        .order("requested_at", { ascending: false });
+
+      console.log("[PendingRequestsList] Query executed, raw result:", data);
 
       if (fetchError) {
         throw fetchError;
@@ -105,6 +122,7 @@ export default function PendingRequestsList() {
         amount: req.amount,
         case_number: req.case_number,
         requested_at: req.requested_at,
+        status: req.status,
         agent_name: req.agent?.name || "Unknown Agent",
         pepi_book_year: req.pepi_book?.year || 0,
       }));
@@ -134,6 +152,7 @@ export default function PendingRequestsList() {
 
   useEffect(() => {
     // Set up realtime subscription to fund_requests table
+    console.log("[PendingRequestsList] Setting up realtime subscription...");
     const channel = supabase
       .channel("fund_requests_changes")
       .on(
@@ -141,22 +160,20 @@ export default function PendingRequestsList() {
         { event: "*", schema: "public", table: "fund_requests" },
         (payload) => {
           console.log("[PendingRequestsList] Change received!", payload);
-          console.log(
-            "[PendingRequestsList] Refetching data due to change (with delay)...",
-          );
+          console.log("[PendingRequestsList] Refetching data due to change...");
           // Immediate fetch for better responsiveness
           fetchRequests();
         },
       )
       .subscribe();
 
-    // Fetch immediately on mount
-    fetchRequests();
+    console.log("[PendingRequestsList] Realtime subscription active");
 
     return () => {
+      console.log("[PendingRequestsList] Removing realtime subscription");
       supabase.removeChannel(channel);
     };
-  }, [supabase]);
+  }, []);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -261,9 +278,9 @@ export default function PendingRequestsList() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Pending Fund Requests</CardTitle>
+          <CardTitle>Fund Requests</CardTitle>
           <CardDescription>
-            Review and process requests for funds.
+            Review and process all fund requests.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center items-center p-8">
@@ -277,9 +294,9 @@ export default function PendingRequestsList() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Pending Fund Requests</CardTitle>
+          <CardTitle>Fund Requests</CardTitle>
           <CardDescription>
-            Review and process requests for funds.
+            Review and process all fund requests.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -311,9 +328,9 @@ export default function PendingRequestsList() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Pending Fund Requests</CardTitle>
+          <CardTitle>Fund Requests</CardTitle>
           <CardDescription>
-            Review and process requests for funds.
+            Review and process all fund requests.
           </CardDescription>
         </div>
         <Button
@@ -339,7 +356,9 @@ export default function PendingRequestsList() {
       <CardContent>
         {requests.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">No pending requests.</p>
+            <p className="text-muted-foreground mb-4">
+              No fund requests found.
+            </p>
             <Button
               variant="outline"
               onClick={handleRefresh}
@@ -367,6 +386,7 @@ export default function PendingRequestsList() {
                 <TableHead>Amount</TableHead>
                 <TableHead>Case #</TableHead>
                 <TableHead>PEPI Book</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -378,31 +398,40 @@ export default function PendingRequestsList() {
                   <TableCell>{formatCurrency(request.amount)}</TableCell>
                   <TableCell>{request.case_number || "N/A"}</TableCell>
                   <TableCell>{request.pepi_book_year || "N/A"}</TableCell>
+                  <TableCell>
+                    <Badge className="mb-2">
+                      {request.status || "pending"}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="space-x-2 whitespace-nowrap">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleApprove(request.id)}
-                      disabled={processingRequestId === request.id}
-                    >
-                      {processingRequestId === request.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        "Approve"
-                      )}
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleReject(request.id)}
-                      disabled={processingRequestId === request.id}
-                    >
-                      {processingRequestId === request.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        "Reject"
-                      )}
-                    </Button>
+                    {request.status === "pending" && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleApprove(request.id)}
+                          disabled={processingRequestId === request.id}
+                        >
+                          {processingRequestId === request.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            "Approve"
+                          )}
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleReject(request.id)}
+                          disabled={processingRequestId === request.id}
+                        >
+                          {processingRequestId === request.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            "Reject"
+                          )}
+                        </Button>
+                      </>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"

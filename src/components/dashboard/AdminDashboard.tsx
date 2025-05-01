@@ -77,10 +77,10 @@ export default function AdminDashboard() {
 
       <DashboardOverview />
 
-      {/* Always show pending requests to admins with forced refresh */}
+      {/* Always show fund requests to admins with forced refresh */}
       {isAdmin && (
-        <div className="mt-6">
-          <PendingRequestsList key={`${userId}-${refreshKey}`} />
+        <div className="mt-6" key={`requests-container-${Date.now()}`}>
+          <PendingRequestsList />
         </div>
       )}
     </div>
