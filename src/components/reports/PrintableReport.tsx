@@ -143,7 +143,7 @@ export default function PrintableReport({
             margin-bottom: 20px;
           }
           .signature-section {
-            margin-top: 50px;
+            margin-top: 30px;
           }
           .signature-line {
             border-top: 1px solid #333;
@@ -151,7 +151,7 @@ export default function PrintableReport({
             display: inline-block;
             text-align: center;
             padding-top: 5px;
-            margin: 0 20px;
+            margin-right: 10px;
           }
         }
       `}</style>
@@ -184,22 +184,24 @@ export default function PrintableReport({
       </div>
 
       {/* Executive Summary */}
-      <div className="executive-summary mb-6 bg-gray-50 p-4 border border-gray-300 rounded">
-        <h3 className="text-lg font-bold mb-3 border-b pb-1">
+      <div className="executive-summary mb-6 bg-gray-50 p-2 border border-gray-300 rounded">
+        <h3 className="text-lg font-bold mb-1 border-b pb-1">
           Executive Summary
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <p className="font-semibold">Total Transactions:</p>
-            <p className="text-lg">{safeStats.totalTransactions}</p>
-          </div>
-          <div>
-            <p className="font-semibold">Reporting Period:</p>
-            <p>
-              {startDate && endDate
-                ? `${format(startDate, "MM/dd/yyyy")} - ${format(endDate, "MM/dd/yyyy")}`
-                : "Current Period"}
-            </p>
+        <div className="flex justify-between items-center">
+          <div className="flex gap-8">
+            <div>
+              <p className="font-semibold">Total Transactions:</p>
+              <p className="text-lg">{safeStats.totalTransactions}</p>
+            </div>
+            <div>
+              <p className="font-semibold">Reporting Period:</p>
+              <p>
+                {startDate && endDate
+                  ? `${format(startDate, "MM/dd/yyyy")} - ${format(endDate, "MM/dd/yyyy")}`
+                  : "Current Period"}
+              </p>
+            </div>
           </div>
           <div>
             <p className="font-semibold">Current Balance:</p>
@@ -352,21 +354,12 @@ export default function PrintableReport({
 
       {/* Signature Section */}
       <div className="signature-section mt-8 pt-8">
-        <div className="flex justify-between">
-          <div>
-            <div className="signature-line">
-              <p>Prepared By</p>
-            </div>
+        <div className="flex items-center gap-4">
+          <div className="signature-line">
+            <p>Commander/Director Signature</p>
           </div>
-          <div>
-            <div className="signature-line">
-              <p>Reviewed By</p>
-            </div>
-          </div>
-          <div>
-            <div className="signature-line">
-              <p>Approved By</p>
-            </div>
+          <div className="signature-line">
+            <p>Date</p>
           </div>
         </div>
       </div>
