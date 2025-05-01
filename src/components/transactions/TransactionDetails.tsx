@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTransactionEditHandler } from "./TransactionEditHandler";
 import { createClient } from "../../../supabase/client";
 import { Button } from "../ui/button";
 import {
@@ -303,8 +304,12 @@ export default function TransactionDetails({
     }
   };
 
+  // Import the transaction edit handler
+  const { updateTransaction, isUpdating: isEditUpdating } =
+    useTransactionEditHandler();
+
   const handleSaveEdit = async () => {
-    if (!editedTransaction) return;
+    if (!editedTransaction || !transaction?.id) return;
 
     setIsUpdating(true);
     try {
@@ -414,19 +419,14 @@ export default function TransactionDetails({
         throw new Error("Invalid amount value");
       }
 
-      // Convert amount to string for Supabase (it expects string for numeric fields)
-      const amountAsString = parsedAmount.toString();
-
       // Prepare the update object with ALL fields to ensure complete update
       const updateObject = {
         // Basic transaction fields
-        amount: amountAsString,
+        amount: parsedAmount,
         description: editedTransaction.description || null,
         receipt_number: editedTransaction.receipt_number || null,
         agent_id: editedTransaction.agent_id || null,
-        updated_at: new Date().toISOString(),
         document_url: fileUrl,
-        status: "pending", // Always set to pending when edited
         review_notes: isAdmin ? editedTransaction.review_notes || null : null,
 
         // Date handling
@@ -459,32 +459,38 @@ export default function TransactionDetails({
         }),
       };
 
-      console.log("Transaction ID being updated:", transaction.id);
-      console.log("Final update object being sent to database:", updateObject);
+      console.log(
+        "Using dedicated handler to update transaction ID:",
+        transaction.id,
+      );
 
-      // Perform the update
-      const { data, error } = await supabase
-        .from("transactions")
-        .update(updateObject)
-        .eq("id", transaction.id)
-        .select();
+      // Use the dedicated transaction update handler
+      const result = await updateTransaction(transaction.id, updateObject);
 
-      console.log("Update response:", { data, error });
-
-      if (error) throw error;
+      if (!result.success) {
+        throw new Error(result.error);
+      }
 
       // Show success message
-      const successMessage = !isAdmin
-        ? "Transaction has been updated and resubmitted for approval"
-        : "The transaction has been successfully updated.";
-
       toast({
         title: "Transaction edited",
-        description: successMessage,
+        description: result.message || "Transaction has been updated",
       });
 
-      // Immediately fetch the updated transaction to ensure we have the latest data
-      await fetchUpdatedTransaction();
+      // Update the transaction object with the new data
+      if (result.data) {
+        // Replace the entire transaction object with the updated data
+        Object.keys(transaction).forEach((key) => {
+          if (key in result.data) {
+            transaction[key] = result.data[key];
+          }
+        });
+
+        // Update state variables
+        setReviewNotes(result.data.review_notes || "");
+        setStatus(result.data.status || "pending");
+        setEditedTransaction(null); // Clear edited transaction
+      }
 
       // Exit edit mode
       setIsEditing(false);
@@ -492,6 +498,12 @@ export default function TransactionDetails({
       // Notify parent components of the update
       if (onEdit) onEdit();
       if (onDelete) onDelete(); // Refresh the transaction list
+
+      // Force dialog to close and reopen to ensure fresh data
+      onOpenChange(false);
+      setTimeout(() => {
+        onOpenChange(true);
+      }, 100);
     } catch (error: any) {
       console.error("Error editing transaction:", error);
       toast({
@@ -726,11 +738,17 @@ export default function TransactionDetails({
           agent_id: updatedData.agent_id || null,
         };
 
-        // CRITICAL: Update the original transaction object by creating a new reference
-        // This ensures the parent component sees the changes
-        for (const key in updatedTransaction) {
-          transaction[key] = updatedTransaction[key];
-        }
+        // CRITICAL: Create a new transaction object and replace the old one
+        // This is more reliable than modifying the existing object
+        const newTransaction = { ...updatedTransaction };
+
+        // Replace all properties in the original transaction
+        Object.keys(transaction).forEach((key) => {
+          transaction[key] =
+            newTransaction[key] !== undefined
+              ? newTransaction[key]
+              : transaction[key];
+        });
 
         console.log("Transaction object after update:", transaction);
 

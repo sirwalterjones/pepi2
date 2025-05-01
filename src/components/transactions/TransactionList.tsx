@@ -153,7 +153,7 @@ export default function TransactionList() {
     fetchCurrentUserAgent();
   }, []);
 
-  const fetchData = async () => {
+  const fetchTransactions = async () => {
     if ((!isAdmin && !currentUserAgentId) || !activeBook?.id) {
       setLoading(false);
       return;
@@ -264,8 +264,28 @@ export default function TransactionList() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [filterType, activeBook?.id, currentUserAgentId, isAdmin]);
+    fetchTransactions();
+
+    // Set up realtime subscription
+    const channel = supabase
+      .channel("transactions_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "transactions" },
+        (payload) => {
+          console.log("Realtime update received:", payload);
+          // Add a small delay to ensure database has completed all operations
+          setTimeout(() => {
+            fetchTransactions(); // Refresh the list when changes occur
+          }, 500);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeBook?.id, filterOptions]);
 
   useEffect(() => {
     if ((!isAdmin && !currentUserAgentId) || !activeBook?.id) return;
@@ -926,8 +946,10 @@ export default function TransactionList() {
           onOpenChange={setIsDetailsOpen}
           onDelete={fetchData}
           onEdit={() => {
+            // Force a complete refresh of the data when a transaction is edited
+            console.log("Transaction edited, refreshing data...");
             fetchData();
-            setIsDetailsOpen(false);
+            // Don't automatically close the dialog - let the TransactionDetails component handle this
           }}
         />
       )}
