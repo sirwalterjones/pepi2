@@ -13,7 +13,9 @@ import {
   Users,
   ArrowUpRight,
   ArrowDownLeft,
+  FileText,
 } from "lucide-react";
+import CbMemoReport from "./CbMemoReport";
 import { Transaction } from "@/types/schema";
 import PrintableReport from "./PrintableReport";
 import { formatCurrency } from "@/lib/utils";
@@ -44,6 +46,9 @@ export default function MonthlyReport() {
     spendingTotal: 0,
     activePepiBookYear: null,
   });
+
+  const [showCbMemo, setShowCbMemo] = useState(false);
+  const [commanderName, setCommanderName] = useState("Adam Mayfield");
 
   // Fetch all transactions and active PEPI book
   useEffect(() => {
@@ -223,6 +228,7 @@ export default function MonthlyReport() {
   };
 
   const printableReportRef = useRef<HTMLDivElement>(null);
+  const cbMemoRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
     if (printableReportRef.current) {
@@ -290,6 +296,40 @@ export default function MonthlyReport() {
     return months[month];
   };
 
+  const handlePrintCbMemo = () => {
+    if (cbMemoRef.current) {
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write("<html><head><title>PEPI CB Memo</title>");
+        printWindow.document.write('<meta charset="UTF-8">');
+        printWindow.document.write(
+          '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+        );
+        printWindow.document.write(
+          '<link rel="stylesheet" href="/globals.css" type="text/css" media="print"/>',
+        );
+        printWindow.document.write("<style>");
+        printWindow.document.write(`
+          body { font-family: serif; margin: 0; padding: 0; }
+          @page { size: letter; margin: 1in; }
+        `);
+        printWindow.document.write("</style>");
+        printWindow.document.write("</head><body>");
+        printWindow.document.write(cbMemoRef.current.innerHTML);
+        printWindow.document.write("</body></html>");
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      }
+    }
+  };
+
+  const toggleCbMemo = () => {
+    setShowCbMemo(!showCbMemo);
+  };
+
   return (
     <div className="container mx-auto py-6">
       {/* Header with month selector and print button */}
@@ -337,15 +377,67 @@ export default function MonthlyReport() {
             </select>
           </div>
         </div>
-        <Button
-          onClick={handlePrint}
-          disabled={loading}
-          className="print:hidden"
-        >
-          <Printer className="mr-2 h-4 w-4" />
-          Print Report
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={toggleCbMemo}
+            disabled={loading}
+            variant="outline"
+            className="print:hidden"
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            {showCbMemo ? "Hide CB Memo" : "Show CB Memo"}
+          </Button>
+          <Button
+            onClick={handlePrint}
+            disabled={loading}
+            className="print:hidden"
+          >
+            <Printer className="mr-2 h-4 w-4" />
+            Print Report
+          </Button>
+          {showCbMemo && (
+            <Button
+              onClick={handlePrintCbMemo}
+              disabled={loading}
+              className="print:hidden"
+              variant="secondary"
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              Print CB Memo
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* CB Memo Report (conditionally shown) */}
+      {showCbMemo && (
+        <div className="mb-6 border rounded-lg overflow-hidden">
+          <div className="p-4" ref={cbMemoRef}>
+            <CbMemoReport
+              data={{
+                commanderName: commanderName,
+                memoDate: format(new Date(), "MMMM d, yyyy"),
+                monthName: getMonthName(selectedMonth),
+                bookYear: selectedYear.toString(),
+                reconciliationDate: format(new Date(), "MMMM d, yyyy"),
+                beginningBalance: activePepiBook?.starting_amount || 0,
+                totalAgentIssues: stats.totalIssuance,
+                totalAgentReturns: stats.totalReturned,
+                cashOnHand: stats.cashOnHand,
+                totalExpenditures: stats.spendingTotal,
+                totalAdditionalUnitIssue: 0, // You may need to calculate this
+                endingBalance: stats.currentBalance,
+                ytdExpenditures: stats.spendingTotal, // This should be YTD, not just monthly
+                initialFunding: activePepiBook?.starting_amount || 0,
+                issuedToAgents: stats.totalIssuance,
+                spentByAgents: stats.spendingTotal,
+                returnedByAgents: stats.totalReturned,
+                bookBalance: stats.cashOnHand,
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Printable Report (hidden but used for printing) */}
       <div className="hidden" ref={printableReportRef}>

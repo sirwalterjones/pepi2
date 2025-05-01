@@ -1,0 +1,194 @@
+"use client";
+
+import React from "react";
+import { format } from "date-fns";
+import { formatCurrency } from "@/lib/utils";
+
+type CbMemoReportProps = {
+  data: {
+    commanderName: string;
+    memoDate: string;
+    monthName: string;
+    bookYear: string;
+    reconciliationDate: string;
+    beginningBalance: number;
+    totalAgentIssues: number;
+    totalAgentReturns: number;
+    cashOnHand: number;
+    totalExpenditures: number;
+    totalAdditionalUnitIssue: number;
+    endingBalance: number;
+    ytdExpenditures: number;
+    initialFunding: number;
+    issuedToAgents: number;
+    spentByAgents: number;
+    returnedByAgents: number;
+    bookBalance: number;
+  };
+};
+
+const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
+  // Format the commander's initials for the footer
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("");
+  };
+
+  const upperInitials = getInitials(data.commanderName).toUpperCase();
+  const lowerInitials = getInitials(data.commanderName).toLowerCase();
+
+  return (
+    <div className="font-serif p-4 max-w-4xl mx-auto bg-white text-black print:shadow-none print:p-0">
+      {/* Header Section */}
+      <div className="text-center mb-6">
+        <h1 className="text-xl font-bold tracking-wider uppercase border-b-2 border-black pb-1 mb-6 inline-block">
+          MEMORANDUM
+        </h1>
+      </div>
+
+      {/* Memo Metadata */}
+      <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 mb-6 text-sm relative">
+        <span className="font-bold">TO:</span>
+        <span>PEPI Account File</span>
+        <span className="font-bold">FROM:</span>
+        <span className="flex items-center justify-between">
+          <span>{data.commanderName}, Commander</span>
+        </span>
+        <span className="font-bold">DATE:</span>
+        <span>{data.memoDate}</span>
+        <span className="font-bold">RE:</span>
+        <span>
+          PEPI for {data.monthName} {data.bookYear}
+        </span>
+
+        {/* CMANS Text Block */}
+        <div className="absolute top-0 right-0 flex items-center justify-center p-1">
+          <span className="font-bold text-2xl text-black tracking-wider">
+            CMANS
+          </span>
+        </div>
+      </div>
+
+      {/* Narrative Body */}
+      <div className="mb-8 text-sm leading-relaxed space-y-3">
+        <p>
+          On {data.reconciliationDate}, the CMANS PEPI account was reconciled
+          for the month of {data.monthName} {data.bookYear}.
+        </p>
+        <p>
+          The beginning balance for {data.monthName} {data.bookYear} was{" "}
+          {formatCurrency(data.beginningBalance)}. CMANS Agents were issued{" "}
+          {formatCurrency(data.totalAgentIssues)} during {data.monthName}{" "}
+          {data.bookYear}. Agents returned{" "}
+          {formatCurrency(data.totalAgentReturns)} for the month of{" "}
+          {data.monthName} {data.bookYear}. Cash on hand was counted and
+          verified at {formatCurrency(data.cashOnHand)} (current balance). CMANS
+          Agents expended {formatCurrency(data.totalExpenditures)} for{" "}
+          {data.monthName} {data.bookYear}.
+          {data.totalAdditionalUnitIssue > 0 && (
+            <span>
+              {" "}
+              Additional Unit issue of PEPI was{" "}
+              {formatCurrency(data.totalAdditionalUnitIssue)}.
+            </span>
+          )}
+          The CMANS PEPI balance at the end of {data.monthName} was{" "}
+          {formatCurrency(data.endingBalance)} (current balance). The
+          year-to-date expenditures totaled{" "}
+          {formatCurrency(data.ytdExpenditures)}.
+        </p>
+      </div>
+
+      {/* Totals Table */}
+      <div className="mb-8">
+        <h2 className="text-center font-bold mb-2 text-sm">TOTALS</h2>
+        <table className="w-full border-collapse border border-black text-sm">
+          <tbody>
+            <tr className="border border-black">
+              <td className="border border-black px-2 py-1">Initial Funding</td>
+              <td className="border border-black px-2 py-1 text-right">
+                {formatCurrency(data.initialFunding)}
+                <span className="text-xs ml-1 text-gray-600">
+                  ({data.monthName})
+                </span>
+              </td>
+            </tr>
+            <tr className="border border-black">
+              <td className="border border-black px-2 py-1">
+                Issued To Agents
+              </td>
+              <td className="border border-black px-2 py-1 text-right">
+                {formatCurrency(data.issuedToAgents)}
+                <span className="text-xs ml-1 text-gray-600">
+                  ({data.monthName})
+                </span>
+              </td>
+            </tr>
+            <tr className="border border-black">
+              <td className="border border-black px-2 py-1">
+                Total Spent By Agents
+              </td>
+              <td className="border border-black px-2 py-1 text-right">
+                {formatCurrency(data.spentByAgents)}
+                <span className="text-xs ml-1 text-gray-600">
+                  ({data.monthName})
+                </span>
+              </td>
+            </tr>
+            <tr className="border border-black">
+              <td className="border border-black px-2 py-1">
+                Total Returned By Agents
+              </td>
+              <td className="border border-black px-2 py-1 text-right">
+                {formatCurrency(data.returnedByAgents)}
+                <span className="text-xs ml-1 text-gray-600">
+                  ({data.monthName})
+                </span>
+              </td>
+            </tr>
+            <tr className="border border-black">
+              <td className="border border-black px-2 py-1">
+                Book Balance (Safe Cash)
+              </td>
+              <td className="border border-black px-2 py-1 text-right">
+                {formatCurrency(data.bookBalance)}
+                <span className="text-xs ml-1 text-gray-600">(Current)</span>
+              </td>
+            </tr>
+            {data.totalAdditionalUnitIssue > 0 && (
+              <tr className="border border-black">
+                <td className="border border-black px-2 py-1">
+                  Additional Unit Issue
+                </td>
+                <td className="border border-black px-2 py-1 text-right">
+                  {formatCurrency(data.totalAdditionalUnitIssue)}
+                  <span className="text-xs ml-1 text-gray-600">
+                    ({data.monthName})
+                  </span>
+                </td>
+              </tr>
+            )}
+            <tr className="border border-black">
+              <td className="border border-black px-2 py-1">
+                Expenditures CY {data.bookYear}
+              </td>
+              <td className="border border-black px-2 py-1 text-right">
+                {formatCurrency(data.ytdExpenditures)}
+                <span className="text-xs ml-1 text-gray-600">(YTD)</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Footer Initials */}
+      <div className="text-sm">
+        {upperInitials}/{lowerInitials}
+      </div>
+    </div>
+  );
+};
+
+export default CbMemoReport;
