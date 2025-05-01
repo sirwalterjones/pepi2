@@ -158,6 +158,26 @@ export default function MonthlyReport() {
     // Calculate safe cash: current balance - what's issued to agents
     let safeCashBalance = pepiBookBalance - totalIssuedToAgents;
 
+    // Calculate monthly filtered statistics
+    let monthlyIssuance = 0;
+    let monthlySpending = 0;
+    let monthlyReturned = 0;
+
+    // Process filtered transactions to calculate monthly stats
+    filtered.forEach((transaction) => {
+      if (transaction.status === "approved") {
+        const amount = parseFloat(transaction.amount.toString());
+
+        if (transaction.transaction_type === "issuance") {
+          monthlyIssuance += amount;
+        } else if (transaction.transaction_type === "spending") {
+          monthlySpending += amount;
+        } else if (transaction.transaction_type === "return") {
+          monthlyReturned += amount;
+        }
+      }
+    });
+
     // Get active agents count
     const supabase = createClient();
     const fetchAgentsCount = async () => {
@@ -174,16 +194,18 @@ export default function MonthlyReport() {
       setStats({
         totalAgents: agentsCount || 0,
         totalTransactions: monthlyTransactionCount,
-        totalIssuance: totalIssuedToAgents,
-        totalReturned: totalReturnedByAgents,
+        // These three values are NOT filtered by month (showing current totals)
         currentBalance: pepiBookBalance,
         cashOnHand: safeCashBalance,
-        spendingTotal: totalSpentByAgents,
+        agentCashBalance: totalIssuedToAgents,
+        // These values ARE filtered by month
+        totalIssuance: monthlyIssuance,
+        totalSpending: monthlySpending,
+        totalReturned: monthlyReturned,
+        spendingTotal: monthlySpending,
         activePepiBookYear: activePepiBook?.year || null,
         // Keep the old stats properties for backward compatibility
-        totalSpending: totalSpentByAgents,
         safeCashBalance: safeCashBalance,
-        agentCashBalance: totalIssuedToAgents,
       });
     };
 
@@ -332,12 +354,58 @@ export default function MonthlyReport() {
           stats={{
             totalAgents: 0, // This could be calculated if needed
             totalTransactions: filteredTransactions.length,
-            totalIssuance: stats.totalIssuance,
-            totalReturned: stats.totalReturned,
-            currentBalance: stats.safeCashBalance + stats.agentCashBalance,
-            cashOnHand: stats.safeCashBalance,
-            spendingTotal: stats.totalSpending,
-            agentCashBalance: stats.agentCashBalance,
+            // Calculate filtered stats for the report
+            totalIssuance: filteredTransactions
+              .filter(
+                (t) =>
+                  t.transaction_type === "issuance" && t.status === "approved",
+              )
+              .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0),
+            totalReturned: filteredTransactions
+              .filter(
+                (t) =>
+                  t.transaction_type === "return" && t.status === "approved",
+              )
+              .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0),
+            spendingTotal: filteredTransactions
+              .filter(
+                (t) =>
+                  t.transaction_type === "spending" && t.status === "approved",
+              )
+              .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0),
+            // Calculate balances based on filtered transactions
+            currentBalance: filteredTransactions
+              .filter((t) => t.status === "approved")
+              .reduce((balance, t) => {
+                const amount = parseFloat(t.amount.toString());
+                if (t.transaction_type === "issuance") return balance + amount;
+                if (t.transaction_type === "spending") return balance - amount;
+                if (t.transaction_type === "return") return balance;
+                return balance;
+              }, 0),
+            cashOnHand: filteredTransactions
+              .filter((t) => t.status === "approved")
+              .reduce((balance, t) => {
+                const amount = parseFloat(t.amount.toString());
+                if (t.transaction_type === "issuance" && !t.agent_id)
+                  return balance + amount;
+                if (t.transaction_type === "spending" && !t.agent_id)
+                  return balance - amount;
+                if (t.transaction_type === "return") return balance + amount;
+                return balance;
+              }, 0),
+            agentCashBalance: filteredTransactions
+              .filter((t) => t.status === "approved")
+              .reduce((balance, t) => {
+                const amount = parseFloat(t.amount.toString());
+                if (t.transaction_type === "issuance" && t.agent_id)
+                  return balance + amount;
+                if (t.transaction_type === "spending" && t.agent_id)
+                  return balance - amount;
+                if (t.transaction_type === "return" && t.agent_id)
+                  return balance - amount;
+                return balance;
+              }, 0),
             activePepiBookYear: activePepiBook?.year || null,
           }}
           startDate={new Date(selectedYear, selectedMonth, 1)}
@@ -384,7 +452,7 @@ export default function MonthlyReport() {
                     {formatCurrency(stats.totalIssuance)}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Current funds with agents (total, not filtered by month)
+                    Funds issued in {getMonthName(selectedMonth)} {selectedYear}
                   </p>
                 </CardContent>
               </Card>
@@ -400,7 +468,7 @@ export default function MonthlyReport() {
                     {formatCurrency(stats.spendingTotal)}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    All-time approved spending (total, not filtered by month)
+                    Spending in {getMonthName(selectedMonth)} {selectedYear}
                   </p>
                 </CardContent>
               </Card>
@@ -416,7 +484,7 @@ export default function MonthlyReport() {
                     {formatCurrency(stats.totalReturned)}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    All-time funds returned (total, not filtered by month)
+                    Returns in {getMonthName(selectedMonth)} {selectedYear}
                   </p>
                 </CardContent>
               </Card>
@@ -432,7 +500,7 @@ export default function MonthlyReport() {
                     {formatCurrency(stats.cashOnHand)}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Remaining funds in PEPI Book (total, not filtered by month)
+                    Current remaining funds in PEPI Book (not filtered by month)
                   </p>
                 </CardContent>
               </Card>
@@ -514,25 +582,31 @@ export default function MonthlyReport() {
               <h3 className="text-lg font-bold mb-2">Summary</h3>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <p className="font-medium">Total Issued:</p>
+                  <p className="font-medium">
+                    Total Issued ({getMonthName(selectedMonth)}):
+                  </p>
                   <p>{formatCurrency(stats.totalIssuance)}</p>
                 </div>
                 <div>
-                  <p className="font-medium">Total Spent:</p>
+                  <p className="font-medium">
+                    Total Spent ({getMonthName(selectedMonth)}):
+                  </p>
                   <p>{formatCurrency(stats.totalSpending)}</p>
                 </div>
                 <div>
-                  <p className="font-medium">Total Returned:</p>
+                  <p className="font-medium">
+                    Total Returned ({getMonthName(selectedMonth)}):
+                  </p>
                   <p>{formatCurrency(stats.totalReturned)}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
-                  <p className="font-medium">Safe Cash Balance:</p>
+                  <p className="font-medium">Safe Cash Balance (Current):</p>
                   <p>{formatCurrency(stats.safeCashBalance)}</p>
                 </div>
                 <div>
-                  <p className="font-medium">Agent Cash Balance:</p>
+                  <p className="font-medium">Agent Cash Balance (Current):</p>
                   <p>{formatCurrency(stats.agentCashBalance)}</p>
                 </div>
               </div>
