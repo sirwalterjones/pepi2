@@ -82,8 +82,10 @@ export default function PendingRequestsList() {
     console.log("[PendingRequestsList] Fetching all pending requests...");
 
     try {
-      // Direct fetch from fund_requests table with no filters
-      console.log("[PendingRequestsList] Executing database query...");
+      // Only fetch pending fund requests
+      console.log(
+        "[PendingRequestsList] Executing database query for pending requests only...",
+      );
       const { data, error: fetchError } = await supabase
         .from("fund_requests")
         .select(
@@ -99,6 +101,7 @@ export default function PendingRequestsList() {
           pepi_book:pepi_books!fund_requests_pepi_book_id_fkey ( year )
         `,
         )
+        .eq("status", "pending")
         .order("requested_at", { ascending: false });
 
       console.log("[PendingRequestsList] Query executed, raw result:", data);
@@ -280,7 +283,7 @@ export default function PendingRequestsList() {
         <CardHeader>
           <CardTitle>Fund Requests</CardTitle>
           <CardDescription>
-            Review and process all fund requests.
+            Review and process pending fund requests.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center items-center p-8">
@@ -296,7 +299,7 @@ export default function PendingRequestsList() {
         <CardHeader>
           <CardTitle>Fund Requests</CardTitle>
           <CardDescription>
-            Review and process all fund requests.
+            Review and process pending fund requests.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -330,7 +333,7 @@ export default function PendingRequestsList() {
         <div>
           <CardTitle>Fund Requests</CardTitle>
           <CardDescription>
-            Review and process all fund requests.
+            Review and process pending fund requests.
           </CardDescription>
         </div>
         <Button
@@ -357,7 +360,7 @@ export default function PendingRequestsList() {
         {requests.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-4">
-              No fund requests found.
+              No pending fund requests found.
             </p>
             <Button
               variant="outline"
