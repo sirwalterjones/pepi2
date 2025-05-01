@@ -19,7 +19,14 @@ import { ChevronLeft, ChevronRight, Printer, Loader2 } from "lucide-react";
 export default function MonthlyReport() {
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<any[] | null>(null);
+  const [filteredData, setFilteredData] = useState<any[] | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedYear, setSelectedYear] = useState<number>(
+    new Date().getFullYear(),
+  );
+  const [selectedMonth, setSelectedMonth] = useState<number>(
+    new Date().getMonth(),
+  );
   const [stats, setStats] = useState({
     totalAgents: 0,
     totalTransactions: 0,
@@ -43,13 +50,7 @@ export default function MonthlyReport() {
     const supabase = createClientComponentClient<Database>();
 
     try {
-      // Get the month and year for filtering
-      const month = currentDate.getMonth() + 1; // JavaScript months are 0-indexed
-      const year = currentDate.getFullYear();
-
-      console.log(`Fetching transactions for month ${month} and year ${year}`);
-
-      // Fetch all transactions first, then filter client-side
+      // Get all transactions without filtering
       const { data: allTransactions, error } = await supabase
         .from("transactions")
         .select("*, agents(id, name, badge_number)")
@@ -60,35 +61,12 @@ export default function MonthlyReport() {
         throw error;
       }
 
-      // Filter transactions client-side for the selected month
-      const transactions = allTransactions?.filter((transaction) => {
-        try {
-          // Use transaction_date if available, otherwise fall back to created_at
-          const dateToUse =
-            transaction.transaction_date || transaction.created_at;
-          if (!dateToUse) return false;
-
-          const transactionDate = new Date(dateToUse);
-          // Check if date is valid
-          if (isNaN(transactionDate.getTime())) return false;
-
-          const transactionMonth = transactionDate.getMonth() + 1;
-          const transactionYear = transactionDate.getFullYear();
-
-          return transactionMonth === month && transactionYear === year;
-        } catch (e) {
-          console.error("Error processing transaction date:", e);
-          return false;
-        }
-      });
-
       console.log(
-        `Found ${transactions?.length || 0} transactions for ${month}/${year}`,
+        `Total transactions in database: ${allTransactions?.length || 0}`,
       );
-      if (transactions?.length === 0) {
-        console.log("No transactions found for the selected month");
-        console.log("All transactions:", allTransactions?.length || 0);
-      }
+
+      // Always set reportData to all transactions - we'll display all by default
+      setReportData(allTransactions || []);
 
       if (error) throw error;
 
@@ -174,7 +152,81 @@ export default function MonthlyReport() {
 
   useEffect(() => {
     fetchMonthlyData();
-  }, [currentDate]);
+  }, []);
+
+  // Filter transactions whenever month/year selection changes
+  useEffect(() => {
+    if (!reportData) return;
+
+    const filtered = reportData.filter((transaction) => {
+      try {
+        // Use transaction_date if available, otherwise fall back to created_at
+        const dateToUse =
+          transaction.transaction_date || transaction.created_at;
+        if (!dateToUse) return false;
+
+        const transactionDate = new Date(dateToUse);
+        if (isNaN(transactionDate.getTime())) return false;
+
+        return (
+          transactionDate.getMonth() === selectedMonth &&
+          transactionDate.getFullYear() === selectedYear
+        );
+      } catch (e) {
+        return false;
+      }
+    });
+
+    setFilteredData(filtered);
+
+    // Calculate statistics based on filtered data
+    let totalIssuance = 0;
+    let totalReturned = 0;
+    let spendingTotal = 0;
+    let safeCashBalance = 0;
+    let agentCashOnHand = 0;
+
+    filtered.forEach((transaction) => {
+      if (transaction.status === "approved") {
+        if (transaction.transaction_type === "issuance") {
+          totalIssuance += parseFloat(transaction.amount);
+          if (transaction.agent_id) {
+            agentCashOnHand += parseFloat(transaction.amount);
+          } else {
+            safeCashBalance += parseFloat(transaction.amount);
+          }
+        } else if (transaction.transaction_type === "return") {
+          totalReturned += parseFloat(transaction.amount);
+          if (transaction.agent_id) {
+            agentCashOnHand -= parseFloat(transaction.amount);
+            safeCashBalance += parseFloat(transaction.amount);
+          }
+        } else if (transaction.transaction_type === "spending") {
+          spendingTotal += parseFloat(transaction.amount);
+          if (transaction.agent_id) {
+            agentCashOnHand -= parseFloat(transaction.amount);
+          } else {
+            safeCashBalance -= parseFloat(transaction.amount);
+          }
+        }
+      }
+    });
+
+    const currentBalance = totalIssuance - totalReturned - spendingTotal;
+    const cashOnHand = totalIssuance - spendingTotal - totalReturned;
+
+    setStats((prev) => ({
+      ...prev,
+      totalTransactions: filtered.length,
+      totalIssuance,
+      totalReturned,
+      currentBalance,
+      cashOnHand,
+      spendingTotal,
+      safeCashBalance,
+      agentCashOnHand,
+    }));
+  }, [reportData, selectedMonth, selectedYear]);
 
   const handlePrint = () => {
     setIsPrinting(true);
@@ -206,27 +258,45 @@ export default function MonthlyReport() {
 
   return (
     <div className="container mx-auto py-6">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handlePreviousMonth}
-            disabled={loading}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-2xl font-bold">
-            Monthly Report - {format(currentDate, "MMMM yyyy")}
-          </h1>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleNextMonth}
-            disabled={loading || addMonths(currentDate, 1) > new Date()}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold mb-2">Monthly Report</h1>
+          <div className="flex items-center gap-2">
+            <select
+              className="border rounded px-2 py-1"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+              disabled={loading}
+            >
+              <option value={0}>January</option>
+              <option value={1}>February</option>
+              <option value={2}>March</option>
+              <option value={3}>April</option>
+              <option value={4}>May</option>
+              <option value={5}>June</option>
+              <option value={6}>July</option>
+              <option value={7}>August</option>
+              <option value={8}>September</option>
+              <option value={9}>October</option>
+              <option value={10}>November</option>
+              <option value={11}>December</option>
+            </select>
+            <select
+              className="border rounded px-2 py-1"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              disabled={loading}
+            >
+              {Array.from(
+                { length: 5 },
+                (_, i) => new Date().getFullYear() - i,
+              ).map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <Button onClick={handlePrint} disabled={loading} className="no-print">
           <Printer className="mr-2 h-4 w-4" />
@@ -310,7 +380,7 @@ export default function MonthlyReport() {
                         </tr>
                       </thead>
                       <tbody>
-                        {reportData?.length === 0 ? (
+                        {filteredData?.length === 0 ? (
                           <tr>
                             <td
                               colSpan={7}
@@ -320,7 +390,7 @@ export default function MonthlyReport() {
                             </td>
                           </tr>
                         ) : (
-                          reportData?.map((transaction) => (
+                          filteredData?.map((transaction) => (
                             <tr key={transaction.id} className="border-b">
                               <td className="py-2 px-4">
                                 {transaction.transaction_date
@@ -374,7 +444,7 @@ export default function MonthlyReport() {
                         </tr>
                       </thead>
                       <tbody>
-                        {reportData?.filter(
+                        {filteredData?.filter(
                           (t) => t.transaction_type === "issuance",
                         ).length === 0 ? (
                           <tr>
@@ -386,7 +456,7 @@ export default function MonthlyReport() {
                             </td>
                           </tr>
                         ) : (
-                          reportData
+                          filteredData
                             ?.filter((t) => t.transaction_type === "issuance")
                             .map((transaction) => (
                               <tr key={transaction.id} className="border-b">
@@ -438,7 +508,7 @@ export default function MonthlyReport() {
                         </tr>
                       </thead>
                       <tbody>
-                        {reportData?.filter(
+                        {filteredData?.filter(
                           (t) => t.transaction_type === "spending",
                         ).length === 0 ? (
                           <tr>
@@ -450,7 +520,7 @@ export default function MonthlyReport() {
                             </td>
                           </tr>
                         ) : (
-                          reportData
+                          filteredData
                             ?.filter((t) => t.transaction_type === "spending")
                             .map((transaction) => (
                               <tr key={transaction.id} className="border-b">
@@ -502,7 +572,7 @@ export default function MonthlyReport() {
                         </tr>
                       </thead>
                       <tbody>
-                        {reportData?.filter(
+                        {filteredData?.filter(
                           (t) => t.transaction_type === "return",
                         ).length === 0 ? (
                           <tr>
@@ -514,7 +584,7 @@ export default function MonthlyReport() {
                             </td>
                           </tr>
                         ) : (
-                          reportData
+                          filteredData
                             ?.filter((t) => t.transaction_type === "return")
                             .map((transaction) => (
                               <tr key={transaction.id} className="border-b">
@@ -559,10 +629,10 @@ export default function MonthlyReport() {
             className="print-only"
           >
             <PrintableReport
-              reportData={reportData}
+              reportData={filteredData}
               stats={stats}
-              startDate={startDate}
-              endDate={endDate}
+              startDate={new Date(selectedYear, selectedMonth, 1)}
+              endDate={new Date(selectedYear, selectedMonth + 1, 0)}
               isMonthlyReport={true}
             />
           </div>
