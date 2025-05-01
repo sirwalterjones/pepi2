@@ -1,18 +1,20 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Database } from "@/types/supabase";
+import { createClient } from "../../../supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { Printer, Loader2 } from "lucide-react";
+import { Transaction } from "@/types/schema";
 
 export default function MonthlyReport() {
   const [loading, setLoading] = useState(true);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [filteredTransactions, setFilteredTransactions] = useState<
+    Transaction[]
+  >([]);
   const [selectedMonth, setSelectedMonth] = useState<number>(
     new Date().getMonth(),
   );
@@ -32,7 +34,7 @@ export default function MonthlyReport() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const supabase = createClientComponentClient<Database>();
+      const supabase = createClient();
 
       try {
         // Get active PEPI book
@@ -50,7 +52,10 @@ export default function MonthlyReport() {
           .select("*, agents(id, name, badge_number)")
           .order("created_at", { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching transactions:", error);
+          throw error;
+        }
 
         console.log(`Fetched ${data?.length || 0} total transactions`);
         setTransactions(data || []);
@@ -75,15 +80,21 @@ export default function MonthlyReport() {
         if (!dateToUse) return false;
 
         const date = new Date(dateToUse);
+        if (isNaN(date.getTime())) return false;
+
         return (
           date.getMonth() === selectedMonth &&
           date.getFullYear() === selectedYear
         );
       } catch (e) {
+        console.error("Error filtering transaction:", e);
         return false;
       }
     });
 
+    console.log(
+      `Filtered to ${filtered.length} transactions for ${selectedMonth + 1}/${selectedYear}`,
+    );
     setFilteredTransactions(filtered);
 
     // Calculate statistics
@@ -95,7 +106,7 @@ export default function MonthlyReport() {
 
     filtered.forEach((transaction) => {
       if (transaction.status === "approved") {
-        const amount = parseFloat(transaction.amount);
+        const amount = parseFloat(transaction.amount.toString());
 
         if (transaction.transaction_type === "issuance") {
           totalIssuance += amount;
