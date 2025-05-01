@@ -78,9 +78,14 @@ export default function TransactionDetails({
   useEffect(() => {
     if (transaction) {
       console.log("Transaction data loaded in component:", transaction);
+      console.log("Transaction ID:", transaction.id);
+
+      // Reset state variables with transaction data
       setReviewNotes(transaction.review_notes || "");
       setStatus(transaction.status || "pending");
-      setEditedTransaction({
+
+      // Create a fresh copy of the transaction for editing
+      const freshTransactionCopy = {
         ...transaction,
         amount: parseFloat(transaction.amount),
         description: transaction.description || "",
@@ -88,7 +93,13 @@ export default function TransactionDetails({
         agent_id: transaction.agent_id || null,
         status: transaction.status || "pending",
         review_notes: transaction.review_notes || "",
-      });
+      };
+
+      console.log(
+        "Setting editedTransaction state with:",
+        freshTransactionCopy,
+      );
+      setEditedTransaction(freshTransactionCopy);
 
       // Check if current user is an admin and if this is their transaction
       const checkUserRole = async () => {
@@ -96,17 +107,24 @@ export default function TransactionDetails({
           data: { user },
         } = await supabase.auth.getUser();
         if (user) {
+          console.log("Current user ID:", user.id);
           const { data } = await supabase
             .from("agents")
             .select("id, role")
             .eq("user_id", user.id)
             .single();
 
-          setIsAdmin(data?.role === "admin");
+          const isUserAdmin = data?.role === "admin";
+          console.log("User is admin:", isUserAdmin);
+          setIsAdmin(isUserAdmin);
 
           // Check if this transaction belongs to the current agent
           if (data && transaction.agent_id === data.id) {
+            console.log("This is user's own transaction");
             setIsOwnTransaction(true);
+          } else {
+            console.log("This is NOT user's own transaction");
+            setIsOwnTransaction(false);
           }
         }
       };
@@ -114,6 +132,10 @@ export default function TransactionDetails({
       // Fetch the creator's name
       const fetchCreatorName = async () => {
         if (transaction.created_by) {
+          console.log(
+            "Fetching creator name for user ID:",
+            transaction.created_by,
+          );
           const { data } = await supabase
             .from("agents")
             .select("name")
@@ -286,6 +308,8 @@ export default function TransactionDetails({
 
     setIsUpdating(true);
     try {
+      console.log("Starting transaction edit with ID:", transaction.id);
+
       // --- Validation for Spending Specific Fields (when editing) ---
       if (editedTransaction.transaction_type === "spending") {
         if (!editedTransaction.spending_category) {
@@ -329,54 +353,6 @@ export default function TransactionDetails({
         }
       }
       // --- End Validation ---
-
-      // Prepare the update data object
-      const updateData: any = {
-        amount:
-          typeof editedTransaction.amount === "string"
-            ? parseFloat(editedTransaction.amount)
-            : editedTransaction.amount,
-        description: editedTransaction.description || null,
-        receipt_number: editedTransaction.receipt_number || null,
-        agent_id: editedTransaction.agent_id || null,
-        updated_at: new Date().toISOString(),
-      };
-
-      // Always set status to pending when editing a transaction
-      updateData.status = "pending";
-
-      // If admin is editing, keep their review notes
-      if (isAdmin) {
-        updateData.review_notes = editedTransaction.review_notes || null;
-        console.log("Admin is editing transaction - setting to pending status");
-      } else {
-        // Clear review notes when non-admin is resubmitting
-        updateData.review_notes = null;
-        console.log(
-          "Non-admin is editing a transaction - setting to pending status",
-        );
-      }
-
-      console.log("Saving transaction with data:", updateData);
-      console.log("Original amount type:", typeof editedTransaction.amount);
-      console.log("Parsed amount type:", typeof updateData.amount);
-
-      // Ensure amount is a valid number
-      if (isNaN(updateData.amount)) {
-        throw new Error("Invalid amount value");
-      }
-
-      // Convert amount to string for Supabase (it expects string for numeric fields)
-      const amountAsString = updateData.amount.toString();
-
-      // Log the amount to make sure it's correct
-      console.log("Amount being saved:", amountAsString, typeof amountAsString);
-
-      // Log the final data being sent to the database
-      console.log(
-        "Final update data being sent to database:",
-        JSON.stringify({ ...updateData, amount: amountAsString }),
-      );
 
       // Upload file if selected
       let fileUrl = transaction.document_url;
@@ -428,14 +404,32 @@ export default function TransactionDetails({
         }
       }
 
-      // Prepare the update data object
+      // Ensure amount is a valid number
+      const parsedAmount =
+        typeof editedTransaction.amount === "string"
+          ? parseFloat(editedTransaction.amount)
+          : editedTransaction.amount;
+
+      if (isNaN(parsedAmount)) {
+        throw new Error("Invalid amount value");
+      }
+
+      // Convert amount to string for Supabase (it expects string for numeric fields)
+      const amountAsString = parsedAmount.toString();
+
+      // Prepare the update object with ALL fields to ensure complete update
       const updateObject = {
-        amount: amountAsString, // Send as string for Supabase numeric fields
-        description: updateData.description,
-        receipt_number: updateData.receipt_number,
-        agent_id: updateData.agent_id,
-        updated_at: updateData.updated_at,
-        document_url: fileUrl, // Add the document URL
+        // Basic transaction fields
+        amount: amountAsString,
+        description: editedTransaction.description || null,
+        receipt_number: editedTransaction.receipt_number || null,
+        agent_id: editedTransaction.agent_id || null,
+        updated_at: new Date().toISOString(),
+        document_url: fileUrl,
+        status: "pending", // Always set to pending when edited
+        review_notes: isAdmin ? editedTransaction.review_notes || null : null,
+
+        // Date handling
         transaction_date: editedTransaction.transaction_date
           ? editedTransaction.transaction_date instanceof Date
             ? editedTransaction.transaction_date.toISOString().split("T")[0]
@@ -443,7 +437,8 @@ export default function TransactionDetails({
                 .toISOString()
                 .split("T")[0]
           : null,
-        // Add spending fields if applicable
+
+        // Spending-specific fields
         ...(editedTransaction.transaction_type === "spending" && {
           spending_category: editedTransaction.spending_category,
           case_number: editedTransaction.case_number?.trim() || null,
@@ -464,35 +459,21 @@ export default function TransactionDetails({
         }),
       };
 
-      // If admin is editing, include status and review notes from updateData
-      if (isAdmin && updateData.status) {
-        updateObject.status = "pending"; // Always set to pending when admin edits
-        updateObject.review_notes = updateData.review_notes;
-        console.log("Admin is editing transaction - setting to pending status");
-      }
-      // If this is an agent editing their transaction, reset to pending
-      else if (!isAdmin) {
-        updateObject.status = "pending";
-        updateObject.review_notes = null;
-        console.log("Non-admin edited transaction - setting to pending status");
-      }
-
-      // Log the final update object before sending
+      console.log("Transaction ID being updated:", transaction.id);
       console.log("Final update object being sent to database:", updateObject);
 
-      // Try a direct update with the regular update method instead of RPC
+      // Perform the update
       const { data, error } = await supabase
         .from("transactions")
         .update(updateObject)
         .eq("id", transaction.id)
         .select();
 
-      console.log("Update response data:", data);
-
       console.log("Update response:", { data, error });
 
       if (error) throw error;
 
+      // Show success message
       const successMessage = !isAdmin
         ? "Transaction has been updated and resubmitted for approval"
         : "The transaction has been successfully updated.";
@@ -502,61 +483,15 @@ export default function TransactionDetails({
         description: successMessage,
       });
 
-      // Fetch the updated transaction directly to ensure we have the latest data
-      console.log("Fetching updated transaction data after save...");
-      const { data: updatedData, error: fetchError } = await supabase
-        .from("transactions")
-        .select("*, agents:agent_id (id, name, badge_number)")
-        .eq("id", transaction.id)
-        .single();
+      // Immediately fetch the updated transaction to ensure we have the latest data
+      await fetchUpdatedTransaction();
 
-      if (fetchError) {
-        console.error("Error fetching updated transaction:", fetchError);
-        throw fetchError;
-      }
-
-      // Update with the freshly fetched data
-      if (updatedData) {
-        console.log(
-          "Freshly fetched transaction data:",
-          JSON.stringify(updatedData),
-        );
-
-        // Create a completely new transaction object with the updated data
-        const updatedTransaction = {
-          ...updatedData,
-          amount: parseFloat(updatedData.amount),
-          description: updatedData.description || "",
-          receipt_number: updatedData.receipt_number || "",
-          agent_id: updatedData.agent_id || null,
-        };
-
-        // IMPORTANT: Replace the entire transaction object with the updated data
-        // This ensures the parent component sees the changes
-        Object.assign(transaction, updatedTransaction);
-
-        // Also update all related state variables
-        setReviewNotes(updatedData.review_notes || "");
-        setStatus(updatedData.status || "pending");
-
-        // Force UI to update with the new transaction data
-        setEditedTransaction(updatedTransaction);
-
-        // Force selected transaction to update in parent component
-        if (onEdit) {
-          // Pass the updated transaction to the parent
-          onEdit();
-        }
-      }
-
+      // Exit edit mode
       setIsEditing(false);
-      // Always call both callbacks to ensure both the modal and the list are updated
+
+      // Notify parent components of the update
       if (onEdit) onEdit();
       if (onDelete) onDelete(); // Refresh the transaction list
-
-      // Keep dialog open but refresh the data
-      // This ensures changes are visible without closing the dialog
-      fetchUpdatedTransaction();
     } catch (error: any) {
       console.error("Error editing transaction:", error);
       toast({
@@ -758,10 +693,16 @@ export default function TransactionDetails({
 
   // Function to fetch the latest transaction data
   const fetchUpdatedTransaction = async () => {
-    if (!transaction?.id) return;
+    if (!transaction?.id) {
+      console.error("Cannot fetch updated transaction: No transaction ID");
+      return;
+    }
 
     try {
-      console.log("Manually fetching updated transaction data...");
+      console.log(
+        "Manually fetching updated transaction data for ID:",
+        transaction.id,
+      );
       const { data: updatedData, error } = await supabase
         .from("transactions")
         .select("*, agents:agent_id (id, name, badge_number)")
@@ -785,16 +726,24 @@ export default function TransactionDetails({
           agent_id: updatedData.agent_id || null,
         };
 
-        // Update the original transaction object
-        Object.assign(transaction, updatedTransaction);
+        // CRITICAL: Update the original transaction object by creating a new reference
+        // This ensures the parent component sees the changes
+        for (const key in updatedTransaction) {
+          transaction[key] = updatedTransaction[key];
+        }
+
+        console.log("Transaction object after update:", transaction);
 
         // Update all related state variables
         setReviewNotes(updatedData.review_notes || "");
         setStatus(updatedData.status || "pending");
-        setEditedTransaction(updatedTransaction);
+        setEditedTransaction({ ...updatedTransaction }); // Create a new reference
 
         // Force parent component to update
-        if (onEdit) onEdit();
+        if (onEdit) {
+          console.log("Calling onEdit callback to update parent component");
+          onEdit();
+        }
       }
     } catch (err) {
       console.error("Error in fetchUpdatedTransaction:", err);
