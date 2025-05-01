@@ -251,10 +251,9 @@ export default function TransactionDetails({
 
       if (error) throw error;
 
-      const successMessage =
-        isOwnTransaction && transaction.status === "rejected" && !isAdmin
-          ? "Transaction has been updated and resubmitted for approval"
-          : "The transaction has been successfully updated.";
+      const successMessage = !isAdmin
+        ? "Transaction has been updated and resubmitted for approval"
+        : "The transaction has been successfully updated.";
 
       toast({
         title: "Transaction edited",
@@ -353,17 +352,13 @@ export default function TransactionDetails({
           updateData.review_notes,
         );
       }
-      // If this is an agent editing their rejected transaction, reset to pending
-      else if (
-        isOwnTransaction &&
-        transaction.status === "rejected" &&
-        !isAdmin
-      ) {
+      // If this is a non-admin editing a transaction, reset to pending
+      else if (!isAdmin) {
         updateData.status = "pending";
         // Clear review notes when resubmitting
         updateData.review_notes = null;
         console.log(
-          "Agent is editing a rejected transaction - resetting to pending status",
+          "Non-admin is editing a transaction - resetting to pending status",
         );
       }
 
@@ -493,14 +488,15 @@ export default function TransactionDetails({
         updateObject.review_notes = null;
         console.log("Resetting transaction to pending status for resubmission");
       }
-      // Always set status to pending when an agent edits a rejected transaction
-      else if (transaction.status === "rejected" && !isAdmin) {
+      // Always set status to pending when any non-admin edits a transaction
+      else if (!isAdmin) {
         updateObject.status = "pending";
         updateObject.review_notes = null;
-        console.log(
-          "Agent edited rejected transaction - setting to pending status",
-        );
+        console.log("Non-admin edited transaction - setting to pending status");
       }
+
+      // Log the final update object before sending
+      console.log("Final update object being sent to database:", updateObject);
 
       // Try a direct update with the regular update method instead of RPC
       const { data, error } = await supabase
@@ -509,14 +505,15 @@ export default function TransactionDetails({
         .eq("id", transaction.id)
         .select();
 
+      console.log("Update response data:", data);
+
       console.log("Update response:", { data, error });
 
       if (error) throw error;
 
-      const successMessage =
-        isOwnTransaction && transaction.status === "rejected" && !isAdmin
-          ? "Transaction has been updated and resubmitted for approval"
-          : "The transaction has been successfully updated.";
+      const successMessage = !isAdmin
+        ? "Transaction has been updated and resubmitted for approval"
+        : "The transaction has been successfully updated.";
 
       toast({
         title: "Transaction edited",
@@ -1389,7 +1386,8 @@ export default function TransactionDetails({
               </Button>
             )}
 
-            {isAdmin && !isEditing && (
+            {/* Allow both admins and transaction creators to edit */}
+            {(isAdmin || isOwnTransaction) && !isEditing && (
               <Button
                 variant="outline"
                 size="sm"
