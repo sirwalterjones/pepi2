@@ -144,7 +144,7 @@ export default function PrintableReport({
       <div className="header mb-6 border-b-2 border-gray-800 pb-4">
         <h1 className="text-2xl font-bold">
           {isMonthlyReport
-            ? `PEPI FUND MONTHLY REPORT - ${format(new Date(), "MMMM yyyy")}`
+            ? `PEPI FUND MONTHLY REPORT - ${format(startDate || new Date(), "MMMM yyyy")}`
             : "PEPI FUND TRANSACTION REPORT"}
         </h1>
         <div className="flex flex-wrap justify-between items-center mt-2">
@@ -158,7 +158,7 @@ export default function PrintableReport({
                 {format(endDate, "MMM d, yyyy")}
               </p>
             )}
-            {stats.activePepiBookYear && (
+            {stats?.activePepiBookYear && (
               <p className="text-sm font-semibold">
                 PEPI Book: {stats.activePepiBookYear}
               </p>
