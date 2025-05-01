@@ -26,7 +26,9 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
 
   // Debug log to check incoming data
   useEffect(() => {
-    console.log("MonthlyPepiMemo received data:", data);
+    if (data) {
+      console.log("MonthlyPepiMemo received data:", data);
+    }
   }, [data]);
 
   // Ensure all values are properly calculated and displayed

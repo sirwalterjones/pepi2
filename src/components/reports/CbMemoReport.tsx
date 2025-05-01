@@ -28,8 +28,12 @@ type CbMemoReportProps = {
 };
 
 const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
+  // Handle undefined data gracefully
+  if (!data) {
+    return <div className="p-4">No memo data available</div>;
+  }
   // Format the commander's initials for the footer
-  const getInitials = (name: string) => {
+  const getInitials = (name: string = "") => {
     return name
       .split(" ")
       .map((n) => n[0])
