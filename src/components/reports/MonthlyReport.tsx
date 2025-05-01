@@ -3,10 +3,17 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createClient } from "../../../supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
-import { Printer, Loader2 } from "lucide-react";
+import {
+  Printer,
+  Loader2,
+  DollarSign,
+  Users,
+  ArrowUpRight,
+  ArrowDownLeft,
+} from "lucide-react";
 import { Transaction } from "@/types/schema";
 import PrintableReport from "./PrintableReport";
 import { formatCurrency } from "@/lib/utils";
@@ -30,6 +37,12 @@ export default function MonthlyReport() {
     totalReturned: 0,
     safeCashBalance: 0,
     agentCashBalance: 0,
+    totalAgents: 0,
+    totalTransactions: 0,
+    currentBalance: 0,
+    cashOnHand: 0,
+    spendingTotal: 0,
+    activePepiBookYear: null,
   });
 
   // Fetch all transactions and active PEPI book
@@ -99,49 +112,78 @@ export default function MonthlyReport() {
     );
     setFilteredTransactions(filtered);
 
-    // Calculate statistics
-    let totalIssuance = 0;
-    let totalSpending = 0;
-    let totalReturned = 0;
-    let safeCashBalance = 0;
-    let agentCashBalance = 0;
+    // Calculate statistics using the refined logic from DashboardOverview
+    let totalIssuedToAgents = 0;
+    let totalSpentByAgents = 0;
+    let totalReturnedByAgents = 0;
+    let totalAddedToBook = 0;
+    let initialAmount = activePepiBook?.starting_amount || 0;
 
+    // Process all transactions to calculate balances
     filtered.forEach((transaction) => {
       if (transaction.status === "approved") {
         const amount = parseFloat(transaction.amount.toString());
 
         if (transaction.transaction_type === "issuance") {
-          totalIssuance += amount;
-          if (transaction.agent_id) {
-            agentCashBalance += amount;
-          } else {
-            safeCashBalance += amount;
+          if (transaction.agent_id !== null) {
+            // Issuance TO an agent
+            totalIssuedToAgents += amount;
+            // Does NOT affect book balance directly
+          } else if (transaction.receipt_number?.startsWith("ADD")) {
+            // Additions to the book (receipt starts with ADD)
+            totalAddedToBook += amount;
           }
         } else if (transaction.transaction_type === "spending") {
-          totalSpending += amount;
+          // All spending reduces the total balance
+          totalSpentByAgents += amount;
+
+          // If spent by an agent, reduce their cash on hand
           if (transaction.agent_id) {
-            agentCashBalance -= amount;
-          } else {
-            safeCashBalance -= amount;
+            totalIssuedToAgents -= amount;
           }
         } else if (transaction.transaction_type === "return") {
-          totalReturned += amount;
+          // Returns only affect agent cash on hand
           if (transaction.agent_id) {
-            agentCashBalance -= amount;
-            safeCashBalance += amount;
+            totalIssuedToAgents -= amount;
+            totalReturnedByAgents += amount;
           }
         }
       }
     });
 
-    setStats({
-      totalIssuance,
-      totalSpending,
-      totalReturned,
-      safeCashBalance,
-      agentCashBalance,
-    });
-  }, [transactions, selectedMonth, selectedYear]);
+    // Calculate current balance: initial + additions - expenditures
+    let pepiBookBalance = initialAmount + totalAddedToBook - totalSpentByAgents;
+
+    // Calculate safe cash: current balance - what's issued to agents
+    let safeCashBalance = pepiBookBalance - totalIssuedToAgents;
+
+    // Get active agents count
+    const supabase = createClient();
+    const fetchAgentsCount = async () => {
+      const { count: agentsCount } = await supabase
+        .from("agents")
+        .select("*", { count: "exact", head: true })
+        .eq("is_active", true);
+
+      setStats({
+        totalAgents: agentsCount || 0,
+        totalTransactions: filtered.filter((t) => t.status === "approved")
+          .length,
+        totalIssuance: totalIssuedToAgents,
+        totalReturned: totalReturnedByAgents,
+        currentBalance: pepiBookBalance,
+        cashOnHand: safeCashBalance,
+        spendingTotal: totalSpentByAgents,
+        activePepiBookYear: activePepiBook?.year || null,
+        // Keep the old stats properties for backward compatibility
+        totalSpending: totalSpentByAgents,
+        safeCashBalance: safeCashBalance,
+        agentCashBalance: totalIssuedToAgents,
+      });
+    };
+
+    fetchAgentsCount();
+  }, [transactions, selectedMonth, selectedYear, activePepiBook]);
 
   // Use the formatCurrency utility function from utils.ts
 
@@ -302,48 +344,104 @@ export default function MonthlyReport() {
         </div>
       ) : (
         <>
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold">
-                  {formatCurrency(stats.totalIssuance)}
-                </div>
-                <p className="text-muted-foreground">Total Issued</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold">
-                  {formatCurrency(stats.totalSpending)}
-                </div>
-                <p className="text-muted-foreground">Total Spent</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold">
-                  {formatCurrency(stats.totalReturned)}
-                </div>
-                <p className="text-muted-foreground">Total Returned</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-blue-600">
-                  {formatCurrency(stats.safeCashBalance)}
-                </div>
-                <p className="text-muted-foreground">Safe Cash</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-amber-600">
-                  {formatCurrency(stats.agentCashBalance)}
-                </div>
-                <p className="text-muted-foreground">Agent Cash</p>
-              </CardContent>
-            </Card>
+          {/* Summary Cards - Using the same format as DashboardOverview */}
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Initial Funding
+                  </CardTitle>
+                  <DollarSign className="h-4 w-4 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatCurrency(activePepiBook?.starting_amount || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    PEPI book starting amount
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Issued To Agents
+                  </CardTitle>
+                  <ArrowUpRight className="h-4 w-4 text-orange-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatCurrency(stats.totalIssuance)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Approved funds moved to agents
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Total Spent By Agents
+                  </CardTitle>
+                  <DollarSign className="h-4 w-4 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatCurrency(stats.spendingTotal)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Approved spending by agents
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Total Returned By Agents
+                  </CardTitle>
+                  <ArrowDownLeft className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatCurrency(stats.totalReturned)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Approved funds returned by agents
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Book Balance (Safe Cash)
+                  </CardTitle>
+                  <DollarSign className="h-4 w-4 text-amber-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatCurrency(stats.cashOnHand)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Remaining funds in PEPI Book (minus all spent items)
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Active Agents
+                  </CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.totalAgents}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Task force members
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           {/* Transaction Tabs */}
