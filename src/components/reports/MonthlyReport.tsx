@@ -286,6 +286,7 @@ export default function MonthlyReport() {
             currentBalance: stats.safeCashBalance + stats.agentCashBalance,
             cashOnHand: stats.safeCashBalance,
             spendingTotal: stats.totalSpending,
+            agentCashBalance: stats.agentCashBalance,
             activePepiBookYear: activePepiBook?.year || null,
           }}
           startDate={new Date(selectedYear, selectedMonth, 1)}

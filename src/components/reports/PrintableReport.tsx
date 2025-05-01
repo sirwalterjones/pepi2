@@ -15,6 +15,7 @@ type PrintableReportProps = {
         currentBalance: number;
         cashOnHand: number;
         spendingTotal: number;
+        agentCashBalance: number;
         activePepiBookYear: number | null;
       }
     | undefined;
@@ -39,6 +40,7 @@ export default function PrintableReport({
     currentBalance: 0,
     cashOnHand: 0,
     spendingTotal: 0,
+    agentCashBalance: 0,
     activePepiBookYear: null,
   };
 
@@ -271,9 +273,7 @@ export default function PrintableReport({
                 Cash with Agents
               </td>
               <td className="border border-gray-300 p-2 text-right font-bold">
-                {formatCurrency(
-                  safeStats.currentBalance - safeStats.cashOnHand,
-                )}
+                {formatCurrency(safeStats.agentCashBalance)}
               </td>
               <td className="border border-gray-300 p-2">
                 Funds currently with agents
