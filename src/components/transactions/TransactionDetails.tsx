@@ -485,29 +485,49 @@ export default function TransactionDetails({
         description: result.message || "Transaction has been updated",
       });
 
-      // Fetch the updated transaction data
-      const { data: freshData, error: fetchError } = await supabase
-        .from("transactions")
-        .select("*, agents:agent_id (id, name, badge_number)")
-        .eq("id", transaction.id)
-        .single();
-
-      if (fetchError) {
-        console.error("Error fetching updated transaction:", fetchError);
-      } else if (freshData) {
-        console.log("Fetched fresh transaction data after update:", freshData);
+      if (result.data) {
+        console.log("Using result data directly:", result.data);
 
         // Replace the entire transaction object with the updated data
         Object.keys(transaction).forEach((key) => {
-          if (key in freshData) {
-            transaction[key] = freshData[key];
+          if (key in result.data) {
+            transaction[key] = result.data[key];
           }
         });
 
         // Update state variables
-        setReviewNotes(freshData.review_notes || "");
-        setStatus(freshData.status || "pending");
+        setReviewNotes(result.data.review_notes || "");
+        setStatus(result.data.status || "pending");
         setEditedTransaction(null); // Clear edited transaction
+      } else {
+        // Fallback to fetching fresh data if result.data is missing
+        console.log("Fallback: fetching fresh transaction data");
+        const { data: freshData, error: fetchError } = await supabase
+          .from("transactions")
+          .select("*, agents:agent_id (id, name, badge_number)")
+          .eq("id", transaction.id)
+          .single();
+
+        if (fetchError) {
+          console.error("Error fetching updated transaction:", fetchError);
+        } else if (freshData) {
+          console.log(
+            "Fetched fresh transaction data after update:",
+            freshData,
+          );
+
+          // Replace the entire transaction object with the updated data
+          Object.keys(transaction).forEach((key) => {
+            if (key in freshData) {
+              transaction[key] = freshData[key];
+            }
+          });
+
+          // Update state variables
+          setReviewNotes(freshData.review_notes || "");
+          setStatus(freshData.status || "pending");
+          setEditedTransaction(null); // Clear edited transaction
+        }
       }
 
       // Exit edit mode

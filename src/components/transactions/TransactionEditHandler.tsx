@@ -44,39 +44,41 @@ export function useTransactionEditHandler() {
       }
 
       // Perform the update
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("transactions")
         .update(updateData)
-        .eq("id", transactionId)
-        .select("*, agents:agent_id (id, name, badge_number)");
+        .eq("id", transactionId);
 
       if (error) {
         console.error("[TransactionEditHandler] Update error:", error);
         throw error;
       }
 
-      console.log("[TransactionEditHandler] Update successful:", data);
-
-      // Fetch the complete updated transaction
-      const { data: updatedTransaction, error: fetchError } = await supabase
+      // Fetch the updated transaction in a separate query
+      const { data, error: fetchError } = await supabase
         .from("transactions")
         .select("*, agents:agent_id (id, name, badge_number)")
         .eq("id", transactionId)
         .single();
 
-      if (error) {
-        console.error("[TransactionEditHandler] Update error:", error);
-        throw error;
+      if (fetchError) {
+        console.error("[TransactionEditHandler] Fetch error:", fetchError);
+        throw fetchError;
       }
 
-      if (!data || data.length === 0) {
-        console.error("[TransactionEditHandler] No data returned from update");
-        throw new Error("No data returned from update operation");
+      console.log(
+        "[TransactionEditHandler] Update successful, fetched data:",
+        data,
+      );
+
+      if (!data) {
+        console.error("[TransactionEditHandler] No data returned from fetch");
+        throw new Error("No data returned from fetch operation");
       }
 
       return {
         success: true,
-        data: data[0],
+        data: data,
         message: "Transaction has been updated and resubmitted for approval",
       };
     } catch (error: any) {
