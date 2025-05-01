@@ -9,7 +9,11 @@ import { formatCurrency } from "@/lib/utils"; // Assuming you have a currency fo
 // import Image from 'next/image';
 
 type MonthlyPepiMemoProps = {
-  data: MonthlyPepiMemoData;
+  data: MonthlyPepiMemoData & {
+    isMonthlyFiltered?: boolean;
+    selectedMonth?: number;
+    selectedYear?: number;
+  };
 };
 
 const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
@@ -29,7 +33,7 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
   const memoData = {
     ...data,
     // Make sure cashOnHand is calculated correctly and handle undefined data
-    // Cash on hand should always equal the ending balance
+    // Cash on hand should always equal the ending balance - this is a CURRENT value, not filtered by month
     cashOnHand: data?.endingBalance ?? 0,
     // Ensure all values are numbers (not null/undefined)
     commanderName: data?.commanderName || "Commander",
@@ -38,17 +42,20 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
     bookYear: data?.bookYear || "-",
     reconciliationDate: data?.reconciliationDate || "-",
     beginningBalance: data?.beginningBalance ?? 0,
-    totalAgentIssues: data?.monthlyAgentIssues ?? 0, // Use monthly values instead of totals
-    totalAgentReturns: data?.monthlyAgentReturns ?? 0, // Use monthly values instead of totals
-    totalExpenditures: data?.monthlyExpenditures ?? 0, // Use monthly values instead of totals
-    totalAdditionalUnitIssue: data?.monthlyAdditionalUnitIssue ?? 0, // Use monthly values instead of totals
-    endingBalance: data?.endingBalance ?? 0,
-    ytdExpenditures: data?.ytdExpenditures ?? 0,
-    // New dashboard metrics - use monthly values
+    // These values ARE filtered by month - use monthly values
+    totalAgentIssues: data?.monthlyAgentIssues ?? 0,
+    totalAgentReturns: data?.monthlyAgentReturns ?? 0,
+    totalExpenditures: data?.monthlyExpenditures ?? 0,
+    totalAdditionalUnitIssue: data?.monthlyAdditionalUnitIssue ?? 0,
+    // These values are NOT filtered by month - they show current totals
+    endingBalance: data?.endingBalance ?? 0, // Current total balance
+    ytdExpenditures: data?.ytdExpenditures ?? 0, // Year-to-date total
+    // New dashboard metrics - use monthly values for filtered data
     initialFunding: data?.monthlyInitialFunding ?? 0,
     issuedToAgents: data?.monthlyIssuedToAgents ?? 0,
     spentByAgents: data?.monthlySpentByAgents ?? 0,
     returnedByAgents: data?.monthlyReturnedByAgents ?? 0,
+    // Book balance is a current total, not filtered by month
     bookBalance: data?.endingBalance ?? 0,
   };
 
@@ -97,8 +104,8 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
           {memoData.monthName} {memoData.bookYear}. Agents returned{" "}
           {formatCurrency(memoData.totalAgentReturns)} for the month of{" "}
           {memoData.monthName} {memoData.bookYear}. Cash on hand was counted and
-          verified at {formatCurrency(memoData.cashOnHand)}. CMANS Agents
-          expended {formatCurrency(memoData.totalExpenditures)} for{" "}
+          verified at {formatCurrency(memoData.cashOnHand)} (current balance).
+          CMANS Agents expended {formatCurrency(memoData.totalExpenditures)} for{" "}
           {memoData.monthName} {memoData.bookYear}.
           {memoData.totalAdditionalUnitIssue > 0 && (
             <span>
@@ -108,8 +115,9 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
             </span>
           )}
           The CMANS PEPI balance at the end of {memoData.monthName} was{" "}
-          {formatCurrency(memoData.endingBalance)}. The year-to-date
-          expenditures totaled {formatCurrency(memoData.ytdExpenditures)}.
+          {formatCurrency(memoData.endingBalance)} (current balance). The
+          year-to-date expenditures totaled{" "}
+          {formatCurrency(memoData.ytdExpenditures)}.
         </p>
       </div>
 
@@ -125,6 +133,9 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
               <td className="border border-black px-2 py-1">Initial Funding</td>
               <td className="border border-black px-2 py-1 text-right">
                 {formatCurrency(memoData.initialFunding)}
+                <span className="text-xs ml-1 text-gray-600">
+                  ({memoData.monthName})
+                </span>
               </td>
             </tr>
             <tr className="border border-black">
@@ -133,6 +144,9 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
               </td>
               <td className="border border-black px-2 py-1 text-right">
                 {formatCurrency(memoData.issuedToAgents)}
+                <span className="text-xs ml-1 text-gray-600">
+                  ({memoData.monthName})
+                </span>
               </td>
             </tr>
             <tr className="border border-black">
@@ -141,6 +155,9 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
               </td>
               <td className="border border-black px-2 py-1 text-right">
                 {formatCurrency(memoData.spentByAgents)}
+                <span className="text-xs ml-1 text-gray-600">
+                  ({memoData.monthName})
+                </span>
               </td>
             </tr>
             <tr className="border border-black">
@@ -149,6 +166,9 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
               </td>
               <td className="border border-black px-2 py-1 text-right">
                 {formatCurrency(memoData.returnedByAgents)}
+                <span className="text-xs ml-1 text-gray-600">
+                  ({memoData.monthName})
+                </span>
               </td>
             </tr>
             <tr className="border border-black">
@@ -157,6 +177,7 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
               </td>
               <td className="border border-black px-2 py-1 text-right">
                 {formatCurrency(memoData.bookBalance)}
+                <span className="text-xs ml-1 text-gray-600">(Current)</span>
               </td>
             </tr>
             {memoData.totalAdditionalUnitIssue > 0 && (
@@ -166,6 +187,9 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
                 </td>
                 <td className="border border-black px-2 py-1 text-right">
                   {formatCurrency(memoData.totalAdditionalUnitIssue)}
+                  <span className="text-xs ml-1 text-gray-600">
+                    ({memoData.monthName})
+                  </span>
                 </td>
               </tr>
             )}
@@ -175,6 +199,7 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
               </td>
               <td className="border border-black px-2 py-1 text-right">
                 {formatCurrency(memoData.ytdExpenditures)}
+                <span className="text-xs ml-1 text-gray-600">(YTD)</span>
               </td>
             </tr>
           </tbody>
