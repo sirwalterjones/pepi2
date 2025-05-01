@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
-import { createClient } from "@/supabase/client";
+import { createClient } from "../../../../../supabase/client";
 import {
   getMonthlyPepiMemoDataAction,
   MonthlyPepiMemoData,
