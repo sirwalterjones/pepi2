@@ -43,18 +43,27 @@ export default function MonthlyReport() {
     const supabase = createClientComponentClient<Database>();
 
     try {
-      // Format dates for filtering
-      const formattedStartDate = startDate.toISOString();
-      const formattedEndDate = endDate.toISOString();
+      // Format dates for filtering - use date strings without time for more reliable filtering
+      const formattedStartDate = format(startDate, "yyyy-MM-dd");
+      const formattedEndDate = format(endDate, "yyyy-MM-dd");
 
-      // Fetch transactions for the selected month with proper date filtering
+      console.log(
+        `Fetching transactions from ${formattedStartDate} to ${formattedEndDate}`,
+      );
+
+      // Fetch transactions for the selected month with simplified date filtering
       const { data: transactions, error } = await supabase
         .from("transactions")
         .select("*, agents(id, name, badge_number)")
         .or(
-          `transaction_date.gte.${formattedStartDate},transaction_date.lte.${formattedEndDate},and(created_at.gte.${formattedStartDate},created_at.lte.${formattedEndDate})`,
+          `transaction_date.gte.${formattedStartDate},transaction_date.lte.${formattedEndDate},created_at.gte.${formattedStartDate},created_at.lte.${formattedEndDate}`,
         )
         .order("created_at", { ascending: false });
+
+      console.log(`Found ${transactions?.length || 0} transactions`);
+      if (transactions?.length === 0) {
+        console.log("No transactions found with the current filter");
+      }
 
       if (error) throw error;
 
