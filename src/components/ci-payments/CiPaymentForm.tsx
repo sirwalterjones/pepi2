@@ -179,9 +179,10 @@ export default function CiPaymentForm({
     useTyped: boolean,
     typedSignature: string,
   ): string | undefined => {
-    // If using typed signature and it's not empty, return it
+    // If using typed signature and it's not empty, return it with a special prefix
     if (useTyped && typedSignature.trim()) {
-      return typedSignature.trim();
+      // Add a prefix to indicate this is a typed signature (for styling in receipt)
+      return `typed:${typedSignature.trim()}`;
     }
 
     // Otherwise try to get drawn signature
@@ -597,7 +598,8 @@ export default function CiPaymentForm({
                   value={typedCiSignature}
                   onChange={(e) => setTypedCiSignature(e.target.value)}
                   placeholder="Type your signature here"
-                  className="h-12"
+                  className="h-12 font-signature"
+                  style={{ fontFamily: "'Dancing Script', cursive" }}
                 />
               ) : (
                 <div className="border rounded-md bg-slate-50">
@@ -651,7 +653,8 @@ export default function CiPaymentForm({
                   value={typedAgentSignature}
                   onChange={(e) => setTypedAgentSignature(e.target.value)}
                   placeholder="Type your signature here"
-                  className="h-12"
+                  className="h-12 font-signature"
+                  style={{ fontFamily: "'Dancing Script', cursive" }}
                 />
               ) : (
                 <div className="border rounded-md bg-slate-50">
@@ -705,7 +708,8 @@ export default function CiPaymentForm({
                   value={typedWitnessSignature}
                   onChange={(e) => setTypedWitnessSignature(e.target.value)}
                   placeholder="Type witness signature here"
-                  className="h-12"
+                  className="h-12 font-signature"
+                  style={{ fontFamily: "'Dancing Script', cursive" }}
                 />
               ) : (
                 <div className="border rounded-md bg-slate-50">

@@ -114,13 +114,25 @@ export default function CiReceiptDisplay({
                 CI Signature
               </p>
               {payment.ci_signature ? (
-                <Image
-                  src={payment.ci_signature}
-                  alt="CI Signature"
-                  width={150}
-                  height={75}
-                  className="mx-auto print:w-[100px] print:h-[50px]"
-                />
+                payment.ci_signature.startsWith("typed:") ? (
+                  <p
+                    className="mx-auto text-lg font-signature"
+                    style={{
+                      fontFamily: "'Dancing Script', cursive",
+                      fontSize: "1.5rem",
+                    }}
+                  >
+                    {payment.ci_signature.substring(6)}
+                  </p>
+                ) : (
+                  <Image
+                    src={payment.ci_signature}
+                    alt="CI Signature"
+                    width={150}
+                    height={75}
+                    className="mx-auto print:w-[100px] print:h-[50px]"
+                  />
+                )
               ) : (
                 <p className="text-xs text-muted-foreground">N/A</p>
               )}
@@ -130,13 +142,25 @@ export default function CiReceiptDisplay({
                 Paying Agent Signature
               </p>
               {payment.paying_agent_signature ? (
-                <Image
-                  src={payment.paying_agent_signature}
-                  alt="Agent Signature"
-                  width={150}
-                  height={75}
-                  className="mx-auto print:w-[100px] print:h-[50px]"
-                />
+                payment.paying_agent_signature.startsWith("typed:") ? (
+                  <p
+                    className="mx-auto text-lg font-signature"
+                    style={{
+                      fontFamily: "'Dancing Script', cursive",
+                      fontSize: "1.5rem",
+                    }}
+                  >
+                    {payment.paying_agent_signature.substring(6)}
+                  </p>
+                ) : (
+                  <Image
+                    src={payment.paying_agent_signature}
+                    alt="Agent Signature"
+                    width={150}
+                    height={75}
+                    className="mx-auto print:w-[100px] print:h-[50px]"
+                  />
+                )
               ) : (
                 <p className="text-xs text-muted-foreground">N/A</p>
               )}
@@ -146,13 +170,25 @@ export default function CiReceiptDisplay({
                 Witness Signature
               </p>
               {payment.witness_signature ? (
-                <Image
-                  src={payment.witness_signature}
-                  alt="Witness Signature"
-                  width={150}
-                  height={75}
-                  className="mx-auto print:w-[100px] print:h-[50px]"
-                />
+                payment.witness_signature.startsWith("typed:") ? (
+                  <p
+                    className="mx-auto text-lg font-signature"
+                    style={{
+                      fontFamily: "'Dancing Script', cursive",
+                      fontSize: "1.5rem",
+                    }}
+                  >
+                    {payment.witness_signature.substring(6)}
+                  </p>
+                ) : (
+                  <Image
+                    src={payment.witness_signature}
+                    alt="Witness Signature"
+                    width={150}
+                    height={75}
+                    className="mx-auto print:w-[100px] print:h-[50px]"
+                  />
+                )
               ) : (
                 <p className="text-xs text-muted-foreground">N/A</p>
               )}
@@ -193,6 +229,13 @@ export default function CiReceiptDisplay({
       </Card>
       {/* Basic Print Styles */}
       <style jsx global>{`
+        @import url("https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap");
+
+        .font-signature {
+          font-family: "Dancing Script", cursive;
+          font-size: 1.5rem;
+        }
+
         @media print {
           body {
             margin: 0;
