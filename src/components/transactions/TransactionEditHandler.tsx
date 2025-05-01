@@ -34,6 +34,25 @@ export function useTransactionEditHandler() {
         // We'll keep whatever is in the database
       }
 
+      // IMPORTANT: Never change the agent_id when updating a transaction
+      // This ensures ownership is preserved regardless of who edits it
+      if (updateData.agent_id === undefined) {
+        console.log("[TransactionEditHandler] Preserving original agent_id");
+        // Fetch the current agent_id to ensure it's preserved
+        const { data: currentData, error: fetchError } = await supabase
+          .from("transactions")
+          .select("agent_id")
+          .eq("id", transactionId)
+          .single();
+
+        if (!fetchError && currentData) {
+          updateData.agent_id = currentData.agent_id;
+          console.log(
+            `[TransactionEditHandler] Preserved agent_id: ${currentData.agent_id}`,
+          );
+        }
+      }
+
       // Log the update operation for debugging
       console.log(
         "[TransactionEditHandler] Setting transaction to pending status",

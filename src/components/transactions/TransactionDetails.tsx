@@ -86,12 +86,13 @@ export default function TransactionDetails({
       setStatus(transaction.status || "pending");
 
       // Create a fresh copy of the transaction for editing
+      // IMPORTANT: Always preserve the original agent_id to maintain ownership
       const freshTransactionCopy = {
         ...transaction,
         amount: parseFloat(transaction.amount),
         description: transaction.description || "",
         receipt_number: transaction.receipt_number || "",
-        agent_id: transaction.agent_id || null,
+        agent_id: transaction.agent_id || null, // Preserve original agent_id
         status: transaction.status || "pending",
         review_notes: transaction.review_notes || "",
       };
@@ -427,7 +428,7 @@ export default function TransactionDetails({
         amount: parsedAmount,
         description: editedTransaction.description || null,
         receipt_number: editedTransaction.receipt_number || null,
-        agent_id: editedTransaction.agent_id || null,
+        agent_id: transaction.agent_id || null, // CRITICAL: Always use the original agent_id to preserve ownership
         document_url: fileUrl,
         // Don't clear review notes when agent edits, just keep existing notes
         review_notes: editedTransaction.review_notes || null,
