@@ -11,6 +11,11 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "PEPI Money Tracker",
   description: "Drug Task Force Fund Management System",
+  icons: {
+    icon: "/blue-shield-icon.svg",
+    shortcut: "/blue-shield-icon.svg",
+    apple: "/blue-shield-icon.svg",
+  },
 };
 
 export default function RootLayout({

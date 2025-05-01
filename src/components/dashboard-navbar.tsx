@@ -27,6 +27,7 @@ import {
   BarChart3,
   Menu,
 } from "lucide-react";
+import { ThemeSwitcher } from "./theme-switcher";
 import { useRouter } from "next/navigation";
 
 export default function DashboardNavbar() {
@@ -162,6 +163,7 @@ export default function DashboardNavbar() {
           </div>
         </div>
         <div className="flex gap-2 items-center">
+          <ThemeSwitcher />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
