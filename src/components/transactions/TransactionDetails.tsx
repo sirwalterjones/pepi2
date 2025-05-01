@@ -351,13 +351,6 @@ export default function TransactionDetails({
       console.log("Original amount type:", typeof editedTransaction.amount);
       console.log("Parsed amount type:", typeof updateData.amount);
 
-      // If this is an agent editing their rejected transaction, reset to pending
-      if (isOwnTransaction && transaction.status === "rejected" && !isAdmin) {
-        updateData.status = "pending";
-        // Clear review notes when resubmitting
-        updateData.review_notes = null;
-      }
-
       // Ensure amount is a valid number
       if (isNaN(updateData.amount)) {
         throw new Error("Invalid amount value");
@@ -425,49 +418,53 @@ export default function TransactionDetails({
         }
       }
 
+      // Prepare the update data object
+      const updateObject = {
+        amount: amountAsString, // Send as string for Supabase numeric fields
+        description: updateData.description,
+        receipt_number: updateData.receipt_number,
+        agent_id: updateData.agent_id,
+        updated_at: updateData.updated_at,
+        document_url: fileUrl, // Add the document URL
+        transaction_date: editedTransaction.transaction_date
+          ? editedTransaction.transaction_date instanceof Date
+            ? editedTransaction.transaction_date.toISOString().split("T")[0]
+            : new Date(editedTransaction.transaction_date)
+                .toISOString()
+                .split("T")[0]
+          : null,
+        // Add spending fields if applicable
+        ...(editedTransaction.transaction_type === "spending" && {
+          spending_category: editedTransaction.spending_category,
+          case_number: editedTransaction.case_number?.trim() || null,
+          paid_to: editedTransaction.paid_to?.trim() || null,
+          ecr_number:
+            editedTransaction.spending_category === "Evidence Purchase"
+              ? editedTransaction.ecr_number?.trim()
+              : null,
+          date_to_evidence:
+            editedTransaction.spending_category === "Evidence Purchase" &&
+            editedTransaction.date_to_evidence
+              ? editedTransaction.date_to_evidence instanceof Date
+                ? editedTransaction.date_to_evidence.toISOString().split("T")[0]
+                : new Date(editedTransaction.date_to_evidence)
+                    .toISOString()
+                    .split("T")[0]
+              : null,
+        }),
+      };
+
+      // If this is an agent editing their rejected transaction, reset to pending
+      if (isOwnTransaction && transaction.status === "rejected" && !isAdmin) {
+        updateObject.status = "pending";
+        updateObject.review_notes = null;
+        console.log("Resetting transaction to pending status for resubmission");
+      }
+
       // Try a direct update with the regular update method instead of RPC
       const { data, error } = await supabase
         .from("transactions")
-        .update({
-          amount: amountAsString, // Send as string for Supabase numeric fields
-          description: updateData.description,
-          receipt_number: updateData.receipt_number,
-          agent_id: updateData.agent_id,
-          updated_at: updateData.updated_at,
-          document_url: fileUrl, // Add the document URL
-          transaction_date: editedTransaction.transaction_date
-            ? editedTransaction.transaction_date instanceof Date
-              ? editedTransaction.transaction_date.toISOString().split("T")[0]
-              : new Date(editedTransaction.transaction_date)
-                  .toISOString()
-                  .split("T")[0]
-            : null,
-          // Add spending fields if applicable
-          ...(editedTransaction.transaction_type === "spending" && {
-            spending_category: editedTransaction.spending_category,
-            case_number: editedTransaction.case_number?.trim() || null,
-            paid_to: editedTransaction.paid_to?.trim() || null,
-            ecr_number:
-              editedTransaction.spending_category === "Evidence Purchase"
-                ? editedTransaction.ecr_number?.trim()
-                : null,
-            date_to_evidence:
-              editedTransaction.spending_category === "Evidence Purchase" &&
-              editedTransaction.date_to_evidence
-                ? editedTransaction.date_to_evidence instanceof Date
-                  ? editedTransaction.date_to_evidence
-                      .toISOString()
-                      .split("T")[0]
-                  : new Date(editedTransaction.date_to_evidence)
-                      .toISOString()
-                      .split("T")[0]
-                : null,
-          }),
-          // If this is an agent editing their rejected transaction, reset to pending
-          ...(isOwnTransaction && transaction.status === "rejected" && !isAdmin
-            ? { status: "pending", review_notes: null }
-            : {}),
-        })
+        .update(updateObject)
         .eq("id", transaction.id)
         .select();
 
@@ -1129,6 +1126,9 @@ export default function TransactionDetails({
                       <Edit className="mr-2 h-4 w-4" />
                       Edit Transaction Based on Feedback
                     </Button>
+                    <p className="text-xs text-muted-foreground mt-1 text-center">
+                      Editing will resubmit this transaction for approval
+                    </p>
                   </div>
                 )}
             </div>
