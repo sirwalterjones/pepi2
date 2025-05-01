@@ -7,13 +7,16 @@ import AdminDashboardActions from "./AdminDashboardActions";
 import PendingRequestsList from "../requests/PendingRequestsList";
 import { Agent, PepiBook } from "@/types/schema";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
+import { useRouter } from "next/navigation";
 
 export default function AdminDashboard() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentAgentData, setCurrentAgentData] = useState<Agent | null>(null);
+  const [refreshKey, setRefreshKey] = useState(Date.now());
   const supabase = createClient();
   const { activeBook } = usePepiBooks();
+  const router = useRouter();
 
   useEffect(() => {
     async function getUserData() {
@@ -48,7 +51,15 @@ export default function AdminDashboard() {
     }
 
     getUserData();
-  }, []);
+
+    // Set up a refresh interval for the dashboard
+    const intervalId = setInterval(() => {
+      setRefreshKey(Date.now());
+      router.refresh();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(intervalId);
+  }, [router]);
 
   return (
     <div className="space-y-6">
@@ -66,10 +77,10 @@ export default function AdminDashboard() {
 
       <DashboardOverview />
 
-      {/* Only show pending requests to admins */}
+      {/* Always show pending requests to admins with forced refresh */}
       {isAdmin && (
         <div className="mt-6">
-          <PendingRequestsList key={userId} />
+          <PendingRequestsList key={`${userId}-${refreshKey}`} />
         </div>
       )}
     </div>

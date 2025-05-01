@@ -39,6 +39,7 @@ type PendingRequest = {
   requested_at: string;
   agent_name: string; // Added agent name
   pepi_book_year: number; // Added book year for context
+  status?: string; // Added status field
 };
 
 export default function PendingRequestsList() {
@@ -55,7 +56,10 @@ export default function PendingRequestsList() {
 
   useEffect(() => {
     fetchRequests();
-  }, [activeBook]);
+    // Set up an interval to refresh data every 10 seconds
+    const intervalId = setInterval(fetchRequests, 10000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -63,6 +67,7 @@ export default function PendingRequestsList() {
     console.log("[PendingRequestsList] Fetching all pending requests...");
 
     try {
+      // Direct fetch from fund_requests table with no filters except status
       const { data, error: fetchError } = await supabase
         .from("fund_requests")
         .select(
@@ -73,6 +78,7 @@ export default function PendingRequestsList() {
           amount,
           case_number,
           requested_at,
+          status,
           agent:agents!fund_requests_agent_id_fkey ( name ),
           pepi_book:pepi_books!fund_requests_pepi_book_id_fkey ( year )
         `,
@@ -92,7 +98,7 @@ export default function PendingRequestsList() {
       );
 
       // Map data to include agent_name and pepi_book_year directly
-      const formattedData: PendingRequest[] = data.map((req: any) => ({
+      const formattedData: PendingRequest[] = (data || []).map((req: any) => ({
         id: req.id,
         agent_id: req.agent_id,
         pepi_book_id: req.pepi_book_id,
@@ -127,6 +133,7 @@ export default function PendingRequestsList() {
   };
 
   useEffect(() => {
+    // Set up realtime subscription to fund_requests table
     const channel = supabase
       .channel("fund_requests_changes")
       .on(
@@ -137,18 +144,19 @@ export default function PendingRequestsList() {
           console.log(
             "[PendingRequestsList] Refetching data due to change (with delay)...",
           );
-          setTimeout(() => {
-            console.log("[PendingRequestsList] Executing delayed fetch...");
-            fetchRequests();
-          }, 500);
+          // Immediate fetch for better responsiveness
+          fetchRequests();
         },
       )
       .subscribe();
 
+    // Fetch immediately on mount
+    fetchRequests();
+
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, activeBook]);
+  }, [supabase]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
