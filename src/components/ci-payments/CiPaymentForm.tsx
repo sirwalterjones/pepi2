@@ -83,6 +83,17 @@ export default function CiPaymentForm({
   const agentSigRef = useRef<SignatureCanvas>(null);
   const witnessSigRef = useRef<SignatureCanvas>(null);
 
+  // Typed signature states
+  const [typedCiSignature, setTypedCiSignature] = useState<string>("");
+  const [typedAgentSignature, setTypedAgentSignature] = useState<string>("");
+  const [typedWitnessSignature, setTypedWitnessSignature] =
+    useState<string>("");
+
+  // Toggle between drawing and typing signatures
+  const [useTypedCiSig, setUseTypedCiSig] = useState<boolean>(false);
+  const [useTypedAgentSig, setUseTypedAgentSig] = useState<boolean>(false);
+  const [useTypedWitnessSig, setUseTypedWitnessSig] = useState<boolean>(false);
+
   const {
     register,
     handleSubmit,
@@ -165,7 +176,15 @@ export default function CiPaymentForm({
 
   const getSignatureData = (
     ref: React.RefObject<SignatureCanvas>,
+    useTyped: boolean,
+    typedSignature: string,
   ): string | undefined => {
+    // If using typed signature and it's not empty, return it
+    if (useTyped && typedSignature.trim()) {
+      return typedSignature.trim();
+    }
+
+    // Otherwise try to get drawn signature
     try {
       // Check if ref and ref.current are valid
       if (!ref || !ref.current) {
@@ -237,9 +256,21 @@ export default function CiPaymentForm({
     setError(null);
 
     // Signatures need to be re-captured for edits unless pre-loading is implemented
-    let ciSignatureData = getSignatureData(ciSigRef);
-    let agentSignatureData = getSignatureData(agentSigRef);
-    let witnessSignatureData = getSignatureData(witnessSigRef);
+    let ciSignatureData = getSignatureData(
+      ciSigRef,
+      useTypedCiSig,
+      typedCiSignature,
+    );
+    let agentSignatureData = getSignatureData(
+      agentSigRef,
+      useTypedAgentSig,
+      typedAgentSignature,
+    );
+    let witnessSignatureData = getSignatureData(
+      witnessSigRef,
+      useTypedWitnessSig,
+      typedWitnessSignature,
+    );
 
     // Validation for required signatures (might differ for edit vs create?)
     // For edit, maybe allow submitting without changing optional signatures?
@@ -249,7 +280,9 @@ export default function CiPaymentForm({
       if (isEditing && initialData?.paying_agent_signature) {
         agentSignatureData = initialData.paying_agent_signature;
       } else {
-        setError("Paying Agent signature is required.");
+        setError(
+          "Paying Agent signature is required. Please draw or type a signature.",
+        );
         setIsLoading(false);
         return;
       }
@@ -258,7 +291,7 @@ export default function CiPaymentForm({
       if (isEditing && initialData?.ci_signature) {
         ciSignatureData = initialData.ci_signature;
       } else {
-        setError("CI signature is required.");
+        setError("CI signature is required. Please draw or type a signature.");
         setIsLoading(false);
         return;
       }
@@ -543,20 +576,52 @@ export default function CiPaymentForm({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* CI Signature */}
             <div className="space-y-2">
-              <Label htmlFor="ci_signature" className="block text-center">
-                CI Signature <span className="text-red-500">*</span>
-              </Label>
-              <div className="border rounded-md bg-slate-50">
-                <SignatureCanvas
-                  ref={ciSigRef}
-                  canvasProps={{ id: "ci_signature", className: "w-full h-32" }}
-                />
+              <div className="flex justify-between items-center">
+                <Label htmlFor="ci_signature" className="block">
+                  CI Signature <span className="text-red-500">*</span>
+                </Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setUseTypedCiSig(!useTypedCiSig)}
+                  className="text-xs"
+                >
+                  {useTypedCiSig ? "Draw Signature" : "Type Signature"}
+                </Button>
               </div>
+
+              {useTypedCiSig ? (
+                <Input
+                  id="typed_ci_signature"
+                  value={typedCiSignature}
+                  onChange={(e) => setTypedCiSignature(e.target.value)}
+                  placeholder="Type your signature here"
+                  className="h-12"
+                />
+              ) : (
+                <div className="border rounded-md bg-slate-50">
+                  <SignatureCanvas
+                    ref={ciSigRef}
+                    canvasProps={{
+                      id: "ci_signature",
+                      className: "w-full h-32",
+                    }}
+                  />
+                </div>
+              )}
+
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => clearSignature(ciSigRef)}
+                onClick={() => {
+                  if (useTypedCiSig) {
+                    setTypedCiSignature("");
+                  } else {
+                    clearSignature(ciSigRef);
+                  }
+                }}
                 className="w-full"
               >
                 Clear CI Sig
@@ -565,23 +630,52 @@ export default function CiPaymentForm({
 
             {/* Paying Agent Signature */}
             <div className="space-y-2">
-              <Label htmlFor="agent_signature" className="block text-center">
-                Paying Agent Signature <span className="text-red-500">*</span>
-              </Label>
-              <div className="border rounded-md bg-slate-50">
-                <SignatureCanvas
-                  ref={agentSigRef}
-                  canvasProps={{
-                    id: "agent_signature",
-                    className: "w-full h-32",
-                  }}
-                />
+              <div className="flex justify-between items-center">
+                <Label htmlFor="agent_signature" className="block">
+                  Paying Agent Signature <span className="text-red-500">*</span>
+                </Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setUseTypedAgentSig(!useTypedAgentSig)}
+                  className="text-xs"
+                >
+                  {useTypedAgentSig ? "Draw Signature" : "Type Signature"}
+                </Button>
               </div>
+
+              {useTypedAgentSig ? (
+                <Input
+                  id="typed_agent_signature"
+                  value={typedAgentSignature}
+                  onChange={(e) => setTypedAgentSignature(e.target.value)}
+                  placeholder="Type your signature here"
+                  className="h-12"
+                />
+              ) : (
+                <div className="border rounded-md bg-slate-50">
+                  <SignatureCanvas
+                    ref={agentSigRef}
+                    canvasProps={{
+                      id: "agent_signature",
+                      className: "w-full h-32",
+                    }}
+                  />
+                </div>
+              )}
+
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => clearSignature(agentSigRef)}
+                onClick={() => {
+                  if (useTypedAgentSig) {
+                    setTypedAgentSignature("");
+                  } else {
+                    clearSignature(agentSigRef);
+                  }
+                }}
                 className="w-full"
               >
                 Clear Agent Sig
@@ -590,23 +684,52 @@ export default function CiPaymentForm({
 
             {/* Witness Signature */}
             <div className="space-y-2">
-              <Label htmlFor="witness_signature" className="block text-center">
-                Witness Signature
-              </Label>
-              <div className="border rounded-md bg-slate-50">
-                <SignatureCanvas
-                  ref={witnessSigRef}
-                  canvasProps={{
-                    id: "witness_signature",
-                    className: "w-full h-32",
-                  }}
-                />
+              <div className="flex justify-between items-center">
+                <Label htmlFor="witness_signature" className="block">
+                  Witness Signature
+                </Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setUseTypedWitnessSig(!useTypedWitnessSig)}
+                  className="text-xs"
+                >
+                  {useTypedWitnessSig ? "Draw Signature" : "Type Signature"}
+                </Button>
               </div>
+
+              {useTypedWitnessSig ? (
+                <Input
+                  id="typed_witness_signature"
+                  value={typedWitnessSignature}
+                  onChange={(e) => setTypedWitnessSignature(e.target.value)}
+                  placeholder="Type witness signature here"
+                  className="h-12"
+                />
+              ) : (
+                <div className="border rounded-md bg-slate-50">
+                  <SignatureCanvas
+                    ref={witnessSigRef}
+                    canvasProps={{
+                      id: "witness_signature",
+                      className: "w-full h-32",
+                    }}
+                  />
+                </div>
+              )}
+
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => clearSignature(witnessSigRef)}
+                onClick={() => {
+                  if (useTypedWitnessSig) {
+                    setTypedWitnessSignature("");
+                  } else {
+                    clearSignature(witnessSigRef);
+                  }
+                }}
                 className="w-full"
               >
                 Clear Witness Sig
