@@ -26,6 +26,14 @@ export function useTransactionEditHandler() {
       // Always set status to pending when edited by an agent
       updateData.status = "pending";
 
+      // Ensure review_notes is preserved if it exists
+      if (updateData.review_notes === undefined) {
+        console.log(
+          "[TransactionEditHandler] Preserving existing review notes",
+        );
+        // We'll keep whatever is in the database
+      }
+
       // Log the update operation for debugging
       console.log(
         "[TransactionEditHandler] Setting transaction to pending status",

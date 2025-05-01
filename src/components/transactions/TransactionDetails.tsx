@@ -429,7 +429,8 @@ export default function TransactionDetails({
         receipt_number: editedTransaction.receipt_number || null,
         agent_id: editedTransaction.agent_id || null,
         document_url: fileUrl,
-        review_notes: isAdmin ? editedTransaction.review_notes || null : null,
+        // Don't clear review notes when agent edits, just keep existing notes
+        review_notes: editedTransaction.review_notes || null,
         status: "pending",
 
         // Date handling
@@ -567,8 +568,30 @@ export default function TransactionDetails({
       // Force dialog to close and reopen to ensure fresh data
       onOpenChange(false);
       setTimeout(() => {
-        onOpenChange(true);
-      }, 100);
+        // Fetch the latest data before reopening
+        const refreshData = async () => {
+          const { data: freshData } = await supabase
+            .from("transactions")
+            .select("*, agents:agent_id (id, name, badge_number)")
+            .eq("id", transaction.id)
+            .single();
+
+          if (freshData) {
+            console.log(
+              "Refreshed transaction data before reopening:",
+              freshData,
+            );
+            // Update the transaction object with fresh data
+            Object.keys(transaction).forEach((key) => {
+              if (key in freshData) {
+                transaction[key] = freshData[key];
+              }
+            });
+          }
+          onOpenChange(true);
+        };
+        refreshData();
+      }, 200);
     } catch (error: any) {
       console.error("Error editing transaction:", error);
       toast({
