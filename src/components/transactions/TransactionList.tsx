@@ -285,7 +285,7 @@ export default function TransactionList() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [activeBook?.id, filterOptions]);
+  }, [activeBook?.id, filterType, currentUserAgentId, isAdmin]);
 
   useEffect(() => {
     if ((!isAdmin && !currentUserAgentId) || !activeBook?.id) return;
