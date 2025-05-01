@@ -85,6 +85,8 @@ export default function TransactionDetails({
         description: transaction.description || "",
         receipt_number: transaction.receipt_number || "",
         agent_id: transaction.agent_id || null,
+        status: transaction.status || "pending",
+        review_notes: transaction.review_notes || "",
       });
 
       // Check if current user is an admin and if this is their transaction
@@ -328,7 +330,7 @@ export default function TransactionDetails({
       }
       // --- End Validation ---
 
-      // If an agent is editing a rejected transaction, reset to pending
+      // Prepare the update data object
       const updateData: any = {
         amount:
           typeof editedTransaction.amount === "string"
@@ -340,8 +342,23 @@ export default function TransactionDetails({
         updated_at: new Date().toISOString(),
       };
 
+      // If admin is editing and has set status and review notes
+      if (isAdmin && editedTransaction.status) {
+        updateData.status = editedTransaction.status;
+        updateData.review_notes = editedTransaction.review_notes || null;
+        console.log(
+          "Admin is editing transaction with status:",
+          updateData.status,
+          "and review notes:",
+          updateData.review_notes,
+        );
+      }
       // If this is an agent editing their rejected transaction, reset to pending
-      if (isOwnTransaction && transaction.status === "rejected" && !isAdmin) {
+      else if (
+        isOwnTransaction &&
+        transaction.status === "rejected" &&
+        !isAdmin
+      ) {
         updateData.status = "pending";
         // Clear review notes when resubmitting
         updateData.review_notes = null;
@@ -457,8 +474,21 @@ export default function TransactionDetails({
         }),
       };
 
+      // If admin is editing, include status and review notes from updateData
+      if (isAdmin && updateData.status) {
+        updateObject.status = updateData.status;
+        updateObject.review_notes = updateData.review_notes;
+        console.log(
+          "Admin is updating transaction status to:",
+          updateObject.status,
+        );
+      }
       // If this is an agent editing their rejected transaction, reset to pending
-      if (isOwnTransaction && transaction.status === "rejected" && !isAdmin) {
+      else if (
+        isOwnTransaction &&
+        transaction.status === "rejected" &&
+        !isAdmin
+      ) {
         updateObject.status = "pending";
         updateObject.review_notes = null;
         console.log("Resetting transaction to pending status for resubmission");
@@ -1210,72 +1240,111 @@ export default function TransactionDetails({
             )}
           </div>
 
-          {isAdmin && displayTransaction.status === "pending" && (
+          {/* Status and Review Notes section - show when admin is viewing pending transaction OR when admin is editing any transaction */}
+          {(isAdmin && displayTransaction.status === "pending" && !isEditing) ||
+          (isAdmin && isEditing) ? (
             <div className="border-t pt-4 mt-4">
               <div className="text-sm font-medium mb-2">Review Transaction</div>
 
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="status">Update Status</Label>
-                  <Select
-                    value={status}
-                    onValueChange={(value) =>
-                      setStatus(value as TransactionStatus)
-                    }
-                  >
-                    <SelectTrigger id="status">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending Review</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {isEditing ? (
+                    <Select
+                      value={editedTransaction.status}
+                      onValueChange={(value) =>
+                        setEditedTransaction({
+                          ...editedTransaction,
+                          status: value as TransactionStatus,
+                        })
+                      }
+                    >
+                      <SelectTrigger id="status">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending Review</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Select
+                      value={status}
+                      onValueChange={(value) =>
+                        setStatus(value as TransactionStatus)
+                      }
+                    >
+                      <SelectTrigger id="status">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending Review</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="review-notes">Review Notes</Label>
-                  <Textarea
-                    id="review-notes"
-                    value={reviewNotes}
-                    onChange={(e) => setReviewNotes(e.target.value)}
-                    placeholder="Add notes about this transaction"
-                  />
+                  {isEditing ? (
+                    <Textarea
+                      id="review-notes-edit"
+                      value={editedTransaction.review_notes}
+                      onChange={(e) =>
+                        setEditedTransaction({
+                          ...editedTransaction,
+                          review_notes: e.target.value,
+                        })
+                      }
+                      placeholder="Add notes about this transaction"
+                    />
+                  ) : (
+                    <Textarea
+                      id="review-notes"
+                      value={reviewNotes}
+                      onChange={(e) => setReviewNotes(e.target.value)}
+                      placeholder="Add notes about this transaction"
+                    />
+                  )}
                 </div>
 
-                <div className="flex justify-end">
-                  <Button
-                    onClick={handleUpdateStatus}
-                    disabled={isUpdating}
-                    className={
-                      status === "approved"
-                        ? "bg-green-600 hover:bg-green-700"
-                        : status === "rejected"
-                          ? "bg-red-600 hover:bg-red-700"
-                          : ""
-                    }
-                  >
-                    {isUpdating ? (
-                      "Updating..."
-                    ) : status === "approved" ? (
-                      <>
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Approve Transaction
-                      </>
-                    ) : status === "rejected" ? (
-                      <>
-                        <XCircle className="mr-2 h-4 w-4" />
-                        Reject Transaction
-                      </>
-                    ) : (
-                      "Update Status"
-                    )}
-                  </Button>
-                </div>
+                {!isEditing && (
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleUpdateStatus}
+                      disabled={isUpdating}
+                      className={
+                        status === "approved"
+                          ? "bg-green-600 hover:bg-green-700"
+                          : status === "rejected"
+                            ? "bg-red-600 hover:bg-red-700"
+                            : ""
+                      }
+                    >
+                      {isUpdating ? (
+                        "Updating..."
+                      ) : status === "approved" ? (
+                        <>
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Approve Transaction
+                        </>
+                      ) : status === "rejected" ? (
+                        <>
+                          <XCircle className="mr-2 h-4 w-4" />
+                          Reject Transaction
+                        </>
+                      ) : (
+                        "Update Status"
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
