@@ -67,9 +67,9 @@ export default function AdminDashboard() {
       <DashboardOverview />
 
       {/* Only show pending requests to admins */}
-      {isAdmin && activeBook && (
+      {isAdmin && (
         <div className="mt-6">
-          <PendingRequestsList key={activeBook.id} />
+          <PendingRequestsList key={userId} />
         </div>
       )}
     </div>

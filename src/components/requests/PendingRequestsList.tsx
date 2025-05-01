@@ -54,9 +54,7 @@ export default function PendingRequestsList() {
   const { activeBook } = usePepiBooks();
 
   useEffect(() => {
-    if (activeBook?.id) {
-      fetchRequests();
-    }
+    fetchRequests();
   }, [activeBook]);
 
   const fetchRequests = async () => {
@@ -92,7 +90,6 @@ export default function PendingRequestsList() {
         `,
         )
         .eq("status", "pending")
-        .eq("pepi_book_id", activeBook.id)
         .order("requested_at", { ascending: true });
 
       if (fetchError) {
