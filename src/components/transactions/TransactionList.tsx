@@ -297,7 +297,7 @@ export default function TransactionList() {
         { event: "*", schema: "public", table: "transactions" },
         () => {
           console.log("Transaction change detected, refetching data...");
-          fetchData();
+          fetchTransactions();
         },
       )
       .subscribe();
@@ -309,7 +309,7 @@ export default function TransactionList() {
         { event: "*", schema: "public", table: "fund_requests" },
         () => {
           console.log("Fund request change detected, refetching data...");
-          fetchData();
+          fetchTransactions();
         },
       )
       .subscribe();
