@@ -341,24 +341,18 @@ export default function TransactionDetails({
         updated_at: new Date().toISOString(),
       };
 
-      // If admin is editing and has set status and review notes
-      if (isAdmin && editedTransaction.status) {
-        updateData.status = editedTransaction.status;
+      // Always set status to pending when editing a transaction
+      updateData.status = "pending";
+
+      // If admin is editing, keep their review notes
+      if (isAdmin) {
         updateData.review_notes = editedTransaction.review_notes || null;
-        console.log(
-          "Admin is editing transaction with status:",
-          updateData.status,
-          "and review notes:",
-          updateData.review_notes,
-        );
-      }
-      // If this is a non-admin editing a transaction, reset to pending
-      else if (!isAdmin) {
-        updateData.status = "pending";
-        // Clear review notes when resubmitting
+        console.log("Admin is editing transaction - setting to pending status");
+      } else {
+        // Clear review notes when non-admin is resubmitting
         updateData.review_notes = null;
         console.log(
-          "Non-admin is editing a transaction - resetting to pending status",
+          "Non-admin is editing a transaction - setting to pending status",
         );
       }
 
@@ -471,24 +465,11 @@ export default function TransactionDetails({
 
       // If admin is editing, include status and review notes from updateData
       if (isAdmin && updateData.status) {
-        updateObject.status = updateData.status;
+        updateObject.status = "pending"; // Always set to pending when admin edits
         updateObject.review_notes = updateData.review_notes;
-        console.log(
-          "Admin is updating transaction status to:",
-          updateObject.status,
-        );
+        console.log("Admin is editing transaction - setting to pending status");
       }
-      // If this is an agent editing their rejected transaction, reset to pending
-      else if (
-        isOwnTransaction &&
-        transaction.status === "rejected" &&
-        !isAdmin
-      ) {
-        updateObject.status = "pending";
-        updateObject.review_notes = null;
-        console.log("Resetting transaction to pending status for resubmission");
-      }
-      // Always set status to pending when any non-admin edits a transaction
+      // If this is an agent editing their transaction, reset to pending
       else if (!isAdmin) {
         updateObject.status = "pending";
         updateObject.review_notes = null;
@@ -1386,8 +1367,8 @@ export default function TransactionDetails({
               </Button>
             )}
 
-            {/* Allow both admins and transaction creators to edit */}
-            {(isAdmin || isOwnTransaction) && !isEditing && (
+            {/* Allow anyone to edit transactions */}
+            {!isEditing && (
               <Button
                 variant="outline"
                 size="sm"
