@@ -6,16 +6,18 @@ import { formatCurrency } from "@/lib/utils";
 
 type PrintableReportProps = {
   reportData: any[] | null;
-  stats: {
-    totalAgents: number;
-    totalTransactions: number;
-    totalIssuance: number;
-    totalReturned: number;
-    currentBalance: number;
-    cashOnHand: number;
-    spendingTotal: number;
-    activePepiBookYear: number | null;
-  };
+  stats:
+    | {
+        totalAgents: number;
+        totalTransactions: number;
+        totalIssuance: number;
+        totalReturned: number;
+        currentBalance: number;
+        cashOnHand: number;
+        spendingTotal: number;
+        activePepiBookYear: number | null;
+      }
+    | undefined;
   startDate?: Date;
   endDate?: Date;
   isMonthlyReport?: boolean;
@@ -28,6 +30,18 @@ export default function PrintableReport({
   endDate,
   isMonthlyReport = false,
 }: PrintableReportProps) {
+  // If stats is undefined, provide default values to prevent errors
+  const safeStats = stats || {
+    totalAgents: 0,
+    totalTransactions: 0,
+    totalIssuance: 0,
+    totalReturned: 0,
+    currentBalance: 0,
+    cashOnHand: 0,
+    spendingTotal: 0,
+    activePepiBookYear: null,
+  };
+
   // Group transactions by type for the summary
   const issuanceTransactions =
     reportData?.filter(
@@ -158,9 +172,9 @@ export default function PrintableReport({
                 {format(endDate, "MMM d, yyyy")}
               </p>
             )}
-            {stats?.activePepiBookYear && (
+            {safeStats.activePepiBookYear && (
               <p className="text-sm font-semibold">
-                PEPI Book: {stats.activePepiBookYear}
+                PEPI Book: {safeStats.activePepiBookYear}
               </p>
             )}
           </div>
@@ -175,7 +189,7 @@ export default function PrintableReport({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <p className="font-semibold">Total Transactions:</p>
-            <p className="text-lg">{stats.totalTransactions}</p>
+            <p className="text-lg">{safeStats.totalTransactions}</p>
           </div>
           <div>
             <p className="font-semibold">Reporting Period:</p>
@@ -188,7 +202,7 @@ export default function PrintableReport({
           <div>
             <p className="font-semibold">Current Balance:</p>
             <p className="text-lg font-bold">
-              {formatCurrency(stats.currentBalance)}
+              {formatCurrency(safeStats.currentBalance)}
             </p>
           </div>
         </div>
@@ -213,7 +227,7 @@ export default function PrintableReport({
                 Total Funds Issued
               </td>
               <td className="border border-gray-300 p-2 text-right">
-                {formatCurrency(stats.totalIssuance)}
+                {formatCurrency(safeStats.totalIssuance)}
               </td>
               <td className="border border-gray-300 p-2">
                 {issuanceTransactions.length} issuance transactions
@@ -224,7 +238,7 @@ export default function PrintableReport({
                 Total Funds Spent
               </td>
               <td className="border border-gray-300 p-2 text-right">
-                {formatCurrency(stats.spendingTotal)}
+                {formatCurrency(safeStats.spendingTotal)}
               </td>
               <td className="border border-gray-300 p-2">
                 {spendingTransactions.length} spending transactions
@@ -235,7 +249,7 @@ export default function PrintableReport({
                 Total Funds Returned
               </td>
               <td className="border border-gray-300 p-2 text-right">
-                {formatCurrency(stats.totalReturned)}
+                {formatCurrency(safeStats.totalReturned)}
               </td>
               <td className="border border-gray-300 p-2">
                 {returnTransactions.length} return transactions
@@ -246,7 +260,7 @@ export default function PrintableReport({
                 Cash on Hand (Safe)
               </td>
               <td className="border border-gray-300 p-2 text-right font-bold">
-                {formatCurrency(stats.cashOnHand)}
+                {formatCurrency(safeStats.cashOnHand)}
               </td>
               <td className="border border-gray-300 p-2">
                 Funds currently in safe
@@ -257,7 +271,9 @@ export default function PrintableReport({
                 Cash with Agents
               </td>
               <td className="border border-gray-300 p-2 text-right font-bold">
-                {formatCurrency(stats.currentBalance - stats.cashOnHand)}
+                {formatCurrency(
+                  safeStats.currentBalance - safeStats.cashOnHand,
+                )}
               </td>
               <td className="border border-gray-300 p-2">
                 Funds currently with agents
@@ -268,7 +284,7 @@ export default function PrintableReport({
                 Total Current Balance
               </td>
               <td className="border border-gray-300 p-2 text-right font-bold">
-                {formatCurrency(stats.currentBalance)}
+                {formatCurrency(safeStats.currentBalance)}
               </td>
               <td className="border border-gray-300 p-2">
                 Total funds available
