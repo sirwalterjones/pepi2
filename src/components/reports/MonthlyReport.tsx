@@ -352,60 +352,18 @@ export default function MonthlyReport() {
         <PrintableReport
           reportData={filteredTransactions}
           stats={{
-            totalAgents: 0, // This could be calculated if needed
+            // Pass the actual stats object which contains both filtered monthly values
+            // and current overall balances
+            totalAgents: stats.totalAgents,
             totalTransactions: filteredTransactions.length,
-            // Calculate filtered stats for the report
-            totalIssuance: filteredTransactions
-              .filter(
-                (t) =>
-                  t.transaction_type === "issuance" && t.status === "approved",
-              )
-              .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0),
-            totalReturned: filteredTransactions
-              .filter(
-                (t) =>
-                  t.transaction_type === "return" && t.status === "approved",
-              )
-              .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0),
-            spendingTotal: filteredTransactions
-              .filter(
-                (t) =>
-                  t.transaction_type === "spending" && t.status === "approved",
-              )
-              .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0),
-            // Calculate balances based on filtered transactions
-            currentBalance: filteredTransactions
-              .filter((t) => t.status === "approved")
-              .reduce((balance, t) => {
-                const amount = parseFloat(t.amount.toString());
-                if (t.transaction_type === "issuance") return balance + amount;
-                if (t.transaction_type === "spending") return balance - amount;
-                if (t.transaction_type === "return") return balance;
-                return balance;
-              }, 0),
-            cashOnHand: filteredTransactions
-              .filter((t) => t.status === "approved")
-              .reduce((balance, t) => {
-                const amount = parseFloat(t.amount.toString());
-                if (t.transaction_type === "issuance" && !t.agent_id)
-                  return balance + amount;
-                if (t.transaction_type === "spending" && !t.agent_id)
-                  return balance - amount;
-                if (t.transaction_type === "return") return balance + amount;
-                return balance;
-              }, 0),
-            agentCashBalance: filteredTransactions
-              .filter((t) => t.status === "approved")
-              .reduce((balance, t) => {
-                const amount = parseFloat(t.amount.toString());
-                if (t.transaction_type === "issuance" && t.agent_id)
-                  return balance + amount;
-                if (t.transaction_type === "spending" && t.agent_id)
-                  return balance - amount;
-                if (t.transaction_type === "return" && t.agent_id)
-                  return balance - amount;
-                return balance;
-              }, 0),
+            // Monthly filtered values
+            totalIssuance: stats.totalIssuance,
+            totalReturned: stats.totalReturned,
+            spendingTotal: stats.spendingTotal,
+            // Current overall balances (not filtered by month)
+            currentBalance: stats.currentBalance,
+            cashOnHand: stats.cashOnHand,
+            agentCashBalance: stats.agentCashBalance,
             activePepiBookYear: activePepiBook?.year || null,
           }}
           startDate={new Date(selectedYear, selectedMonth, 1)}
