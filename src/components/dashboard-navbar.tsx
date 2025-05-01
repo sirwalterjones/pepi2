@@ -5,11 +5,11 @@ import { useState, useEffect } from "react";
 import { createClient } from "../../supabase/client";
 import { cn } from "@/lib/utils";
 import {
-    Sheet,
-    SheetContent,
-    SheetHeader,
-    SheetTitle,
-    SheetTrigger,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
 } from "./ui/sheet";
 import {
   DropdownMenu,
@@ -21,7 +21,7 @@ import { Button } from "./ui/button";
 import {
   UserCircle,
   Home,
-  DollarSign,
+  Shield,
   Users,
   FileText,
   BarChart3,
@@ -72,43 +72,45 @@ export default function DashboardNavbar() {
     {
       name: "Dashboard",
       href: "/dashboard",
-      icon: <Home className="h-5 w-5" />,
+      icon: <Home className="h-5 w-5 text-blue-600 dark:text-blue-400" />,
       showFor: ["admin"],
     },
     {
       name: "Transactions",
       href: "/dashboard/transactions",
-      icon: <DollarSign className="h-5 w-5" />,
+      icon: <Shield className="h-5 w-5 text-green-600 dark:text-green-400" />,
       showFor: ["admin", "agent"],
     },
     {
       name: "CI History",
       href: "/dashboard/ci-history",
-      icon: <FileText className="h-5 w-5" />,
+      icon: (
+        <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+      ),
       showFor: ["admin", "agent"],
     },
     {
       name: "PEPI Books",
       href: "/dashboard/pepi-books",
-      icon: <FileText className="h-5 w-5" />,
+      icon: <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400" />,
       showFor: ["admin"],
     },
     {
       name: "Agents",
       href: "/dashboard/agents",
-      icon: <Users className="h-5 w-5" />,
+      icon: <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />,
       showFor: ["admin"],
     },
     {
       name: "Reports",
       href: "/dashboard/reports",
-      icon: <BarChart3 className="h-5 w-5" />,
+      icon: <BarChart3 className="h-5 w-5 text-red-600 dark:text-red-400" />,
       showFor: ["admin"],
     },
     {
       name: "Receipts",
       href: "/dashboard/receipts",
-      icon: <FileText className="h-5 w-5" />,
+      icon: <FileText className="h-5 w-5 text-teal-600 dark:text-teal-400" />,
       showFor: ["admin", "agent"],
     },
   ];
@@ -119,9 +121,10 @@ export default function DashboardNavbar() {
 
   const renderNavLinks = (isMobile: boolean = false) => {
     return filteredNavItems.map((item) => {
-      const itemHref = (item.name === 'Dashboard' && userRole === 'agent') 
-                       ? '/dashboard/transactions' 
-                       : item.href;
+      const itemHref =
+        item.name === "Dashboard" && userRole === "agent"
+          ? "/dashboard/transactions"
+          : item.href;
       const isActive = pathname === itemHref;
       return (
         <Link
@@ -130,9 +133,9 @@ export default function DashboardNavbar() {
           onClick={() => isMobile && setIsMobileMenuOpen(false)}
           className={cn(
             "flex items-center text-sm font-medium",
-            isMobile 
+            isMobile
               ? `px-4 py-3 rounded-md w-full ${isActive ? "bg-primary/10 text-primary" : "text-gray-700 hover:bg-gray-100"}`
-              : `px-3 py-2 rounded-md ${isActive ? "bg-primary/10 text-primary" : "text-gray-700 hover:bg-gray-100"}`
+              : `px-3 py-2 rounded-md ${isActive ? "bg-primary/10 text-primary" : "text-gray-700 hover:bg-gray-100"}`,
           )}
         >
           <span className="mr-2">{item.icon}</span>
@@ -143,11 +146,14 @@ export default function DashboardNavbar() {
   };
 
   return (
-    <nav className="w-full border-b border-gray-200 bg-white py-2 sticky top-0 z-50">
+    <nav className="w-full border-b border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 py-2 sticky top-0 z-50">
       <div className="container mx-auto px-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard" className="text-xl font-bold flex items-center shrink-0">
-            <DollarSign className="h-6 w-6 mr-2 text-primary" />
+          <Link
+            href="/dashboard"
+            className="text-xl font-bold flex items-center shrink-0"
+          >
+            <Shield className="h-6 w-6 mr-2 text-blue-600 dark:text-blue-400" />
             <span className="hidden sm:inline">PEPI Money Tracker</span>
             <span className="sm:hidden">PEPI</span>
           </Link>
@@ -191,7 +197,7 @@ export default function DashboardNavbar() {
               </SheetHeader>
               <div className="flex flex-col space-y-2">
                 {renderNavLinks(true)}
-        </div>
+              </div>
             </SheetContent>
           </Sheet>
         </div>
