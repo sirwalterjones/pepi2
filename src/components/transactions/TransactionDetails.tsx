@@ -249,9 +249,14 @@ export default function TransactionDetails({
 
       if (error) throw error;
 
+      const successMessage =
+        isOwnTransaction && transaction.status === "rejected" && !isAdmin
+          ? "Transaction has been updated and resubmitted for approval"
+          : "The transaction has been successfully updated.";
+
       toast({
-        title: "Transaction updated",
-        description: `The transaction has been ${status}.`,
+        title: "Transaction edited",
+        description: successMessage,
       });
 
       // Update local transaction data
@@ -334,6 +339,13 @@ export default function TransactionDetails({
         agent_id: editedTransaction.agent_id || null,
         updated_at: new Date().toISOString(),
       };
+
+      // If this is an agent editing their rejected transaction, reset to pending
+      if (isOwnTransaction && transaction.status === "rejected" && !isAdmin) {
+        updateData.status = "pending";
+        // Clear review notes when resubmitting
+        updateData.review_notes = null;
+      }
 
       console.log("Saving transaction with data:", updateData);
       console.log("Original amount type:", typeof editedTransaction.amount);
