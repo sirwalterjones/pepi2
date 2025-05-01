@@ -43,26 +43,51 @@ export default function MonthlyReport() {
     const supabase = createClientComponentClient<Database>();
 
     try {
-      // Format dates for filtering - use date strings without time for more reliable filtering
-      const formattedStartDate = format(startDate, "yyyy-MM-dd");
-      const formattedEndDate = format(endDate, "yyyy-MM-dd");
+      // Get the month and year for filtering
+      const month = currentDate.getMonth() + 1; // JavaScript months are 0-indexed
+      const year = currentDate.getFullYear();
 
-      console.log(
-        `Fetching transactions from ${formattedStartDate} to ${formattedEndDate}`,
-      );
+      console.log(`Fetching transactions for month ${month} and year ${year}`);
 
-      // Fetch transactions for the selected month with simplified date filtering
-      const { data: transactions, error } = await supabase
+      // Fetch all transactions first, then filter client-side
+      const { data: allTransactions, error } = await supabase
         .from("transactions")
         .select("*, agents(id, name, badge_number)")
-        .or(
-          `transaction_date.gte.${formattedStartDate},transaction_date.lte.${formattedEndDate},created_at.gte.${formattedStartDate},created_at.lte.${formattedEndDate}`,
-        )
         .order("created_at", { ascending: false });
 
-      console.log(`Found ${transactions?.length || 0} transactions`);
+      if (error) {
+        console.error("Error fetching transactions:", error);
+        throw error;
+      }
+
+      // Filter transactions client-side for the selected month
+      const transactions = allTransactions?.filter((transaction) => {
+        try {
+          // Use transaction_date if available, otherwise fall back to created_at
+          const dateToUse =
+            transaction.transaction_date || transaction.created_at;
+          if (!dateToUse) return false;
+
+          const transactionDate = new Date(dateToUse);
+          // Check if date is valid
+          if (isNaN(transactionDate.getTime())) return false;
+
+          const transactionMonth = transactionDate.getMonth() + 1;
+          const transactionYear = transactionDate.getFullYear();
+
+          return transactionMonth === month && transactionYear === year;
+        } catch (e) {
+          console.error("Error processing transaction date:", e);
+          return false;
+        }
+      });
+
+      console.log(
+        `Found ${transactions?.length || 0} transactions for ${month}/${year}`,
+      );
       if (transactions?.length === 0) {
-        console.log("No transactions found with the current filter");
+        console.log("No transactions found for the selected month");
+        console.log("All transactions:", allTransactions?.length || 0);
       }
 
       if (error) throw error;
