@@ -26,43 +26,7 @@ export default function ReportsPage() {
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Custom Transaction Report
-              </CardTitle>
-              <FileText className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm text-muted-foreground mb-4">
-                Generate a detailed transaction report based on custom date
-                ranges and filters.
-              </div>
-              <Link href="/dashboard/reports/custom" passHref>
-                <Button>Generate Report</Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Monthly Reconciliation Memo
-              </CardTitle>
-              <BarChart className="h-4 w-4 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm text-muted-foreground mb-4">
-                Generate the official monthly PEPI fund reconciliation
-                memorandum.
-              </div>
-              <Link href="/dashboard/reports/custom/cb-memo" passHref>
-                <Button>Generate CB Memo</Button>
-              </Link>
-            </CardContent>
-          </Card>
-
+        <div className="flex flex-col space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
