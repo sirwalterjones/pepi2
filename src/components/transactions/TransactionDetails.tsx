@@ -493,6 +493,14 @@ export default function TransactionDetails({
         updateObject.review_notes = null;
         console.log("Resetting transaction to pending status for resubmission");
       }
+      // Always set status to pending when an agent edits a rejected transaction
+      else if (transaction.status === "rejected" && !isAdmin) {
+        updateObject.status = "pending";
+        updateObject.review_notes = null;
+        console.log(
+          "Agent edited rejected transaction - setting to pending status",
+        );
+      }
 
       // Try a direct update with the regular update method instead of RPC
       const { data, error } = await supabase
@@ -1146,24 +1154,22 @@ export default function TransactionDetails({
               <div className="bg-muted/50 p-3 rounded-md mt-1">
                 {displayTransaction.review_notes}
               </div>
-              {displayTransaction.status === "rejected" &&
-                (isOwnTransaction || isAdmin) &&
-                !isEditing && (
-                  <div className="mt-2">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => setIsEditing(true)}
-                      className="w-full bg-red-600 hover:bg-red-700 text-white font-medium"
-                    >
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit Transaction Based on Feedback
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-1 text-center">
-                      Editing will resubmit this transaction for approval
-                    </p>
-                  </div>
-                )}
+              {displayTransaction.status === "rejected" && !isEditing && (
+                <div className="mt-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-medium"
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit Transaction Based on Feedback
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-1 text-center">
+                    Editing will resubmit this transaction for approval
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
