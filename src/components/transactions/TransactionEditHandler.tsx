@@ -48,7 +48,7 @@ export function useTransactionEditHandler() {
         .from("transactions")
         .update(updateData)
         .eq("id", transactionId)
-        .select();
+        .select("*, agents:agent_id (id, name, badge_number)");
 
       if (error) {
         console.error("[TransactionEditHandler] Update error:", error);
@@ -64,17 +64,19 @@ export function useTransactionEditHandler() {
         .eq("id", transactionId)
         .single();
 
-      if (fetchError) {
-        console.error(
-          "[TransactionEditHandler] Error fetching updated transaction:",
-          fetchError,
-        );
-        throw fetchError;
+      if (error) {
+        console.error("[TransactionEditHandler] Update error:", error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        console.error("[TransactionEditHandler] No data returned from update");
+        throw new Error("No data returned from update operation");
       }
 
       return {
         success: true,
-        data: updatedTransaction,
+        data: data[0],
         message: "Transaction has been updated and resubmitted for approval",
       };
     } catch (error: any) {

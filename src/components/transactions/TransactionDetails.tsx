@@ -485,18 +485,28 @@ export default function TransactionDetails({
         description: result.message || "Transaction has been updated",
       });
 
-      // Update the transaction object with the new data
-      if (result.data) {
+      // Fetch the updated transaction data
+      const { data: freshData, error: fetchError } = await supabase
+        .from("transactions")
+        .select("*, agents:agent_id (id, name, badge_number)")
+        .eq("id", transaction.id)
+        .single();
+
+      if (fetchError) {
+        console.error("Error fetching updated transaction:", fetchError);
+      } else if (freshData) {
+        console.log("Fetched fresh transaction data after update:", freshData);
+
         // Replace the entire transaction object with the updated data
         Object.keys(transaction).forEach((key) => {
-          if (key in result.data) {
-            transaction[key] = result.data[key];
+          if (key in freshData) {
+            transaction[key] = freshData[key];
           }
         });
 
         // Update state variables
-        setReviewNotes(result.data.review_notes || "");
-        setStatus(result.data.status || "pending");
+        setReviewNotes(freshData.review_notes || "");
+        setStatus(freshData.status || "pending");
         setEditedTransaction(null); // Clear edited transaction
       }
 
@@ -737,39 +747,12 @@ export default function TransactionDetails({
       if (updatedData) {
         console.log("Fetched fresh transaction data:", updatedData);
 
-        // Create a completely new transaction object with the updated data
-        const updatedTransaction = {
-          ...updatedData,
-          amount: parseFloat(updatedData.amount),
-          description: updatedData.description || "",
-          receipt_number: updatedData.receipt_number || "",
-          agent_id: updatedData.agent_id || null,
+        // Return the data from the update operation directly
+        return {
+          success: true,
+          data: updatedData,
+          message: "Transaction has been updated and resubmitted for approval",
         };
-
-        // CRITICAL: Create a new transaction object and replace the old one
-        // This is more reliable than modifying the existing object
-        const newTransaction = { ...updatedTransaction };
-
-        // Replace all properties in the original transaction
-        Object.keys(transaction).forEach((key) => {
-          transaction[key] =
-            newTransaction[key] !== undefined
-              ? newTransaction[key]
-              : transaction[key];
-        });
-
-        console.log("Transaction object after update:", transaction);
-
-        // Update all related state variables
-        setReviewNotes(updatedData.review_notes || "");
-        setStatus(updatedData.status || "pending");
-        setEditedTransaction({ ...updatedTransaction }); // Create a new reference
-
-        // Force parent component to update
-        if (onEdit) {
-          console.log("Calling onEdit callback to update parent component");
-          onEdit();
-        }
       }
     } catch (err) {
       console.error("Error in fetchUpdatedTransaction:", err);
