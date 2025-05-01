@@ -660,6 +660,38 @@ export default function TransactionList() {
                     />
                   </DialogContent>
                 </Dialog>
+
+                <Dialog
+                  open={isCiPaymentFormOpen}
+                  onOpenChange={setIsCiPaymentFormOpen}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="secondary">
+                      <PlusCircle className="mr-2 h-4 w-4" /> New CI Payment
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="w-full max-w-xs sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-4 md:p-6">
+                    <DialogHeader>
+                      <DialogTitle>New CI Payment</DialogTitle>
+                      <DialogDescription>
+                        Fill out the form to record a Confidential Informant
+                        payment. It will be submitted for approval.
+                      </DialogDescription>
+                    </DialogHeader>
+                    {userId && activeBook && currentAgentData && (
+                      <CiPaymentForm
+                        userId={userId}
+                        userRole="agent"
+                        activeBookId={activeBook.id}
+                        agentData={currentAgentData}
+                        onFormSubmitSuccess={() => {
+                          setIsCiPaymentFormOpen(false);
+                          fetchTransactions();
+                        }}
+                      />
+                    )}
+                  </DialogContent>
+                </Dialog>
               </>
             )}
           </div>
