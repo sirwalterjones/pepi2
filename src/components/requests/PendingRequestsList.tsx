@@ -58,22 +58,10 @@ export default function PendingRequestsList() {
   }, [activeBook]);
 
   const fetchRequests = async () => {
-    if (!activeBook?.id) {
-      console.log("[PendingRequestsList] No active PEPI book, skipping fetch.");
-      setRequests([]);
-      setLoading(false);
-      return;
-    }
-    console.log(
-      "[PendingRequestsList] Fetching requests for active book ID:",
-      activeBook.id,
-    );
-
     setLoading(true);
     setError(null);
-    console.log(
-      `[PendingRequestsList] Fetching requests for PEPI Book: ${activeBook.id}...`,
-    );
+    console.log("[PendingRequestsList] Fetching all pending requests...");
+
     try {
       const { data, error: fetchError } = await supabase
         .from("fund_requests")
