@@ -77,6 +77,7 @@ export default function TransactionDetails({
 
   useEffect(() => {
     if (transaction) {
+      console.log("Transaction data loaded in component:", transaction);
       setReviewNotes(transaction.review_notes || "");
       setStatus(transaction.status || "pending");
       setEditedTransaction({
@@ -502,6 +503,7 @@ export default function TransactionDetails({
       });
 
       // Fetch the updated transaction directly to ensure we have the latest data
+      console.log("Fetching updated transaction data after save...");
       const { data: updatedData, error: fetchError } = await supabase
         .from("transactions")
         .select("*, agents:agent_id (id, name, badge_number)")
@@ -529,10 +531,9 @@ export default function TransactionDetails({
           agent_id: updatedData.agent_id || null,
         };
 
-        // Replace the entire transaction object
-        Object.keys(transaction).forEach((key) => {
-          transaction[key] = updatedTransaction[key] || transaction[key];
-        });
+        // IMPORTANT: Replace the entire transaction object with the updated data
+        // This ensures the parent component sees the changes
+        Object.assign(transaction, updatedTransaction);
 
         // Also update all related state variables
         setReviewNotes(updatedData.review_notes || "");
@@ -552,6 +553,12 @@ export default function TransactionDetails({
       // Always call both callbacks to ensure both the modal and the list are updated
       if (onEdit) onEdit();
       if (onDelete) onDelete(); // Refresh the transaction list
+
+      // Force the dialog to close and reopen to ensure fresh data is displayed
+      onOpenChange(false);
+      setTimeout(() => {
+        onOpenChange(true);
+      }, 100);
     } catch (error: any) {
       console.error("Error editing transaction:", error);
       toast({
@@ -752,7 +759,8 @@ export default function TransactionDetails({
   };
 
   // Create a local copy of the transaction for rendering to ensure we're using the latest data
-  const displayTransaction = editedTransaction || transaction;
+  // When in edit mode, use editedTransaction, otherwise use the original transaction
+  const displayTransaction = isEditing ? editedTransaction : transaction;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
