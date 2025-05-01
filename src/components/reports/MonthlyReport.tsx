@@ -89,6 +89,11 @@ export default function MonthlyReport() {
     fetchData();
   }, []);
 
+  // Calculate total expenditures for the entire year (not filtered by month)
+  const totalSpentByAgents = transactions
+    .filter((t) => t.status === "approved" && t.transaction_type === "spending")
+    .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
+
   // Filter transactions by selected month and year
   useEffect(() => {
     if (!transactions.length) return;
@@ -420,14 +425,14 @@ export default function MonthlyReport() {
                 monthName: getMonthName(selectedMonth),
                 bookYear: selectedYear.toString(),
                 reconciliationDate: format(new Date(), "MMMM d, yyyy"),
-                beginningBalance: activePepiBook?.starting_amount || 0,
+                beginningBalance: stats.currentBalance, // Use current balance instead of starting amount
                 totalAgentIssues: stats.totalIssuance,
                 totalAgentReturns: stats.totalReturned,
                 cashOnHand: stats.cashOnHand,
                 totalExpenditures: stats.spendingTotal,
                 totalAdditionalUnitIssue: 0, // You may need to calculate this
                 endingBalance: stats.currentBalance,
-                ytdExpenditures: stats.spendingTotal, // This should be YTD, not just monthly
+                ytdExpenditures: totalSpentByAgents, // Use the total spent from all transactions
                 initialFunding: activePepiBook?.starting_amount || 0,
                 issuedToAgents: stats.totalIssuance,
                 spentByAgents: stats.spendingTotal,
