@@ -1,3 +1,5 @@
+"use client";
+
 import TransactionDetails from "@/components/transactions/TransactionDetails";
 import { useState } from "react";
 
