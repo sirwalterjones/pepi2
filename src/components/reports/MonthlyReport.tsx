@@ -43,10 +43,17 @@ export default function MonthlyReport() {
     const supabase = createClientComponentClient<Database>();
 
     try {
-      // Fetch transactions for the selected month - without date filtering initially
+      // Format dates for filtering
+      const formattedStartDate = startDate.toISOString();
+      const formattedEndDate = endDate.toISOString();
+
+      // Fetch transactions for the selected month with proper date filtering
       const { data: transactions, error } = await supabase
         .from("transactions")
         .select("*, agents(id, name, badge_number)")
+        .or(
+          `transaction_date.gte.${formattedStartDate},transaction_date.lte.${formattedEndDate},and(created_at.gte.${formattedStartDate},created_at.lte.${formattedEndDate})`,
+        )
         .order("created_at", { ascending: false });
 
       if (error) throw error;
