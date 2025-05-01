@@ -419,6 +419,8 @@ export default function TransactionDetails({
         throw new Error("Invalid amount value");
       }
 
+      // Always set to pending when edited by an agent
+
       // Prepare the update object with ALL fields to ensure complete update
       const updateObject = {
         // Basic transaction fields
@@ -428,6 +430,7 @@ export default function TransactionDetails({
         agent_id: editedTransaction.agent_id || null,
         document_url: fileUrl,
         review_notes: isAdmin ? editedTransaction.review_notes || null : null,
+        status: "pending",
 
         // Date handling
         transaction_date: editedTransaction.transaction_date
@@ -463,9 +466,14 @@ export default function TransactionDetails({
         "Using dedicated handler to update transaction ID:",
         transaction.id,
       );
+      console.log("Update object being sent:", updateObject);
+
+      // Force the transaction ID to be a string
+      const transactionId = String(transaction.id);
+      console.log("Ensuring transaction ID is string:", transactionId);
 
       // Use the dedicated transaction update handler
-      const result = await updateTransaction(transaction.id, updateObject);
+      const result = await updateTransaction(transactionId, updateObject);
 
       if (!result.success) {
         throw new Error(result.error);

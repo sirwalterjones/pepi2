@@ -23,13 +23,24 @@ export function useTransactionEditHandler() {
     console.log("Update data:", updateData);
 
     try {
-      // Always set status to pending when edited
+      // Always set status to pending when edited by an agent
       updateData.status = "pending";
+
+      // Log the update operation for debugging
+      console.log(
+        "[TransactionEditHandler] Setting transaction to pending status",
+      );
       updateData.updated_at = new Date().toISOString();
 
-      // Convert amount to string for Supabase if it's a number
-      if (typeof updateData.amount === "number") {
-        updateData.amount = updateData.amount.toString();
+      // Ensure amount is properly formatted for Supabase
+      if (updateData.amount !== undefined) {
+        // Convert to number first to ensure proper formatting
+        const numAmount =
+          typeof updateData.amount === "string"
+            ? parseFloat(updateData.amount)
+            : updateData.amount;
+        // Then convert to string for Supabase
+        updateData.amount = numAmount.toString();
       }
 
       // Perform the update
