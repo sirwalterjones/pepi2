@@ -435,7 +435,7 @@ export default function TransactionForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] w-full max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] w-[95vw] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>Create New Transaction</DialogTitle>
           <DialogDescription>
@@ -454,9 +454,9 @@ export default function TransactionForm({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 px-1 sm:px-2">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="transaction-type" className="text-right">
+              <Label htmlFor="transaction-type" className="sm:text-right">
                 Type
               </Label>
               <Select
@@ -466,7 +466,7 @@ export default function TransactionForm({
                 }
                 disabled={!isAdmin}
               >
-                <SelectTrigger id="transaction-type" className="col-span-3">
+                <SelectTrigger id="transaction-type" className="sm:col-span-3">
                   <SelectValue placeholder="Select transaction type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -483,7 +483,7 @@ export default function TransactionForm({
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="amount" className="text-right">
+              <Label htmlFor="amount" className="sm:text-right">
                 Amount ($)
               </Label>
               <Input
@@ -499,7 +499,7 @@ export default function TransactionForm({
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="transaction-date" className="text-right">
+              <Label htmlFor="transaction-date" className="sm:text-right">
                 Transaction Date
               </Label>
               <Popover>
@@ -507,7 +507,7 @@ export default function TransactionForm({
                   <Button
                     variant={"outline"}
                     className={cn(
-                      "col-span-3 justify-start text-left font-normal",
+                      "sm:col-span-3 justify-start text-left font-normal w-full",
                       !transactionDate && "text-muted-foreground",
                     )}
                   >
@@ -540,7 +540,7 @@ export default function TransactionForm({
               </Popover>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="receipt-number" className="text-right">
+              <Label htmlFor="receipt-number" className="sm:text-right">
                 Receipt #
               </Label>
               <Input
@@ -552,7 +552,7 @@ export default function TransactionForm({
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="agent" className="text-right">
+              <Label htmlFor="agent" className="sm:text-right">
                 Agent
               </Label>
               <Select
@@ -562,7 +562,7 @@ export default function TransactionForm({
                   agentsLoading || (!isAdmin && currentUserAgentId !== null)
                 }
               >
-                <SelectTrigger id="agent" className="col-span-3">
+                <SelectTrigger id="agent" className="sm:col-span-3">
                   <SelectValue placeholder="Select an agent">
                     {getSelectedAgentName()}
                   </SelectValue>
@@ -592,7 +592,7 @@ export default function TransactionForm({
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
+              <Label htmlFor="description" className="sm:text-right">
                 Description
               </Label>
               <Textarea
@@ -609,7 +609,7 @@ export default function TransactionForm({
               <>
                 {/* Spending Category */}
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="spending-category" className="text-right">
+                  <Label htmlFor="spending-category" className="sm:text-right">
                     Spending Category
                   </Label>
                   <Select
@@ -621,7 +621,7 @@ export default function TransactionForm({
                   >
                     <SelectTrigger
                       id="spending-category"
-                      className="col-span-3"
+                      className="sm:col-span-3"
                     >
                       <SelectValue placeholder="Select spending category" />
                     </SelectTrigger>
@@ -637,7 +637,7 @@ export default function TransactionForm({
 
                 {/* Case Number */}
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="case-number" className="text-right">
+                  <Label htmlFor="case-number" className="sm:text-right">
                     Case #
                   </Label>
                   <Input
@@ -652,7 +652,7 @@ export default function TransactionForm({
 
                 {/* Paid To */}
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="paid-to" className="text-right">
+                  <Label htmlFor="paid-to" className="sm:text-right">
                     Paid To
                   </Label>
                   <Input
@@ -669,7 +669,7 @@ export default function TransactionForm({
                   <>
                     {/* ECR Number */}
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="ecr-number" className="text-right">
+                      <Label htmlFor="ecr-number" className="sm:text-right">
                         ECR #
                       </Label>
                       <Input
@@ -684,7 +684,10 @@ export default function TransactionForm({
 
                     {/* Date to Evidence */}
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="date-to-evidence" className="text-right">
+                      <Label
+                        htmlFor="date-to-evidence"
+                        className="sm:text-right"
+                      >
                         Date to Evidence
                       </Label>
                       <Popover>
@@ -692,7 +695,7 @@ export default function TransactionForm({
                           <Button
                             variant={"outline"}
                             className={cn(
-                              "col-span-3 justify-start text-left font-normal",
+                              "sm:col-span-3 justify-start text-left font-normal w-full",
                               !dateToEvidence && "text-muted-foreground",
                             )}
                           >
@@ -729,10 +732,10 @@ export default function TransactionForm({
 
                 {/* File Upload Field */}
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="file-upload" className="text-right">
+                  <Label htmlFor="file-upload" className="sm:text-right">
                     Supporting Document
                   </Label>
-                  <div className="col-span-3">
+                  <div className="sm:col-span-3">
                     <div className="flex items-center gap-2">
                       <Button
                         type="button"
@@ -774,7 +777,7 @@ export default function TransactionForm({
               </>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="sticky bottom-0 pt-4 border-t bg-card mt-4">
             <Button
               type="button"
               variant="outline"

@@ -56,26 +56,32 @@ export default function ReceiptManager() {
     // Only set up subscription if we have transaction fetching criteria
     if (userRole === null && currentAgentId === null) return;
 
-    console.log("[ReceiptManager] Setting up real-time subscription for transactions...");
+    console.log(
+      "[ReceiptManager] Setting up real-time subscription for transactions...",
+    );
 
     const channel = supabase
-      .channel('receipt-transactions-changes') // Unique channel name
+      .channel("receipt-transactions-changes") // Unique channel name
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'transactions' },
+        "postgres_changes",
+        { event: "*", schema: "public", table: "transactions" },
         (payload) => {
-          console.log('[ReceiptManager] Change received!', payload);
+          console.log("[ReceiptManager] Change received!", payload);
           // Refetch data on any change to the transactions table
-          fetchTransactions(); 
-        }
+          fetchTransactions();
+        },
       )
       .subscribe((status, err) => {
-          if (status === 'SUBSCRIBED') {
-            console.log('[ReceiptManager] Real-time subscription active.');
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.error('[ReceiptManager] Real-time subscription error:', status, err);
-            // Optionally, notify user or attempt to resubscribe
-          }
+        if (status === "SUBSCRIBED") {
+          console.log("[ReceiptManager] Real-time subscription active.");
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error(
+            "[ReceiptManager] Real-time subscription error:",
+            status,
+            err,
+          );
+          // Optionally, notify user or attempt to resubscribe
+        }
       });
 
     // Cleanup function to remove the listener when the component unmounts
@@ -83,7 +89,6 @@ export default function ReceiptManager() {
       console.log("[ReceiptManager] Removing real-time subscription.");
       supabase.removeChannel(channel);
     };
-
   }, [supabase, userRole, currentAgentId]); // Add dependencies
 
   const fetchUserRole = async () => {
@@ -127,7 +132,9 @@ export default function ReceiptManager() {
         query = query.eq("agent_id", currentAgentId);
       }
 
-      const { data, error } = await query.order("created_at", { ascending: false });
+      const { data, error } = await query.order("created_at", {
+        ascending: false,
+      });
 
       if (error) {
         console.error("Error fetching transactions:", error);
@@ -204,7 +211,10 @@ export default function ReceiptManager() {
   const handlePrintReceipt = async () => {
     if (!selectedReceipt) return;
 
-    console.log("[ReceiptManager] Data for printing:", JSON.stringify(selectedReceipt, null, 2));
+    console.log(
+      "[ReceiptManager] Data for printing:",
+      JSON.stringify(selectedReceipt, null, 2),
+    );
 
     // Fetch creator name asynchronously
     let creatorName = "System"; // Default value
@@ -215,7 +225,7 @@ export default function ReceiptManager() {
           .select("name")
           .eq("user_id", selectedReceipt.created_by)
           .single();
-        
+
         if (agentCreatorData?.name) {
           creatorName = agentCreatorData.name;
         } else {
@@ -223,16 +233,16 @@ export default function ReceiptManager() {
           // Note: This might fail if the client doesn't have admin rights.
           // Consider if fetching email is necessary or if "Unknown User" is acceptable.
           // For simplicity, let's just use "Unknown User" if agent name isn't found.
-           // const { data: userAuthData, error: userError } = await supabase.auth.admin.getUserById(selectedReceipt.created_by);
-           // if (!userError && userAuthData?.user) {
-           //   creatorName = userAuthData.user.email || "Unknown User";
-           // } else {
-               creatorName = "Unknown User";
-           // }
+          // const { data: userAuthData, error: userError } = await supabase.auth.admin.getUserById(selectedReceipt.created_by);
+          // if (!userError && userAuthData?.user) {
+          //   creatorName = userAuthData.user.email || "Unknown User";
+          // } else {
+          creatorName = "Unknown User";
+          // }
         }
       } catch (error) {
-          console.error("[ReceiptManager] Error fetching creator name:", error);
-          creatorName = "Error Fetching Name"; // Indicate error
+        console.error("[ReceiptManager] Error fetching creator name:", error);
+        creatorName = "Error Fetching Name"; // Indicate error
       }
     }
     console.log(`[ReceiptManager] Fetched creatorName: ${creatorName}`);
@@ -278,33 +288,57 @@ export default function ReceiptManager() {
                   </div>
                   
                   <!-- Spending Specific Fields START -->
-                  ${selectedReceipt.transaction_type === 'spending' ? `
-                    ${selectedReceipt.spending_category ? `
+                  ${
+                    selectedReceipt.transaction_type === "spending"
+                      ? `
+                    ${
+                      selectedReceipt.spending_category
+                        ? `
                       <div class="info-row">
                         <span class="label">Category:</span>
                         <span>${selectedReceipt.spending_category}</span>
-                      </div>` : ''}
-                    ${selectedReceipt.case_number ? `
+                      </div>`
+                        : ""
+                    }
+                    ${
+                      selectedReceipt.case_number
+                        ? `
                       <div class="info-row">
                         <span class="label">Case #:</span>
                         <span>${selectedReceipt.case_number}</span>
-                      </div>` : ''}
-                    ${selectedReceipt.paid_to ? `
+                      </div>`
+                        : ""
+                    }
+                    ${
+                      selectedReceipt.paid_to
+                        ? `
                       <div class="info-row">
                         <span class="label">Paid To:</span>
                         <span>${selectedReceipt.paid_to}</span>
-                      </div>` : ''}
-                     ${selectedReceipt.ecr_number ? `
+                      </div>`
+                        : ""
+                    }
+                     ${
+                       selectedReceipt.ecr_number
+                         ? `
                       <div class="info-row">
                         <span class="label">ECR #:</span>
                         <span>${selectedReceipt.ecr_number}</span>
-                      </div>` : ''}
-                     ${selectedReceipt.date_to_evidence ? `
+                      </div>`
+                         : ""
+                     }
+                     ${
+                       selectedReceipt.date_to_evidence
+                         ? `
                       <div class="info-row">
                         <span class="label">Date to Evidence:</span>
                         <span>${formatDate(selectedReceipt.date_to_evidence)}</span>
-                      </div>` : ''}
-                  ` : ''}
+                      </div>`
+                         : ""
+                     }
+                  `
+                      : ""
+                  }
                   <!-- Spending Specific Fields END -->
 
                   ${
@@ -361,25 +395,25 @@ export default function ReceiptManager() {
 
   return (
     <Card className="w-full">
-      <CardHeader>
+      <CardHeader className="px-4 sm:px-6">
         <CardTitle>Transaction Receipts</CardTitle>
         <CardDescription>
           {userRole === "admin"
             ? "View and print receipts for all transactions"
             : "View and print receipts for your transactions"}
         </CardDescription>
-        <div className="relative flex-1 mt-4">
+        <div className="relative flex-1 mt-4 w-full">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Search by receipt number, description, or agent..."
-            className="pl-8"
+            className="pl-8 w-full"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 sm:px-6 overflow-x-auto">
         {loading ? (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -395,7 +429,7 @@ export default function ReceiptManager() {
             {filteredTransactions.map((transaction) => (
               <div
                 key={transaction.id}
-                className="flex items-center justify-between p-4 border rounded-lg"
+                className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-3"
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-muted rounded-full">
@@ -455,7 +489,7 @@ export default function ReceiptManager() {
           </div>
         )}
       </CardContent>
-      <CardFooter className="flex justify-between">
+      <CardFooter className="flex justify-between px-4 sm:px-6 border-t bg-card">
         <Button variant="outline">
           <Download className="mr-2 h-4 w-4" />
           Export All Receipts
@@ -463,7 +497,7 @@ export default function ReceiptManager() {
       </CardFooter>
 
       <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
-        <DialogContent className="sm:max-w-[500px] w-full max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[500px] w-[95vw] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>
               Receipt #{selectedReceipt?.receipt_number}

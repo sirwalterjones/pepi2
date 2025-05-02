@@ -100,7 +100,7 @@ export default function AgentList() {
 
   return (
     <Card className="w-full">
-      <CardHeader>
+      <CardHeader className="px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <CardTitle>Agents</CardTitle>
@@ -114,19 +114,19 @@ export default function AgentList() {
           </Button>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 mt-4">
-          <div className="relative flex-1">
+          <div className="relative flex-1 w-full">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search by name, badge number, or email..."
-              className="pl-8"
+              className="pl-8 w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 sm:px-6 overflow-x-auto">
         {loading ? (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -140,7 +140,7 @@ export default function AgentList() {
             {searchTerm ? "No matching agents found" : "No agents yet"}
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {filteredAgents.map((agent) => (
               <div
                 key={agent.id}
@@ -285,7 +285,7 @@ export default function AgentList() {
           </div>
         )}
       </CardContent>
-      <CardFooter className="flex justify-end">
+      <CardFooter className="flex justify-end px-4 sm:px-6 border-t bg-card">
         <Button variant="outline">
           <svg
             xmlns="http://www.w3.org/2000/svg"

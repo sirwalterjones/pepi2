@@ -27,7 +27,11 @@ interface FundRequestFormProps {
   initialData?: FundRequest; // Add optional initialData prop
 }
 
-export default function FundRequestForm({ onSuccess, initialData }: FundRequestFormProps) { // Destructure initialData
+export default function FundRequestForm({
+  onSuccess,
+  initialData,
+}: FundRequestFormProps) {
+  // Destructure initialData
   const [amount, setAmount] = useState<number | string>("");
   const [caseNumber, setCaseNumber] = useState("");
   const [agentSignature, setAgentSignature] = useState("");
@@ -43,7 +47,9 @@ export default function FundRequestForm({ onSuccess, initialData }: FundRequestF
   // Fetch current agent details
   useEffect(() => {
     const fetchAgent = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         const { data: agentData, error: agentError } = await supabase
           .from("agents")
@@ -68,9 +74,9 @@ export default function FundRequestForm({ onSuccess, initialData }: FundRequestF
       setAmount(initialData.amount || "");
       setCaseNumber(initialData.case_number || "");
       // Don't pre-fill signature, require re-signing
-      setAgentSignature(""); 
+      setAgentSignature("");
       // Clear any previous errors when opening in edit mode
-      setError(null); 
+      setError(null);
     } else {
       // Reset form if opening for a new request (or if initialData becomes undefined)
       setAmount("");
@@ -103,33 +109,41 @@ export default function FundRequestForm({ onSuccess, initialData }: FundRequestF
     setIsSubmitting(true);
 
     // Add logging here to see what the component thinks it's doing
-    console.log(`[FundRequestForm handleSubmit] initialData exists: ${!!initialData}`);
+    console.log(
+      `[FundRequestForm handleSubmit] initialData exists: ${!!initialData}`,
+    );
     if (initialData) {
-        console.log(`[FundRequestForm handleSubmit] Attempting to call resubmitFundRequestAction for ID: ${initialData.id}`);
+      console.log(
+        `[FundRequestForm handleSubmit] Attempting to call resubmitFundRequestAction for ID: ${initialData.id}`,
+      );
     } else {
-        console.log(`[FundRequestForm handleSubmit] Attempting to call requestFundsAction`);
+      console.log(
+        `[FundRequestForm handleSubmit] Attempting to call requestFundsAction`,
+      );
     }
 
     try {
       let result: { success?: boolean; error?: string } | undefined;
 
       if (initialData) {
-        // --- EDIT / RESUBMIT LOGIC --- 
-        console.log("[FundRequestForm] Resubmitting edited request:", initialData.id);
-        
+        // --- EDIT / RESUBMIT LOGIC ---
+        console.log(
+          "[FundRequestForm] Resubmitting edited request:",
+          initialData.id,
+        );
+
         // Prepare data for the resubmit action
         const resubmitData = {
-            requestId: initialData.id,
-            amount: numericAmount,
-            caseNumber: caseNumber.trim() || null,
-            agentSignature: agentSignature.trim(),
+          requestId: initialData.id,
+          amount: numericAmount,
+          caseNumber: caseNumber.trim() || null,
+          agentSignature: agentSignature.trim(),
         };
-        
+
         // Call the new server action
         result = await resubmitFundRequestAction(resubmitData);
-
       } else {
-        // --- NEW REQUEST LOGIC (existing) --- 
+        // --- NEW REQUEST LOGIC (existing) ---
         const formData = {
           amount: numericAmount,
           caseNumber: caseNumber.trim() || null,
@@ -145,14 +159,15 @@ export default function FundRequestForm({ onSuccess, initialData }: FundRequestF
         throw new Error(result.error);
       }
 
-      toast({ 
-          title: "Success", 
-          description: initialData ? "Fund request updated and resubmitted." : "Fund request submitted successfully.",
-          variant: "default"
+      toast({
+        title: "Success",
+        description: initialData
+          ? "Fund request updated and resubmitted."
+          : "Fund request submitted successfully.",
+        variant: "default",
       });
-      
-      onSuccess?.(); // Close dialog / trigger callback
 
+      onSuccess?.(); // Close dialog / trigger callback
     } catch (err: any) {
       console.error("Error submitting/resubmitting fund request:", err);
       setError(err.message || "Failed to submit request. Please try again.");
@@ -163,29 +178,38 @@ export default function FundRequestForm({ onSuccess, initialData }: FundRequestF
 
   if (!currentAgent) {
     // Optional: Show loading state while agent data is fetched
-    return <div className="flex justify-center items-center p-8"><Loader2 className="h-6 w-6 animate-spin"/></div>;
+    return (
+      <div className="flex justify-center items-center p-8">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
   }
 
   return (
-    <Card className="w-full max-w-lg mx-auto">
-      <CardHeader>
+    <Card className="w-full max-w-lg mx-auto px-2 sm:px-0">
+      <CardHeader className="px-4 sm:px-6">
         <CardTitle>Request Funds</CardTitle>
         <CardDescription>
-          Fill out this form to request funds for operational use from PEPI Book {activeBook?.year || '...'}.
+          Fill out this form to request funds for operational use from PEPI Book{" "}
+          {activeBook?.year || "..."}.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-4 sm:px-6">
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Agent Name</Label>
-              <Input value={currentAgent?.name || 'Loading...'} disabled readOnly />
+              <Input
+                value={currentAgent?.name || "Loading..."}
+                disabled
+                readOnly
+              />
             </div>
             <div className="space-y-2">
               <Label>Date</Label>
@@ -205,7 +229,11 @@ export default function FundRequestForm({ onSuccess, initialData }: FundRequestF
               required
               disabled={isSubmitting || !activeBook} // Disable if no active book
             />
-             {!activeBook && <p className="text-xs text-destructive">No active PEPI Book selected.</p>}
+            {!activeBook && (
+              <p className="text-xs text-destructive">
+                No active PEPI Book selected.
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="caseNumber">Case # (Optional)</Label>
@@ -229,17 +257,21 @@ export default function FundRequestForm({ onSuccess, initialData }: FundRequestF
               required
               disabled={isSubmitting}
             />
-             <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               By typing your name, you confirm this request is accurate.
             </p>
           </div>
           <div className="space-y-2">
-              <Label>Supervisor Signature</Label>
-              <Input value="(Pending Approval)" disabled readOnly />
+            <Label>Supervisor Signature</Label>
+            <Input value="(Pending Approval)" disabled readOnly />
           </div>
         </CardContent>
-        <CardFooter>
-          <Button type="submit" className="w-full" disabled={isSubmitting || !activeBook || !currentAgent}>
+        <CardFooter className="px-4 sm:px-6 sticky bottom-0 bg-card border-t">
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isSubmitting || !activeBook || !currentAgent}
+          >
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
@@ -252,4 +284,4 @@ export default function FundRequestForm({ onSuccess, initialData }: FundRequestF
       </form>
     </Card>
   );
-} 
+}

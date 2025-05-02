@@ -573,8 +573,8 @@ export default function TransactionList() {
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <CardHeader className="px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-3">
           <div>
             <CardTitle>Transactions</CardTitle>
             <CardDescription>
@@ -585,8 +585,11 @@ export default function TransactionList() {
                   : "View and manage your transactions"}
             </CardDescription>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button onClick={() => setIsFormOpen(true)}>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button
+              onClick={() => setIsFormOpen(true)}
+              className="w-full sm:w-auto"
+            >
               <Plus className="mr-2 h-4 w-4" />
               New Transaction
             </Button>
@@ -637,7 +640,7 @@ export default function TransactionList() {
                       {requestToEdit ? "Edit Fund Request" : "Request Funds"}
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
+                  <DialogContent className="sm:max-w-[425px] w-[95vw] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
                     <DialogHeader>
                       <DialogTitle>
                         {requestToEdit
@@ -670,7 +673,7 @@ export default function TransactionList() {
                       <PlusCircle className="mr-2 h-4 w-4" /> New CI Payment
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="w-full max-w-xs sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-4 md:p-6">
+                  <DialogContent className="w-[95vw] max-w-xs sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-4 md:p-6 max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>New CI Payment</DialogTitle>
                       <DialogDescription>
@@ -733,17 +736,17 @@ export default function TransactionList() {
           </div>
         )}
         <div className="flex flex-col sm:flex-row gap-4 mt-4">
-          <div className="relative flex-1">
+          <div className="relative flex-1 w-full">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search by description, receipt number, or agent..."
-              className="pl-8"
+              className="pl-8 w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="w-full sm:w-[150px]">
                 <SelectValue placeholder="Filter by type" />
@@ -758,7 +761,7 @@ export default function TransactionList() {
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 sm:px-6 overflow-x-auto">
         {loading ? (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -781,7 +784,7 @@ export default function TransactionList() {
                   ${item.itemType === "transaction" && item.status === "rejected" ? "border-red-300 bg-red-50" : ""}
                 `}
               >
-                <div className="flex items-center gap-3 flex-1">
+                <div className="flex items-center gap-3 flex-1 flex-wrap sm:flex-nowrap">
                   <div className="p-2 bg-muted rounded-full">
                     {item.itemType === "transaction" ? (
                       getTransactionIcon(item.transaction_type)
@@ -862,8 +865,8 @@ export default function TransactionList() {
                       )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 ml-4">
-                  <div className="text-right min-w-[150px]">
+                <div className="flex items-center gap-2 sm:ml-4 w-full sm:w-auto">
+                  <div className="text-right min-w-[150px] w-full sm:w-auto">
                     <div
                       className={`font-medium 
                         ${item.itemType === "transaction" && item.transaction_type === "issuance" ? "text-green-600" : ""}
@@ -962,7 +965,7 @@ export default function TransactionList() {
           </div>
         )}
       </CardContent>
-      <CardFooter>
+      <CardFooter className="px-4 sm:px-6 border-t bg-card">
         {/* Footer can be empty or used for pagination later */}
       </CardFooter>
 

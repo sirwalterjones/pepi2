@@ -134,7 +134,7 @@ export default async function Dashboard() {
           </div>
         )}
         {/* Admin-specific cards in a grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           <PendingRequestsList />
           <PendingCiPaymentsList activeBookId={activeBook?.id || null} />
           {/* New card for pending transactions */}
@@ -199,10 +199,10 @@ export default async function Dashboard() {
     <>
       <main className="w-full">
         <div className="container mx-auto px-4 py-8 flex flex-col gap-8">
-          {/* Header Section */}
-          <header className="flex flex-col gap-4">
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold">Dashboard</h1>
+          {/* Header Section - Mobile Optimized */}
+          <header className="flex flex-col gap-3 sm:gap-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
               {isAdmin && (
                 <Badge
                   variant="outline"
@@ -222,15 +222,17 @@ export default async function Dashboard() {
               )}
               {/* Render Admin Actions Button Area Here */}
               {isAdmin && (
-                <AdminDashboardActions
-                  userId={user?.id || null}
-                  isAdmin={isAdmin}
-                  activeBook={activeBook}
-                  currentAgentData={currentAgentData}
-                />
+                <div className="mt-2 sm:mt-0 w-full sm:w-auto">
+                  <AdminDashboardActions
+                    userId={user?.id || null}
+                    isAdmin={isAdmin}
+                    activeBook={activeBook}
+                    currentAgentData={currentAgentData}
+                  />
+                </div>
               )}
             </div>
-            <p className="text-muted-foreground">
+            <p className="text-sm sm:text-base text-muted-foreground">
               Welcome to the PEPI Money Tracker dashboard. Monitor fund
               activities and manage transactions.
             </p>

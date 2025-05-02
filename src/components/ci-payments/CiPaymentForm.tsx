@@ -399,10 +399,13 @@ export default function CiPaymentForm({
   };
 
   return (
-    // Add a wrapper div for scrolling if needed, adjust max height as necessary
-    <div className="max-h-[85vh] overflow-y-auto pr-2 custom-scrollbar">
-      {/* Reverted to a simpler grid layout */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-4">
+    // Mobile-friendly wrapper with improved scrolling
+    <div className="max-h-[85vh] overflow-y-auto pr-0 sm:pr-2 custom-scrollbar">
+      {/* Responsive form layout */}
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-4 sm:space-y-6 p-2 sm:p-4"
+      >
         {/* Top Row: Date and Admin Agent Select */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
           {/* Date Picker */}
@@ -626,10 +629,10 @@ export default function CiPaymentForm({
           </div>
         </div>
 
-        {/* Signatures Section */}
-        <div className="space-y-4 pt-4 border-t">
-          <h3 className="text-lg font-medium mb-2">Signatures</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Signatures Section - Improved for mobile */}
+        <div className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t">
+          <h3 className="text-lg font-medium mb-1 sm:mb-2">Signatures</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {/* CI Signature */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
@@ -662,7 +665,8 @@ export default function CiPaymentForm({
                     ref={ciSigRef}
                     canvasProps={{
                       id: "ci_signature",
-                      className: "w-full h-32",
+                      className: "w-full h-24 sm:h-32",
+                      style: { touchAction: "none" }, // Improve touch handling
                     }}
                   />
                 </div>
@@ -717,7 +721,8 @@ export default function CiPaymentForm({
                     ref={agentSigRef}
                     canvasProps={{
                       id: "agent_signature",
-                      className: "w-full h-32",
+                      className: "w-full h-24 sm:h-32",
+                      style: { touchAction: "none" }, // Improve touch handling
                     }}
                   />
                 </div>
@@ -772,7 +777,8 @@ export default function CiPaymentForm({
                     ref={witnessSigRef}
                     canvasProps={{
                       id: "witness_signature",
-                      className: "w-full h-32",
+                      className: "w-full h-24 sm:h-32",
+                      style: { touchAction: "none" }, // Improve touch handling
                     }}
                   />
                 </div>
@@ -843,9 +849,13 @@ export default function CiPaymentForm({
           )}
         </div>
 
-        {/* Submit Button */}
-        <div className="pt-4">
-          <Button type="submit" disabled={isLoading} className="w-full">
+        {/* Submit Button - Mobile optimized */}
+        <div className="pt-3 sm:pt-4 sticky bottom-0 bg-background pb-2">
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-2 sm:py-2.5"
+          >
             {isLoading
               ? "Submitting..."
               : isEditing
