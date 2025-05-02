@@ -10,7 +10,7 @@ export async function POST() {
 
     // Send an actual email using the Resend service
     const result = await sendEmail({
-      to: "test@example.com", // Replace with your test email address
+      to: "test@resend-test.com", // Replace with your test email address
       subject: "PEPI Money Tracker - Test Email",
       react: createElement(TestEmail, { timestamp }),
       tags: [{ name: "email_type", value: "test_email" }],

@@ -90,23 +90,24 @@ export default function TransactionDetailsStoryboard() {
         This shows a rejected transaction that an agent can edit and resubmit.
       </p>
 
-      <div className="flex gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <button
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded shadow-lg"
           onClick={() => setOpen(true)}
         >
           Open Transaction Details
         </button>
 
         <button
-          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2"
+          className="bg-green-600 hover:bg-green-800 text-white font-bold py-3 px-6 rounded shadow-lg flex items-center justify-center gap-2 border-2 border-green-700"
           onClick={handleTestEmail}
           disabled={isSending}
+          style={{ minWidth: "220px" }}
         >
           {isSending ? (
             <>
               <svg
-                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
