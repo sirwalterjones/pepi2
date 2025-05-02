@@ -147,8 +147,8 @@ export default function DashboardNavbar() {
   };
 
   return (
-    <nav className="w-full border-b border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 py-2 sticky top-0 z-50">
-      <div className="container mx-auto px-4 flex justify-between items-center">
+    <nav className="w-full border-b border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 py-2 sticky top-0 z-50 max-w-[100vw] overflow-x-hidden">
+      <div className="container mx-auto px-2 sm:px-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <Link
             href="/dashboard"
@@ -162,7 +162,7 @@ export default function DashboardNavbar() {
             {renderNavLinks(false)}
           </div>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-1 sm:gap-2 items-center">
           <ThemeSwitcher />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

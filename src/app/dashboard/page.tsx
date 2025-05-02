@@ -134,7 +134,7 @@ export default async function Dashboard() {
           </div>
         )}
         {/* Admin-specific cards in a grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 w-full max-w-full overflow-x-auto">
           <PendingRequestsList />
           <PendingCiPaymentsList activeBookId={activeBook?.id || null} />
           {/* New card for pending transactions */}
@@ -198,7 +198,7 @@ export default async function Dashboard() {
   return (
     <>
       <main className="w-full">
-        <div className="container mx-auto px-4 py-8 flex flex-col gap-8">
+        <div className="container mx-auto px-2 sm:px-4 py-6 sm:py-8 flex flex-col gap-6 sm:gap-8 max-w-full overflow-hidden">
           {/* Header Section - Mobile Optimized */}
           <header className="flex flex-col gap-3 sm:gap-4">
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">

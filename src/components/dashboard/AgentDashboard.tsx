@@ -11,7 +11,13 @@ import {
 } from "../ui/card";
 import { Transaction, TransactionType } from "@/types/schema";
 import { Badge } from "../ui/badge";
-import { DollarSign, ArrowUpRight, ArrowDownLeft, Clock, PlusCircle } from "lucide-react";
+import {
+  DollarSign,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Clock,
+  PlusCircle,
+} from "lucide-react";
 import { Button } from "../ui/button";
 import TransactionStatus from "../transactions/TransactionStatus";
 import { useToast } from "../ui/use-toast";
@@ -42,7 +48,10 @@ export default function AgentDashboard() {
       setLoading(true);
       try {
         // Get current user
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
         console.log("AgentDashboard: getUser result", { user, authError });
 
         if (authError || !user) {
@@ -55,14 +64,20 @@ export default function AgentDashboard() {
         console.log(`AgentDashboard: Fetching agent for user_id: ${user.id}`);
         const { data: agentData, error: agentError } = await supabase
           .from("agents")
-          .select("*", { count: 'exact' })
+          .select("*", { count: "exact" })
           .eq("user_id", user.id)
           .maybeSingle();
 
-        console.log("AgentDashboard: agent query result", { agentData, agentError });
+        console.log("AgentDashboard: agent query result", {
+          agentData,
+          agentError,
+        });
 
         if (agentError) {
-          console.error("AgentDashboard: Error fetching agent info:", agentError);
+          console.error(
+            "AgentDashboard: Error fetching agent info:",
+            agentError,
+          );
           setLoading(false);
           return;
         }
@@ -77,27 +92,37 @@ export default function AgentDashboard() {
         setAgentInfo(agentData);
 
         // Fetch transactions (Only if agentData is valid)
-        console.log(`AgentDashboard: Fetching transactions for agent_id: ${agentData.id}`);
+        console.log(
+          `AgentDashboard: Fetching transactions for agent_id: ${agentData.id}`,
+        );
         const { data: transactionData, error: transactionError } =
           await supabase
             .from("transactions")
             .select(
               `*,
                agents:agent_id (id, name, badge_number)
-              `
+              `,
             )
             .eq("agent_id", agentData.id)
             .order("created_at", { ascending: false });
 
-        console.log("AgentDashboard: transaction query result", { transactionData, transactionError });
+        console.log("AgentDashboard: transaction query result", {
+          transactionData,
+          transactionError,
+        });
 
         if (transactionError) {
-          console.error("AgentDashboard: Error fetching transactions:", transactionError);
+          console.error(
+            "AgentDashboard: Error fetching transactions:",
+            transactionError,
+          );
         }
 
         // Process transactions even if fetch failed (transactionData might be null)
-        const pending = transactionData?.filter((t) => t.status === "pending") || [];
-        const rejected = transactionData?.filter((t) => t.status === "rejected") || [];
+        const pending =
+          transactionData?.filter((t) => t.status === "pending") || [];
+        const rejected =
+          transactionData?.filter((t) => t.status === "rejected") || [];
         setPendingTransactions(pending);
         setRejectedTransactions(rejected);
         setTransactions(transactionData || []);
@@ -105,7 +130,10 @@ export default function AgentDashboard() {
         // Calculate agent's current balance
         let balance = 0;
         transactionData?.forEach((transaction) => {
-          if (transaction.status === "approved" || transaction.status === "pending") {
+          if (
+            transaction.status === "approved" ||
+            transaction.status === "pending"
+          ) {
             if (transaction.transaction_type === "issuance") {
               balance += parseFloat(transaction.amount);
             } else if (transaction.transaction_type === "spending") {
@@ -117,9 +145,11 @@ export default function AgentDashboard() {
         });
         console.log("AgentDashboard: Calculated balance", { balance });
         setAgentBalance(balance);
-
       } catch (error) {
-        console.error("AgentDashboard: Error in fetchAgentData try block:", error);
+        console.error(
+          "AgentDashboard: Error in fetchAgentData try block:",
+          error,
+        );
       } finally {
         console.log("AgentDashboard: fetchAgentData finished");
         setLoading(false);
@@ -179,20 +209,25 @@ export default function AgentDashboard() {
                   approvals.
                 </CardDescription>
               </div>
-              <Dialog open={isRequestFormOpen} onOpenChange={setIsRequestFormOpen}>
+              <Dialog
+                open={isRequestFormOpen}
+                onOpenChange={setIsRequestFormOpen}
+              >
                 <DialogTrigger asChild>
                   <Button>
                     <PlusCircle className="mr-2 h-4 w-4" /> Request Funds
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
-                  <FundRequestForm onSuccess={() => setIsRequestFormOpen(false)} />
+                  <FundRequestForm
+                    onSuccess={() => setIsRequestFormOpen(false)}
+                  />
                 </DialogContent>
               </Dialog>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               <div className="bg-muted p-4 rounded-lg">
                 <div className="text-sm text-muted-foreground">
                   Badge Number
@@ -248,7 +283,7 @@ export default function AgentDashboard() {
                     {pendingTransactions.map((transaction) => (
                       <div
                         key={transaction.id}
-                        className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50"
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg bg-yellow-50 gap-2"
                       >
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-muted rounded-full">
@@ -307,7 +342,7 @@ export default function AgentDashboard() {
                     {rejectedTransactions.map((transaction) => (
                       <div
                         key={transaction.id}
-                        className="flex items-center justify-between p-4 border rounded-lg bg-red-50"
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg bg-red-50 gap-2"
                       >
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-muted rounded-full">
@@ -385,7 +420,7 @@ export default function AgentDashboard() {
               {transactions.slice(0, 5).map((transaction) => (
                 <div
                   key={transaction.id}
-                  className="flex items-center justify-between p-4 border rounded-lg"
+                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg gap-2"
                 >
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-muted rounded-full">

@@ -7,7 +7,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col max-w-[100vw] overflow-x-hidden">
       <div className="hide-on-print">
         <DashboardNavbar />
       </div>

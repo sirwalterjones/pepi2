@@ -144,6 +144,19 @@ export default function AgentCiHistory({
     setError(null);
 
     try {
+      const supabase = createClient();
+      // Check if user is authenticated first
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        throw new Error(
+          "Authentication session missing. Please sign in again.",
+        );
+      }
+
       const result = await getCiPaymentHistoryAction(
         activeBook.id,
         isAdmin ? null : agentId,
@@ -167,6 +180,11 @@ export default function AgentCiHistory({
         title: "Error",
         description: err.message || "An unexpected error occurred.",
       });
+
+      // If it's an authentication error, redirect to sign-in
+      if (err.message?.includes("Authentication session missing")) {
+        window.location.href = "/sign-in";
+      }
     } finally {
       setLoading(false);
     }
