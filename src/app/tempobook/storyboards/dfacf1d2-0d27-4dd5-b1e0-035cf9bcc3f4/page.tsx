@@ -2,6 +2,7 @@
 
 import TransactionDetails from "@/components/transactions/TransactionDetails";
 import { useState } from "react";
+import { toast } from "@/components/ui/use-toast";
 
 export default function TransactionDetailsStoryboard() {
   const [open, setOpen] = useState(true);
@@ -42,6 +43,38 @@ export default function TransactionDetailsStoryboard() {
     console.log("Transaction deleted");
   };
 
+  const handleTestEmail = async () => {
+    try {
+      toast({
+        title: "Sending test email",
+        description: "Attempting to send a test email notification...",
+      });
+
+      // This would be replaced with an actual API call in a real implementation
+      console.log(
+        "Test email triggered for transaction:",
+        sampleTransaction.id,
+      );
+
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      toast({
+        title: "Test email sent",
+        description:
+          "A test email notification has been triggered successfully.",
+        variant: "success",
+      });
+    } catch (error) {
+      console.error("Error sending test email:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send test email. Check console for details.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="bg-white p-4">
       <h1 className="text-2xl font-bold mb-4">Transaction Details</h1>
@@ -49,12 +82,21 @@ export default function TransactionDetailsStoryboard() {
         This shows a rejected transaction that an agent can edit and resubmit.
       </p>
 
-      <button
-        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4"
-        onClick={() => setOpen(true)}
-      >
-        Open Transaction Details
-      </button>
+      <div className="flex gap-4 mb-4">
+        <button
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          onClick={() => setOpen(true)}
+        >
+          Open Transaction Details
+        </button>
+
+        <button
+          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+          onClick={handleTestEmail}
+        >
+          Test Email Notification
+        </button>
+      </div>
 
       <TransactionDetails
         transaction={sampleTransaction}
