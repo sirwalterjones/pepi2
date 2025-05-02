@@ -10,9 +10,10 @@ export async function POST() {
 
     // Send an actual email using the Resend service
     const result = await sendEmail({
-      to: "onboarding@resend.dev", // Using Resend's test email address
+      to: "walterjonesjr@gmail.com", // Using the specified email address
       subject: "PEPI Money Tracker - Test Email",
       react: createElement(TestEmail, { timestamp }),
+      from: "noreply@resend.dev", // Using Resend's verified domain
       tags: [{ name: "email_type", value: "test_email" }],
     });
 
