@@ -135,34 +135,8 @@ export default async function Dashboard() {
         )}
         {/* Admin-specific cards in a grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-blue-500" />
-                Fund Requests
-              </CardTitle>
-              <CardDescription>
-                Review and process pending fund requests
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PendingRequestsList />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-green-500" />
-                Pending CI Payments
-              </CardTitle>
-              <CardDescription>
-                Review and approve confidential informant payments
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PendingCiPaymentsList activeBookId={activeBook?.id || null} />
-            </CardContent>
-          </Card>
+          <PendingRequestsList />
+          <PendingCiPaymentsList activeBookId={activeBook?.id || null} />
           {/* New card for pending transactions */}
           <Card>
             <CardHeader>

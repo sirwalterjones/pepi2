@@ -4,11 +4,21 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   getCiPaymentHistoryAction,
   getCiPaymentForPrintAction,
+  approveCiPaymentAction,
+  rejectCiPaymentAction,
 } from "@/app/actions";
 import { CiPayment, Agent } from "@/types/schema";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { Loader2, FileSignature, Printer, Edit, Trash2 } from "lucide-react";
+import {
+  Loader2,
+  FileSignature,
+  Printer,
+  Edit,
+  Trash2,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -83,6 +93,18 @@ export default function AgentCiHistory({
   );
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [paymentToApprove, setPaymentToApprove] = useState<CiPayment | null>(
+    null,
+  );
+  const [paymentToReject, setPaymentToReject] = useState<CiPayment | null>(
+    null,
+  );
+  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [commanderSignature, setCommanderSignature] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
 
   useEffect(() => {
     const fetchAgentData = async () => {
@@ -230,6 +252,102 @@ export default function AgentCiHistory({
   const canDeletePayment = (payment: CiPayment): boolean => {
     // Only admins can delete payments
     return isAdmin;
+  };
+
+  const canApprovePayment = (payment: CiPayment): boolean => {
+    // Only admins can approve payments that are pending
+    return isAdmin && payment.status === "pending";
+  };
+
+  const canRejectPayment = (payment: CiPayment): boolean => {
+    // Only admins can reject payments that are pending
+    return isAdmin && payment.status === "pending";
+  };
+
+  const handleOpenApproveDialog = (payment: CiPayment) => {
+    setPaymentToApprove(payment);
+    setCommanderSignature("");
+    setIsApproveDialogOpen(true);
+  };
+
+  const handleOpenRejectDialog = (payment: CiPayment) => {
+    setPaymentToReject(payment);
+    setRejectionReason("");
+    setIsRejectDialogOpen(true);
+  };
+
+  const handleApprovePayment = async () => {
+    if (!paymentToApprove || !commanderSignature.trim()) return;
+
+    setIsApproving(true);
+    try {
+      const result = await approveCiPaymentAction(
+        paymentToApprove.id,
+        commanderSignature,
+      );
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `CI Payment #${paymentToApprove.receipt_number || ""} has been approved.`,
+        });
+        fetchPayments(); // Refresh the list
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.error || "Failed to approve CI payment.",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Failed to approve CI payment.",
+      });
+    } finally {
+      setIsApproving(false);
+      setIsApproveDialogOpen(false);
+      setPaymentToApprove(null);
+      setCommanderSignature("");
+    }
+  };
+
+  const handleRejectPayment = async () => {
+    if (!paymentToReject || !rejectionReason.trim()) return;
+
+    setIsRejecting(true);
+    try {
+      const result = await rejectCiPaymentAction(
+        paymentToReject.id,
+        rejectionReason,
+      );
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `CI Payment #${paymentToReject.receipt_number || ""} has been rejected.`,
+        });
+        fetchPayments(); // Refresh the list
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.error || "Failed to reject CI payment.",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Failed to reject CI payment.",
+      });
+    } finally {
+      setIsRejecting(false);
+      setIsRejectDialogOpen(false);
+      setPaymentToReject(null);
+      setRejectionReason("");
+    }
   };
 
   const handleDeletePayment = async () => {
@@ -490,6 +608,26 @@ export default function AgentCiHistory({
                       onClick={() => handleOpenDeleteDialog(payment)}
                     >
                       <Trash2 className="h-4 w-4 mr-1" /> Delete
+                    </Button>
+                  )}
+                  {canApprovePayment(payment) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-green-600 hover:bg-green-100"
+                      onClick={() => handleOpenApproveDialog(payment)}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" /> Approve
+                    </Button>
+                  )}
+                  {canRejectPayment(payment) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:bg-red-100"
+                      onClick={() => handleOpenRejectDialog(payment)}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" /> Reject
                     </Button>
                   )}
                   <Button
