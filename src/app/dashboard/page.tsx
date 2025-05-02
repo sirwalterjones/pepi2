@@ -3,7 +3,7 @@ import DashboardOverview from "@/components/dashboard/DashboardOverview";
 import AgentDashboard from "@/components/dashboard/AgentDashboard";
 import { InfoIcon, UserCircle, ShieldAlert, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "../../../supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Agent, PepiBook } from "@/types/schema";
@@ -156,12 +156,8 @@ export default async function Dashboard() {
                       )}
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => redirect("/dashboard/transactions")}
-                  >
-                    View All Transactions
+                  <Button variant="outline" className="w-full" asChild>
+                    <a href="/dashboard/transactions">View All Transactions</a>
                   </Button>
                 </div>
               ) : (
