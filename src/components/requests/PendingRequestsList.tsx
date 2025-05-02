@@ -374,23 +374,6 @@ export default function PendingRequestsList() {
             <p className="text-muted-foreground mb-4">
               No pending fund requests found.
             </p>
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              {isRefreshing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Refreshing...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Refresh Requests
-                </>
-              )}
-            </Button>
           </div>
         ) : (
           <Table>
