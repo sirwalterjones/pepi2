@@ -38,13 +38,13 @@ export default function AdminDashboardActions({
     return null;
   }
 
-  // Function to handle sending test email
+  // Function to handle sending test email - disabled automatic calls
   const handleTestEmail = async () => {
     try {
       setIsSendingEmail(true);
       toast({
         title: "Sending test email",
-        description: "Attempting to send a real test email notification...",
+        description: "Attempting to send a test email notification...",
       });
 
       console.log("[TEST EMAIL] Sending test email via button click");
@@ -66,12 +66,6 @@ export default function AdminDashboardActions({
           description: `Email sent with ID: ${result.data?.id}`,
           variant: "success",
         });
-
-        // Also try the debug endpoint
-        console.log("[TEST EMAIL] Trying debug endpoint as well");
-        const debugResponse = await fetch("/api/debug-email");
-        const debugResult = await debugResponse.json();
-        console.log("[TEST EMAIL] Debug endpoint response:", debugResult);
       } else {
         throw new Error(result.error || "Unknown error sending email");
       }

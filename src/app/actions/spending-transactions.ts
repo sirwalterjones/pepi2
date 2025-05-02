@@ -188,7 +188,12 @@ export async function approveSpendingTransactionAction(transactionId: string) {
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/transactions");
 
-  return { success: true };
+  // Import toast function for client-side use
+  // Note: Server actions can't directly show toasts, we'll return the message to be displayed by the client
+  return {
+    success: true,
+    emailStatus: emailStatus,
+  };
 }
 
 // Action to reject a spending transaction
@@ -378,5 +383,10 @@ export async function rejectSpendingTransactionAction(
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/transactions");
 
-  return { success: true };
+  // Import toast function for client-side use
+  // Note: Server actions can't directly show toasts, we'll return the message to be displayed by the client
+  return {
+    success: true,
+    emailStatus: emailStatus,
+  };
 }
