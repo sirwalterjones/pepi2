@@ -38,25 +38,37 @@ export default function AdminDashboardActions({
     return null;
   }
 
-  // Function to handle sending test email - disabled automatic calls
+  // Function to handle sending test email - now completely disabled
   const handleTestEmail = async () => {
     try {
       setIsSendingEmail(true);
       toast({
-        title: "Sending test email",
-        description: "Attempting to send a test email notification...",
+        title: "Email sending disabled",
+        description: "Automatic emails have been turned off as requested.",
       });
 
-      console.log("[TEST EMAIL] Sending test email via button click");
+      console.log("[TEST EMAIL] Test email button clicked - emails disabled");
 
-      // Call the API endpoint to send the email
+      // No longer calling the API endpoint
+      /*
       const response = await fetch("/api/send-test-email", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
       });
+      */
 
+      // Simulated success response
+      setTimeout(() => {
+        toast({
+          title: "Email sending disabled",
+          description: "Automatic emails have been turned off as requested.",
+          variant: "success",
+        });
+      }, 500);
+
+      /*
       const result = await response.json();
       console.log("[TEST EMAIL] API response:", result);
 
@@ -69,6 +81,7 @@ export default function AdminDashboardActions({
       } else {
         throw new Error(result.error || "Unknown error sending email");
       }
+      */
     } catch (error: any) {
       console.error("[TEST EMAIL] Error sending test email:", error);
       toast({
