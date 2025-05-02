@@ -10,6 +10,7 @@ import {
 import { CiPayment, Agent } from "@/types/schema";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Loader2,
   FileSignature,
@@ -213,6 +214,10 @@ export default function AgentCiHistory({
     setIsEditModalOpen(false);
     setPaymentToEdit(null);
     fetchPayments();
+    toast({
+      title: "Success",
+      description: "CI Payment updated successfully.",
+    });
   };
 
   const handleViewSignature = (
@@ -703,9 +708,14 @@ export default function AgentCiHistory({
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="w-[95vw] sm:max-w-lg md:max-w-xl lg:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader className="pt-4 px-4 md:pt-6 md:px-6 pb-2 border-b flex-shrink-0">
-            <DialogTitle>Edit CI Payment</DialogTitle>
+            <DialogTitle>
+              {paymentToEdit?.status === "rejected" ? "Resubmit" : "Edit"} CI
+              Payment
+            </DialogTitle>
             <DialogDescription>
-              Update the details for this Confidential Informant payment.
+              {paymentToEdit?.status === "rejected"
+                ? "Make changes and resubmit this rejected payment."
+                : "Update the details for this Confidential Informant payment."}
             </DialogDescription>
           </DialogHeader>
           <div className="flex-grow overflow-y-auto p-4 md:p-6">
@@ -721,6 +731,7 @@ export default function AgentCiHistory({
             )}
             {(!paymentToEdit || !currentAgentFullData || !activeBook?.id) && (
               <div className="p-6 text-center text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
                 Loading form data...
               </div>
             )}
@@ -775,6 +786,141 @@ export default function AgentCiHistory({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Approve Payment Dialog */}
+      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve CI Payment</DialogTitle>
+            <DialogDescription>
+              Please review and confirm approval of this CI payment.
+              {paymentToApprove && (
+                <div className="mt-2 p-3 border rounded-md bg-muted">
+                  <p>
+                    <strong>Receipt #:</strong>{" "}
+                    {paymentToApprove.receipt_number || "N/A"}
+                  </p>
+                  <p>
+                    <strong>Amount:</strong>{" "}
+                    {formatCurrency(paymentToApprove.amount_paid)}
+                  </p>
+                  <p>
+                    <strong>Paid To:</strong>{" "}
+                    {paymentToApprove.paid_to || "N/A"}
+                  </p>
+                  <p>
+                    <strong>Date:</strong> {formatDate(paymentToApprove.date)}
+                  </p>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="commanderSignature">
+                Commander Signature <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="commanderSignature"
+                value={commanderSignature}
+                onChange={(e) => setCommanderSignature(e.target.value)}
+                placeholder="Type commander's name as signature"
+                className="font-signature"
+                style={{ fontFamily: "'Dancing Script', cursive" }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Type your name as signature to approve this payment
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsApproveDialogOpen(false)}
+              disabled={isApproving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleApprovePayment}
+              disabled={isApproving || !commanderSignature.trim()}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {isApproving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              )}
+              {isApproving ? "Approving..." : "Approve Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Payment Dialog */}
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject CI Payment</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this CI payment.
+              {paymentToReject && (
+                <div className="mt-2 p-3 border rounded-md bg-muted">
+                  <p>
+                    <strong>Receipt #:</strong>{" "}
+                    {paymentToReject.receipt_number || "N/A"}
+                  </p>
+                  <p>
+                    <strong>Amount:</strong>{" "}
+                    {formatCurrency(paymentToReject.amount_paid)}
+                  </p>
+                  <p>
+                    <strong>Paid To:</strong> {paymentToReject.paid_to || "N/A"}
+                  </p>
+                  <p>
+                    <strong>Date:</strong> {formatDate(paymentToReject.date)}
+                  </p>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="rejectionReason">
+                Rejection Reason <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="rejectionReason"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Please explain why this payment is being rejected"
+                className="min-h-[100px]"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsRejectDialogOpen(false)}
+              disabled={isRejecting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRejectPayment}
+              disabled={isRejecting || !rejectionReason.trim()}
+              className="bg-destructive hover:bg-destructive/90 text-white"
+            >
+              {isRejecting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <XCircle className="h-4 w-4 mr-2" />
+              )}
+              {isRejecting ? "Rejecting..." : "Reject Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
