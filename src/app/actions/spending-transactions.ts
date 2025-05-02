@@ -188,8 +188,8 @@ export async function approveSpendingTransactionAction(transactionId: string) {
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/transactions");
 
-  // Import toast function for client-side use
-  // Note: Server actions can't directly show toasts, we'll return the message to be displayed by the client
+  // Return the email status to be displayed by the client
+  console.log("[Server Action] Returning with emailStatus:", emailStatus);
   return {
     success: true,
     emailStatus: emailStatus,
@@ -383,8 +383,8 @@ export async function rejectSpendingTransactionAction(
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/transactions");
 
-  // Import toast function for client-side use
-  // Note: Server actions can't directly show toasts, we'll return the message to be displayed by the client
+  // Return the email status to be displayed by the client
+  console.log("[Server Action] Returning with emailStatus:", emailStatus);
   return {
     success: true,
     emailStatus: emailStatus,

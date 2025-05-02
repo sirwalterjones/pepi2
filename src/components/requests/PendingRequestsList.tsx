@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle, Trash2, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
+import TransactionApprovalHandler from "../transactions/TransactionApprovalHandler";
 import {
   approveFundRequestAction,
   rejectFundRequestAction,
@@ -50,6 +51,9 @@ export default function PendingRequestsList() {
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(
     null,
   );
+  const [emailStatus, setEmailStatus] = useState<
+    { success: boolean; toastMessage: string } | undefined
+  >();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const supabase = createClient();
   const { toast } = useToast();
@@ -191,10 +195,14 @@ export default function PendingRequestsList() {
       if (result?.error) {
         throw new Error(result.error);
       }
-      toast({
-        title: "Success",
-        description: "Fund request approved and transaction created.",
-      });
+      if (result?.emailStatus) {
+        setEmailStatus(result.emailStatus);
+      } else {
+        toast({
+          title: "Success",
+          description: "Fund request approved and transaction created.",
+        });
+      }
       // Optimistically remove the approved request from the list
       setRequests((prevRequests) =>
         prevRequests.filter((req) => req.id !== requestId),
@@ -225,7 +233,11 @@ export default function PendingRequestsList() {
       if (result?.error) {
         throw new Error(result.error);
       }
-      toast({ title: "Success", description: "Fund request rejected." });
+      if (result?.emailStatus) {
+        setEmailStatus(result.emailStatus);
+      } else {
+        toast({ title: "Success", description: "Fund request rejected." });
+      }
       // Optimistically remove the rejected request from the list
       setRequests((prevRequests) =>
         prevRequests.filter((req) => req.id !== requestId),
