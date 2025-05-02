@@ -1943,20 +1943,24 @@ export async function getCiPaymentHistoryAction(
   try {
     const supabase = await createClient();
 
-    // 1. Verify user authentication - Wrap in try/catch to handle auth errors gracefully
+    // 1. Verify user authentication with more robust error handling
+    let user = null;
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      // First check if we can get the user without throwing
+      const authResponse = await supabase.auth.getUser();
 
-      if (userError) {
+      if (authResponse.error) {
         console.error(
           "[getCiPaymentHistoryAction] Authentication error:",
-          userError,
+          authResponse.error,
         );
-        return { success: false, error: "Authentication required." };
+        return {
+          success: false,
+          error: "Authentication required. Please sign in again.",
+        };
       }
+
+      user = authResponse.data?.user;
 
       if (!user) {
         console.error("[getCiPaymentHistoryAction] No user found in session");
@@ -1965,6 +1969,8 @@ export async function getCiPaymentHistoryAction(
           error: "Please sign in to view payment history.",
         };
       }
+
+      console.log(`[getCiPaymentHistoryAction] User authenticated: ${user.id}`);
     } catch (authError) {
       console.error(
         "[getCiPaymentHistoryAction] Auth session error:",
@@ -2141,7 +2147,7 @@ export async function resubmitCiPaymentAction(
 
   const { data: agentData, error: agentCheckError } = await supabase
     .from("agents")
-    .select("id, name")
+    .select("id, name, role")
     .eq("user_id", user.id)
     .single();
 
@@ -2153,7 +2159,7 @@ export async function resubmitCiPaymentAction(
     return { success: false, error: "Agent verification failed." };
   }
 
-  // 2. Fetch the existing payment to verify ownership and status ('rejected')
+  // 2. Fetch the existing payment to verify status ('rejected')
   const { data: existingPayment, error: fetchError } = await supabase
     .from("ci_payments")
     .select("id, paying_agent_id, status")
@@ -2168,13 +2174,18 @@ export async function resubmitCiPaymentAction(
     return { success: false, error: "Payment not found." };
   }
 
-  if (existingPayment.paying_agent_id !== agentData.id) {
+  // Check if user is admin or the payment owner
+  const isAdmin = agentData.role === "admin";
+  const isOwner = existingPayment.paying_agent_id === agentData.id;
+
+  if (!isAdmin && !isOwner) {
     console.warn(
       `[resubmitCiPaymentAction] Agent ${agentData.id} attempted to resubmit payment ${paymentId} owned by ${existingPayment.paying_agent_id}.`,
     );
     return {
       success: false,
-      error: "You can only resubmit your own payments.",
+      error:
+        "You can only resubmit your own payments. Admins can resubmit any payment.",
     };
   }
 
