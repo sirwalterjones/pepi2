@@ -3,8 +3,6 @@
 import TransactionDetails from "@/components/transactions/TransactionDetails";
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
-import { sendEmail } from "@/services/resend";
-import TestEmail from "@/emails/testEmail";
 
 export default function TransactionDetailsStoryboard() {
   const [open, setOpen] = useState(true);
@@ -54,16 +52,15 @@ export default function TransactionDetailsStoryboard() {
         description: "Attempting to send a real test email notification...",
       });
 
-      // Get current timestamp for the email
-      const timestamp = new Date().toLocaleString();
-
-      // Send an actual email using the Resend service
-      const result = await sendEmail({
-        to: "test@example.com", // Replace with your test email address
-        subject: "PEPI Money Tracker - Test Email",
-        react: <TestEmail timestamp={timestamp} />,
-        tags: [{ name: "email_type", value: "test_email" }],
+      // Call the API endpoint to send the email
+      const response = await fetch("/api/send-test-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
+
+      const result = await response.json();
 
       if (result.success) {
         toast({
@@ -74,7 +71,7 @@ export default function TransactionDetailsStoryboard() {
       } else {
         throw new Error(result.error || "Unknown error sending email");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending test email:", error);
       toast({
         title: "Error",
