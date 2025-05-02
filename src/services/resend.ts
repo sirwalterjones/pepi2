@@ -34,7 +34,12 @@ export async function sendEmail(options: EmailOptions) {
       console.error(
         "[EMAIL] RESEND_API_KEY is not defined in environment variables",
       );
-      return { success: false, error: "Email service not configured" };
+      return {
+        success: false,
+        error: "Email service not configured",
+        toastMessage:
+          "Email service not configured. Please check environment variables.",
+      };
     }
 
     // Import Resend dynamically to avoid issues during build
@@ -71,6 +76,7 @@ export async function sendEmail(options: EmailOptions) {
       return {
         success: false,
         error: `Invalid email format: ${invalidEmails.join(", ")}`,
+        toastMessage: `Invalid email format: ${invalidEmails.join(", ")}`,
       };
     }
 
@@ -92,15 +98,27 @@ export async function sendEmail(options: EmailOptions) {
 
     if (error) {
       console.error("[EMAIL] Error sending email:", error);
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error: error.message,
+        toastMessage: `Failed to send email: ${error.message}`,
+      };
     }
 
     console.log("[EMAIL] Email sent successfully:", data);
-    return { success: true, data };
+    return {
+      success: true,
+      data,
+      toastMessage: "Email notification sent successfully",
+    };
   } catch (error: any) {
     console.error("[EMAIL] Exception sending email:", error);
     console.error("[EMAIL] Error stack:", error?.stack || "No stack trace");
-    return { success: false, error: error.message };
+    return {
+      success: false,
+      error: error.message,
+      toastMessage: `Error sending email: ${error.message}`,
+    };
   }
 }
 

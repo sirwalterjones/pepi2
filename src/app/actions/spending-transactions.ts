@@ -87,6 +87,7 @@ export async function approveSpendingTransactionAction(transactionId: string) {
   );
 
   // 4. Send email notification to the agent
+  let emailStatus = { success: false, toastMessage: "" };
   try {
     console.log(
       `[Server Action] Starting email notification process for approved transaction ${transactionId}`,
@@ -119,6 +120,7 @@ export async function approveSpendingTransactionAction(transactionId: string) {
         "@/emails/approvedSpendingTransaction"
       );
       const { sendEmail } = await import("@/services/resend");
+      const { toast } = await import("@/components/ui/use-toast");
 
       // Get the origin for building the dashboard URL
       const origin = headers().get("origin") || "https://pepitracker.gov";
@@ -146,6 +148,15 @@ export async function approveSpendingTransactionAction(transactionId: string) {
         tags: [{ name: "transaction_id", value: transactionId }],
       });
 
+      emailStatus = {
+        success: emailResult.success,
+        toastMessage:
+          emailResult.toastMessage ||
+          (emailResult.success
+            ? "Email notification sent successfully"
+            : "Failed to send email notification"),
+      };
+
       console.log(
         `[Server Action] Email notification result:`,
         emailResult,
@@ -155,6 +166,10 @@ export async function approveSpendingTransactionAction(transactionId: string) {
       console.warn(
         `[Server Action] No email found for agent ${transaction.agent_id}`,
       );
+      emailStatus = {
+        success: false,
+        toastMessage: `No email address found for agent ${transaction.agent?.name || transaction.agent_id}`,
+      };
     }
   } catch (emailError: any) {
     // Log email error but don't fail the transaction approval
@@ -163,6 +178,10 @@ export async function approveSpendingTransactionAction(transactionId: string) {
       emailError,
       emailError?.stack || "No stack trace available",
     );
+    emailStatus = {
+      success: false,
+      toastMessage: `Error sending notification: ${emailError.message || "Unknown error"}`,
+    };
   }
 
   // 5. Revalidate paths
@@ -258,6 +277,7 @@ export async function rejectSpendingTransactionAction(
   );
 
   // 4. Send email notification to the agent
+  let emailStatus = { success: false, toastMessage: "" };
   try {
     console.log(
       `[Server Action] Starting email notification process for rejected transaction ${transactionId}`,
@@ -290,6 +310,7 @@ export async function rejectSpendingTransactionAction(
         "@/emails/rejectedSpendingTransaction"
       );
       const { sendEmail } = await import("@/services/resend");
+      const { toast } = await import("@/components/ui/use-toast");
 
       // Get the origin for building the dashboard URL
       const origin = headers().get("origin") || "https://pepitracker.gov";
@@ -317,6 +338,15 @@ export async function rejectSpendingTransactionAction(
         tags: [{ name: "transaction_id", value: transactionId }],
       });
 
+      emailStatus = {
+        success: emailResult.success,
+        toastMessage:
+          emailResult.toastMessage ||
+          (emailResult.success
+            ? "Email notification sent successfully"
+            : "Failed to send email notification"),
+      };
+
       console.log(
         `[Server Action] Email notification result:`,
         emailResult,
@@ -326,6 +356,10 @@ export async function rejectSpendingTransactionAction(
       console.warn(
         `[Server Action] No email found for agent ${transaction.agent_id}`,
       );
+      emailStatus = {
+        success: false,
+        toastMessage: `No email address found for agent ${transaction.agent?.name || transaction.agent_id}`,
+      };
     }
   } catch (emailError: any) {
     // Log email error but don't fail the transaction rejection
@@ -334,6 +368,10 @@ export async function rejectSpendingTransactionAction(
       emailError,
       emailError?.stack || "No stack trace available",
     );
+    emailStatus = {
+      success: false,
+      toastMessage: `Error sending notification: ${emailError.message || "Unknown error"}`,
+    };
   }
 
   // 5. Revalidate paths
