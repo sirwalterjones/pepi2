@@ -1,7 +1,7 @@
 import DashboardNavbar from "@/components/dashboard-navbar";
 import DashboardOverview from "@/components/dashboard/DashboardOverview";
 import AgentDashboard from "@/components/dashboard/AgentDashboard";
-import { InfoIcon, UserCircle, ShieldAlert } from "lucide-react";
+import { InfoIcon, UserCircle, ShieldAlert, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../supabase/server";
@@ -9,8 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { Agent, PepiBook } from "@/types/schema";
 import PendingRequestsList from "@/components/requests/PendingRequestsList";
 import TransactionList from "@/components/transactions/TransactionList";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
+} from "@/components/ui/card";
 import PendingCiPaymentsList from "@/components/ci-payments/PendingCiPaymentsList";
+import PendingTransactionsCount from "@/components/transactions/PendingTransactionsCount";
 import AdminDashboardActions from "@/components/dashboard/AdminDashboardActions";
 
 export const revalidate = 0; // Prevent caching for dynamic data
@@ -142,8 +149,11 @@ export default async function Dashboard() {
                       Transactions to review:
                     </div>
                     <div className="text-2xl font-bold text-orange-500">
-                      {/* This will be replaced with actual count in the next implementation */}
-                      <span className="animate-pulse">Loading...</span>
+                      {activeBook ? (
+                        <PendingTransactionsCount bookId={activeBook.id} />
+                      ) : (
+                        <span>0</span>
+                      )}
                     </div>
                   </div>
                   <Button

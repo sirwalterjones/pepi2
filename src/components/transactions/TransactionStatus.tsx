@@ -33,7 +33,7 @@ export default function TransactionStatus({
         return (
           <Badge
             variant="outline"
-            className={`bg-yellow-100 text-yellow-800 hover:bg-yellow-100 ${sizeClasses[size]}`}
+            className={`bg-orange-100 text-orange-800 hover:bg-orange-100 ${sizeClasses[size]}`}
           >
             {showIcon && (
               <Clock
