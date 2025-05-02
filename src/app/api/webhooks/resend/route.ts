@@ -39,7 +39,10 @@ export async function POST(request: NextRequest) {
 
     // Extract relevant information
     const { type, data } = payload;
-    const { email_id, to, subject, tags = [] } = data;
+    const { email_id, to, subject } = data;
+
+    // Ensure tags is always an array
+    const tags = Array.isArray(data.tags) ? data.tags : [];
 
     // Log the tags structure to help debug
     console.log(
@@ -50,19 +53,13 @@ export async function POST(request: NextRequest) {
     );
 
     // Get reference IDs from tags if available
-    // Make sure tags is an array before using find
-    const requestId = Array.isArray(tags)
-      ? tags.find((tag) => tag.name === "requestId")?.value
-      : undefined;
-    const paymentId = Array.isArray(tags)
-      ? tags.find((tag) => tag.name === "paymentId")?.value
-      : undefined;
-    const transactionId = Array.isArray(tags)
-      ? tags.find((tag) => tag.name === "transaction_id")?.value
-      : undefined;
-    const emailType = Array.isArray(tags)
-      ? tags.find((tag) => tag.name === "email_type")?.value
-      : undefined;
+    // Since we've already ensured tags is an array, we can safely use find
+    const requestId = tags.find((tag) => tag?.name === "requestId")?.value;
+    const paymentId = tags.find((tag) => tag?.name === "paymentId")?.value;
+    const transactionId = tags.find(
+      (tag) => tag?.name === "transaction_id",
+    )?.value;
+    const emailType = tags.find((tag) => tag?.name === "email_type")?.value;
 
     console.log(
       `[WEBHOOK] Email tags: requestId=${requestId}, paymentId=${paymentId}, transactionId=${transactionId}, emailType=${emailType}`,
