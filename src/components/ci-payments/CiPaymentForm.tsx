@@ -50,6 +50,7 @@ const ciPaymentFormSchema = z.object({
     .min(1, { message: "Paying agent's printed name is required" }),
   witness_printed_name: z.string().trim().optional(),
   pepi_receipt_number: z.string().trim().optional(),
+  status: z.string().optional(), // Add status field for admin editing
   // Signatures will be handled separately via refs
   // book_id is passed as prop
 });
@@ -61,6 +62,8 @@ type CiPaymentFormProps = {
   initialData?: CiPayment | null; // Existing prop for editing
   onFormSubmitSuccess?: () => void; // Optional callback for closing modal/sheet
   agentData?: Agent | null; // Pass logged-in agent's data if available
+  allowStatusEdit?: boolean; // New prop to control status field visibility
+  showAllFields?: boolean; // New prop to show all fields in edit mode
 };
 
 export default function CiPaymentForm({
@@ -70,6 +73,8 @@ export default function CiPaymentForm({
   initialData, // Use this prop
   onFormSubmitSuccess,
   agentData,
+  allowStatusEdit = false, // Default to false
+  showAllFields = false, // Default to false
 }: CiPaymentFormProps) {
   const { toast } = useToast(); // Initialize useToast
   const [isLoading, setIsLoading] = useState(false);
@@ -116,6 +121,7 @@ export default function CiPaymentForm({
       witness_printed_name: initialData?.witness_printed_name || "",
       pepi_receipt_number: initialData?.pepi_receipt_number || "",
       paying_agent_id: initialData?.paying_agent_id || undefined, // Pre-fill if editing
+      status: initialData?.status || "pending", // Default to pending if not set
     },
   });
 
@@ -132,6 +138,7 @@ export default function CiPaymentForm({
         witness_printed_name: initialData.witness_printed_name || "",
         pepi_receipt_number: initialData.pepi_receipt_number || "",
         paying_agent_id: initialData.paying_agent_id || undefined,
+        status: initialData.status || "pending", // Set status from initialData
       });
       // TODO: Pre-load signatures if possible/desired? This is tricky.
       ciSigRef.current?.clear(); // Clear pads when editing
@@ -315,6 +322,11 @@ export default function CiPaymentForm({
       witness_signature: witnessSignatureData,
     };
 
+    // Include status if admin is allowed to edit it
+    if (allowStatusEdit && userRole === "admin" && data.status) {
+      formData.status = data.status;
+    }
+
     if (userRole === "admin") {
       formData.paying_agent_id = data.paying_agent_id || userId;
     }
@@ -443,6 +455,32 @@ export default function CiPaymentForm({
               <p className="text-sm text-destructive">{errors.date.message}</p>
             )}
           </div>
+
+          {/* Status Select (Admin Only) */}
+          {allowStatusEdit && userRole === "admin" && (
+            <div className="space-y-2">
+              <Label htmlFor="status">Payment Status</Label>
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value || "pending"}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+          )}
 
           {/* Paying Agent Select (Admin Only) */}
           {userRole === "admin" && (

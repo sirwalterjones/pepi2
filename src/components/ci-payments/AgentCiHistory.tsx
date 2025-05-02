@@ -210,6 +210,7 @@ export default function AgentCiHistory({
   const handleOpenEditModal = (payment: CiPayment) => {
     setPaymentToEdit(payment);
     setIsEditModalOpen(true);
+    console.log("Opening edit modal for payment:", payment);
   };
 
   const handleFormSuccess = () => {
@@ -729,6 +730,8 @@ export default function AgentCiHistory({
                 agentData={currentAgentFullData}
                 initialData={paymentToEdit}
                 onFormSubmitSuccess={handleFormSuccess}
+                allowStatusEdit={isAdmin} // Allow admins to edit status
+                showAllFields={true} // Show all fields in edit mode
               />
             )}
             {(!paymentToEdit || !currentAgentFullData || !activeBook?.id) && (
