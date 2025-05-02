@@ -777,6 +777,7 @@ export default function TransactionList() {
                 className={`flex items-center justify-between p-4 border rounded-lg 
                   ${item.itemType === "request" && item.status === "pending" ? "border-blue-300 bg-blue-50" : ""}
                   ${item.itemType === "request" && item.status === "rejected" ? "border-red-300 bg-red-50" : ""}
+                  ${item.itemType === "transaction" && item.status === "pending" ? "border-orange-300 bg-orange-50" : ""}
                   ${item.itemType === "transaction" && item.status === "rejected" ? "border-red-300 bg-red-50" : ""}
                 `}
               >
