@@ -446,7 +446,7 @@ export async function requestFundsAction(formData: {
   // 2. Verify the agent submitting is the logged-in user
   const { data: agentData, error: agentCheckError } = await supabase
     .from("agents")
-    .select("id")
+    .select("id, name")
     .eq("user_id", user.id)
     .eq("id", formData.agentId)
     .single();
@@ -492,22 +492,84 @@ export async function requestFundsAction(formData: {
 
   // 4. Insert into fund_requests table
   try {
-    const { error: insertError } = await supabase.from("fund_requests").insert({
-      agent_id: agentId,
-      pepi_book_id: pepiBookId,
-      amount: amount,
-      case_number: caseNumber,
-      agent_signature: agentSignature,
-      // status defaults to 'pending'
-      // requested_at defaults to now()
-    });
+    const { data: newRequest, error: insertError } = await supabase
+      .from("fund_requests")
+      .insert({
+        agent_id: agentId,
+        pepi_book_id: pepiBookId,
+        amount: amount,
+        case_number: caseNumber,
+        agent_signature: agentSignature,
+        // status defaults to 'pending'
+        // requested_at defaults to now()
+      })
+      .select()
+      .single();
 
     if (insertError) {
       console.error("Error inserting fund request:", insertError);
       throw new Error("Database error: Could not save fund request.");
     }
 
-    // 5. Revalidate relevant paths (e.g., where requests are listed)
+    // 5. Send email notification to admins
+    try {
+      // Format amount for display
+      const formattedAmount = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      }).format(amount);
+
+      // Format date for display
+      const requestDate = new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      // Get admin emails
+      const { getAdminEmails } = await import("@/services/resend");
+      const adminEmails = await getAdminEmails();
+
+      if (adminEmails.length > 0) {
+        // Import email components and send service
+        const { default: NewFundRequestEmail } = await import(
+          "@/emails/newFundRequest"
+        );
+        const { sendEmail } = await import("@/services/resend");
+
+        // Get the origin for building the dashboard URL
+        const origin = headers().get("origin") || "https://pepitracker.gov";
+        const dashboardUrl = `${origin}/dashboard`;
+
+        // Send email to all admins
+        await sendEmail({
+          to: adminEmails,
+          subject: `New Fund Request: ${formattedAmount} - ${agentData.name}`,
+          react: NewFundRequestEmail({
+            request: newRequest as FundRequest,
+            agentName: agentData.name,
+            amount: formattedAmount,
+            caseNumber: caseNumber,
+            requestDate: requestDate,
+            dashboardUrl: dashboardUrl,
+          }),
+        });
+
+        console.log(
+          `[Server Action] Email notification sent to ${adminEmails.length} admins for new fund request`,
+        );
+      } else {
+        console.warn("[Server Action] No admin emails found for notification");
+      }
+    } catch (emailError: any) {
+      // Log email error but don't fail the request
+      console.error(
+        "[Server Action] Failed to send email notification:",
+        emailError,
+      );
+    }
+
+    // 6. Revalidate relevant paths (e.g., where requests are listed)
     revalidatePath("/dashboard"); // Revalidate agent dashboard
     // TODO: Add path for admin view if different
 
@@ -692,7 +754,70 @@ export async function approveFundRequestAction(requestId: string) {
       `[Server Action] Successfully updated status for request ${requestId}.`,
     );
 
-    // 5. Revalidate paths
+    // 5. Send email notification to the agent
+    try {
+      // Get agent email
+      const { getAgentEmail } = await import("@/services/resend");
+      const agentEmail = await getAgentEmail(request.agent_id);
+
+      if (agentEmail) {
+        // Format amount for display
+        const formattedAmount = new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+        }).format(request.amount);
+
+        // Format date for display
+        const approvalDate = new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
+        // Import email components and send service
+        const { default: ApprovedFundRequestEmail } = await import(
+          "@/emails/approvedFundRequest"
+        );
+        const { sendEmail } = await import("@/services/resend");
+
+        // Get the origin for building the dashboard URL
+        const origin = headers().get("origin") || "https://pepitracker.gov";
+        const dashboardUrl = `${origin}/dashboard`;
+
+        // Send email to the agent
+        await sendEmail({
+          to: agentEmail,
+          subject: `Fund Request Approved: ${formattedAmount}`,
+          react: ApprovedFundRequestEmail({
+            request: request,
+            agentName: request.agent?.name || "Agent",
+            amount: formattedAmount,
+            caseNumber: request.case_number,
+            approvalDate: approvalDate,
+            dashboardUrl: dashboardUrl,
+            receiptNumber: newTransaction.id
+              ? `REQ-${requestId.substring(0, 8)}`
+              : undefined,
+          }),
+        });
+
+        console.log(
+          `[Server Action] Email notification sent to agent ${request.agent_id} for approved fund request`,
+        );
+      } else {
+        console.warn(
+          `[Server Action] No email found for agent ${request.agent_id}`,
+        );
+      }
+    } catch (emailError: any) {
+      // Log email error but don't fail the request
+      console.error(
+        "[Server Action] Failed to send email notification for approved request:",
+        emailError,
+      );
+    }
+
+    // 6. Revalidate paths
     console.log(`[Server Action] Revalidating /dashboard path...`);
     revalidatePath("/dashboard");
 
@@ -1389,7 +1514,90 @@ export async function approveCiPaymentAction(
 
   // Revalidate relevant paths
   revalidatePath("/dashboard");
-  // Add specific path for admin approval list
+  revalidatePath("/dashboard/ci-history");
+
+  // 5. Send email notification to the agent
+  try {
+    // Get agent email
+    const { getAgentEmail } = await import("@/services/resend");
+    const agentEmail = await getAgentEmail(payment.paying_agent_id);
+
+    if (agentEmail) {
+      // Fetch additional payment details for the email
+      const { data: paymentDetails, error: detailsError } = await supabase
+        .from("ci_payments")
+        .select(
+          `
+          amount_paid,
+          case_number,
+          receipt_number,
+          paid_to,
+          paying_agent:agents!ci_payments_paying_agent_id_fkey(name)
+          `,
+        )
+        .eq("id", paymentId)
+        .single();
+
+      if (detailsError || !paymentDetails) {
+        console.error(
+          "Error fetching CI payment details for email:",
+          detailsError,
+        );
+        // Continue without failing the approval process
+      } else {
+        // Format amount for display
+        const formattedAmount = new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+        }).format(paymentDetails.amount_paid);
+
+        // Format date for display
+        const approvalDate = new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
+        // Import email components and send service
+        const { default: ApprovedCiPaymentEmail } = await import(
+          "@/emails/approvedCiPayment"
+        );
+        const { sendEmail } = await import("@/services/resend");
+
+        // Get the origin for building the dashboard URL
+        const origin = headers().get("origin") || "https://pepitracker.gov";
+        const dashboardUrl = `${origin}/dashboard`;
+
+        // Send email to the agent
+        await sendEmail({
+          to: agentEmail,
+          subject: `CI Payment Approved: ${formattedAmount}`,
+          react: ApprovedCiPaymentEmail({
+            paymentId: paymentId,
+            agentName: paymentDetails.paying_agent?.name || "Agent",
+            amount: formattedAmount,
+            caseNumber: paymentDetails.case_number,
+            approvalDate: approvalDate,
+            dashboardUrl: dashboardUrl,
+            receiptNumber: paymentDetails.receipt_number,
+            paidTo: paymentDetails.paid_to,
+          }),
+        });
+
+        console.log(
+          `Email notification sent to agent for approved CI payment ${paymentId}`,
+        );
+      }
+    } else {
+      console.warn(`No email found for agent with CI payment ${paymentId}`);
+    }
+  } catch (emailError: any) {
+    // Log email error but don't fail the approval process
+    console.error(
+      "Failed to send email notification for approved CI payment:",
+      emailError,
+    );
+  }
 
   console.log(`CI Payment ${paymentId} approved successfully.`);
   return { success: true };
@@ -1464,7 +1672,89 @@ export async function rejectCiPaymentAction(
 
   // Revalidate relevant paths
   revalidatePath("/dashboard");
-  // Add specific path for admin approval list
+  revalidatePath("/dashboard/ci-history");
+
+  // 5. Send email notification to the agent
+  try {
+    // Get agent email
+    const { getAgentEmail } = await import("@/services/resend");
+    const agentEmail = await getAgentEmail(payment.paying_agent_id);
+
+    if (agentEmail) {
+      // Fetch additional payment details for the email
+      const { data: paymentDetails, error: detailsError } = await supabase
+        .from("ci_payments")
+        .select(
+          `
+          amount_paid,
+          case_number,
+          paid_to,
+          paying_agent:agents!ci_payments_paying_agent_id_fkey(name)
+          `,
+        )
+        .eq("id", paymentId)
+        .single();
+
+      if (detailsError || !paymentDetails) {
+        console.error(
+          "Error fetching CI payment details for email:",
+          detailsError,
+        );
+        // Continue without failing the rejection process
+      } else {
+        // Format amount for display
+        const formattedAmount = new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+        }).format(paymentDetails.amount_paid);
+
+        // Format date for display
+        const rejectionDate = new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
+        // Import email components and send service
+        const { default: RejectedCiPaymentEmail } = await import(
+          "@/emails/rejectedCiPayment"
+        );
+        const { sendEmail } = await import("@/services/resend");
+
+        // Get the origin for building the dashboard URL
+        const origin = headers().get("origin") || "https://pepitracker.gov";
+        const dashboardUrl = `${origin}/dashboard`;
+
+        // Send email to the agent
+        await sendEmail({
+          to: agentEmail,
+          subject: `CI Payment Rejected: ${formattedAmount}`,
+          react: RejectedCiPaymentEmail({
+            paymentId: paymentId,
+            agentName: paymentDetails.paying_agent?.name || "Agent",
+            amount: formattedAmount,
+            caseNumber: paymentDetails.case_number,
+            rejectionDate: rejectionDate,
+            rejectionReason: rejectionReason,
+            dashboardUrl: dashboardUrl,
+            paidTo: paymentDetails.paid_to,
+          }),
+        });
+
+        console.log(
+          `Email notification sent to agent for rejected CI payment ${paymentId}`,
+        );
+      }
+    } else {
+      console.warn(`No email found for agent with CI payment ${paymentId}`);
+    }
+  } catch (emailError: any) {
+    // Log email error but don't fail the rejection process
+    console.error(
+      "Failed to send email notification for rejected CI payment:",
+      emailError,
+    );
+  }
 
   console.log(`CI Payment ${paymentId} rejected successfully.`);
   return { success: true };
