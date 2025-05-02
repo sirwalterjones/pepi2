@@ -155,7 +155,7 @@ export default function DashboardNavbar() {
             className="text-xl font-bold flex items-center shrink-0"
           >
             <Shield className="h-6 w-6 mr-2 text-blue-600 dark:text-blue-400" />
-            <span className="hidden sm:inline">PEPI Money Tracker</span>
+            <span className="hidden sm:inline">PEPI Tracker</span>
             <span className="sm:hidden">PEPI</span>
           </Link>
           <div className="hidden md:flex items-center space-x-1 ml-6">

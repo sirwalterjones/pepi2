@@ -13,7 +13,7 @@ export default function Hero() {
             <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-8 tracking-tight">
               PEPI{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800">
-                Money Tracker
+                Tracker
               </span>{" "}
               for Drug Task Force
             </h1>

@@ -9,7 +9,7 @@ import { TempoInit } from "./tempo-init";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "PEPI Money Tracker",
+  title: "PEPI Tracker",
   description: "Drug Task Force Fund Management System",
   icons: {
     icon: "/blue-shield-icon.svg",
