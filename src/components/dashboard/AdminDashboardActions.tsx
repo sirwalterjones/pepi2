@@ -85,7 +85,8 @@ export default function AdminDashboardActions({
         <Button
           onClick={handleTestEmail}
           disabled={isSendingEmail}
-          className="bg-green-600 hover:bg-green-700 text-white"
+          className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-md shadow-sm"
+          size="lg"
         >
           {isSendingEmail ? (
             <>
@@ -113,7 +114,7 @@ export default function AdminDashboardActions({
             </>
           ) : (
             <>
-              <Mail className="mr-2 h-4 w-4" />
+              <Mail className="mr-2 h-5 w-5" />
               Send Test Email
             </>
           )}
