@@ -2101,6 +2101,192 @@ export async function updateUserProfileAction(data: {
   return { success: true };
 }
 
+// Action to resubmit a rejected CI Payment
+export async function resubmitCiPaymentAction(
+  paymentId: string,
+  formData: CiPaymentFormData,
+): Promise<{ success: boolean; error?: string; data?: CiPayment }> {
+  "use server";
+  const supabase = await createClient();
+
+  // 1. Get current user and verify they are the agent who owns the payment
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    console.error("[resubmitCiPaymentAction] Authentication error:", userError);
+    return { success: false, error: "Authentication required." };
+  }
+
+  const { data: agentData, error: agentCheckError } = await supabase
+    .from("agents")
+    .select("id, name")
+    .eq("user_id", user.id)
+    .single();
+
+  if (agentCheckError || !agentData) {
+    console.error(
+      `[resubmitCiPaymentAction] Failed to find agent record for user ${user.id}:`,
+      agentCheckError,
+    );
+    return { success: false, error: "Agent verification failed." };
+  }
+
+  // 2. Fetch the existing payment to verify ownership and status ('rejected')
+  const { data: existingPayment, error: fetchError } = await supabase
+    .from("ci_payments")
+    .select("id, paying_agent_id, status")
+    .eq("id", paymentId)
+    .single();
+
+  if (fetchError || !existingPayment) {
+    console.error(
+      `[resubmitCiPaymentAction] Failed to find payment ${paymentId}:`,
+      fetchError,
+    );
+    return { success: false, error: "Payment not found." };
+  }
+
+  if (existingPayment.paying_agent_id !== agentData.id) {
+    console.warn(
+      `[resubmitCiPaymentAction] Agent ${agentData.id} attempted to resubmit payment ${paymentId} owned by ${existingPayment.paying_agent_id}.`,
+    );
+    return {
+      success: false,
+      error: "You can only resubmit your own payments.",
+    };
+  }
+
+  if (existingPayment.status !== "rejected") {
+    console.warn(
+      `[resubmitCiPaymentAction] Attempted to resubmit payment ${paymentId} which is not rejected (status: ${existingPayment.status}).`,
+    );
+    return {
+      success: false,
+      error: "Only rejected payments can be resubmitted.",
+    };
+  }
+
+  // 3. Update the payment with new data and reset status to pending
+  const paymentDataToUpdate = {
+    ...formData,
+    status: "pending", // Reset status to pending
+    reviewed_by: null, // Clear reviewer fields
+    reviewed_at: null,
+    commander_signature: null, // Clear commander signature
+    rejection_reason: null, // Clear rejection reason
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: updatedPayment, error: updateError } = await supabase
+    .from("ci_payments")
+    .update(paymentDataToUpdate)
+    .eq("id", paymentId)
+    .select()
+    .single();
+
+  if (updateError) {
+    console.error(
+      `[resubmitCiPaymentAction] Error updating CI Payment ${paymentId}:`,
+      updateError,
+    );
+    return { success: false, error: `Database error: ${updateError.message}` };
+  }
+
+  // 4. Send email notification to admins
+  try {
+    // Fetch additional payment details for the email
+    const { data: paymentDetails, error: detailsError } = await supabase
+      .from("ci_payments")
+      .select(
+        `
+        amount_paid,
+        case_number,
+        paid_to,
+        paying_agent:agents!ci_payments_paying_agent_id_fkey(name)
+        `,
+      )
+      .eq("id", paymentId)
+      .single();
+
+    if (detailsError || !paymentDetails) {
+      console.error(
+        "[resubmitCiPaymentAction] Error fetching CI payment details for email:",
+        detailsError,
+      );
+      // Continue without failing the resubmission process
+    } else {
+      // Format amount for display
+      const formattedAmount = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      }).format(paymentDetails.amount_paid);
+
+      // Format date for display
+      const resubmitDate = new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      // Get admin emails
+      const { getAdminEmails } = await import("@/services/resend");
+      const adminEmails = await getAdminEmails();
+
+      if (adminEmails.length > 0) {
+        // Import email components and send service
+        const { default: ResubmittedCiPaymentEmail } = await import(
+          "@/emails/resubmittedCiPayment"
+        );
+        const { sendEmail } = await import("@/services/resend");
+
+        // Get the origin for building the dashboard URL
+        const origin = headers().get("origin") || "https://pepitracker.gov";
+        const dashboardUrl = `${origin}/dashboard`;
+
+        // Send email to all admins
+        await sendEmail({
+          to: adminEmails,
+          subject: `CI Payment Resubmitted: ${formattedAmount} - ${agentData.name}`,
+          react: ResubmittedCiPaymentEmail({
+            paymentId: paymentId,
+            agentName: agentData.name,
+            amount: formattedAmount,
+            caseNumber: paymentDetails.case_number,
+            resubmitDate: resubmitDate,
+            dashboardUrl: dashboardUrl,
+            paidTo: paymentDetails.paid_to,
+          }),
+        });
+
+        console.log(
+          `[resubmitCiPaymentAction] Email notification sent to ${adminEmails.length} admins for resubmitted CI payment ${paymentId}`,
+        );
+      } else {
+        console.warn(
+          "[resubmitCiPaymentAction] No admin emails found for notification",
+        );
+      }
+    }
+  } catch (emailError: any) {
+    // Log email error but don't fail the resubmission process
+    console.error(
+      "[resubmitCiPaymentAction] Failed to send email notification for resubmitted CI payment:",
+      emailError,
+    );
+  }
+
+  // 5. Revalidate paths
+  revalidatePath("/dashboard/ci-history");
+  revalidatePath("/dashboard");
+
+  console.log(
+    `[resubmitCiPaymentAction] CI Payment ${paymentId} resubmitted successfully.`,
+  );
+  return { success: true, data: updatedPayment as CiPayment };
+}
+
 // Action to update an existing CI Payment
 export async function updateCiPaymentAction(
   paymentId: string,

@@ -28,8 +28,9 @@ import {
   createCiPaymentAction,
   getAgentsForSelectAction,
   updateCiPaymentAction,
+  resubmitCiPaymentAction,
   CiPaymentFormData,
-} from "@/app/actions"; // Add updateCiPaymentAction
+} from "@/app/actions"; // Add updateCiPaymentAction and resubmitCiPaymentAction
 import { Agent, CiPayment } from "@/types/schema"; // Add CiPayment import
 import { useToast } from "@/components/ui/use-toast"; // Import useToast
 
@@ -320,8 +321,22 @@ export default function CiPaymentForm({
 
     try {
       let result;
-      if (isEditing && initialData) {
-        // Call update action
+      // Check if this is a resubmission of a rejected payment
+      const isResubmitting =
+        isEditing && initialData && initialData.status === "rejected";
+
+      if (isResubmitting) {
+        // Call resubmit action for rejected payments
+        console.log("Calling resubmit action with:", {
+          paymentId: initialData.id,
+          formData,
+        });
+        result = await resubmitCiPaymentAction(
+          initialData.id,
+          formData as CiPaymentFormData,
+        );
+      } else if (isEditing && initialData) {
+        // Call update action for normal edits
         console.log("Calling update action with:", {
           paymentId: initialData.id,
           formData,
@@ -331,7 +346,7 @@ export default function CiPaymentForm({
           formData as CiPaymentFormData,
         );
       } else {
-        // Call create action
+        // Call create action for new payments
         console.log("Calling create action with:", formData);
         result = await createCiPaymentAction(formData as CiPaymentFormData);
       }
@@ -339,7 +354,9 @@ export default function CiPaymentForm({
       if (result.success) {
         toast({
           title: "Success",
-          description: `CI Payment ${isEditing ? "updated" : "submitted"} successfully.`,
+          description: isResubmitting
+            ? "CI Payment resubmitted successfully. It will be reviewed by an admin."
+            : `CI Payment ${isEditing ? "updated" : "submitted"} successfully.`,
         });
         reset();
         ciSigRef.current?.clear();

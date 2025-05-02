@@ -220,7 +220,11 @@ export default function AgentCiHistory({
 
   const canEditPayment = (payment: CiPayment): boolean => {
     if (isAdmin) return true;
-    return payment.paying_agent_id === agentId;
+    // Agents can edit their own payments if they're rejected or pending
+    return (
+      payment.paying_agent_id === agentId &&
+      (payment.status === "rejected" || payment.status === "pending")
+    );
   };
 
   const canDeletePayment = (payment: CiPayment): boolean => {
