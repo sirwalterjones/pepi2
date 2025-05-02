@@ -3,9 +3,12 @@
 import TransactionDetails from "@/components/transactions/TransactionDetails";
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
+import { sendEmail } from "@/services/resend";
+import TestEmail from "@/emails/testEmail";
 
 export default function TransactionDetailsStoryboard() {
   const [open, setOpen] = useState(true);
+  const [isSending, setIsSending] = useState(false);
 
   // Sample rejected transaction data
   const sampleTransaction = {
@@ -45,33 +48,41 @@ export default function TransactionDetailsStoryboard() {
 
   const handleTestEmail = async () => {
     try {
+      setIsSending(true);
       toast({
         title: "Sending test email",
-        description: "Attempting to send a test email notification...",
+        description: "Attempting to send a real test email notification...",
       });
 
-      // This would be replaced with an actual API call in a real implementation
-      console.log(
-        "Test email triggered for transaction:",
-        sampleTransaction.id,
-      );
+      // Get current timestamp for the email
+      const timestamp = new Date().toLocaleString();
 
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      toast({
-        title: "Test email sent",
-        description:
-          "A test email notification has been triggered successfully.",
-        variant: "success",
+      // Send an actual email using the Resend service
+      const result = await sendEmail({
+        to: "test@example.com", // Replace with your test email address
+        subject: "PEPI Money Tracker - Test Email",
+        react: <TestEmail timestamp={timestamp} />,
+        tags: [{ name: "email_type", value: "test_email" }],
       });
+
+      if (result.success) {
+        toast({
+          title: "Test email sent successfully",
+          description: `Email sent with ID: ${result.data?.id}`,
+          variant: "success",
+        });
+      } else {
+        throw new Error(result.error || "Unknown error sending email");
+      }
     } catch (error) {
       console.error("Error sending test email:", error);
       toast({
         title: "Error",
-        description: "Failed to send test email. Check console for details.",
+        description: `Failed to send test email: ${error.message}`,
         variant: "destructive",
       });
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -91,10 +102,37 @@ export default function TransactionDetailsStoryboard() {
         </button>
 
         <button
-          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2"
           onClick={handleTestEmail}
+          disabled={isSending}
         >
-          Test Email Notification
+          {isSending ? (
+            <>
+              <svg
+                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Sending...
+            </>
+          ) : (
+            "Send Real Test Email"
+          )}
         </button>
       </div>
 
