@@ -47,6 +47,8 @@ export default function AdminDashboardActions({
         description: "Attempting to send a real test email notification...",
       });
 
+      console.log("[TEST EMAIL] Sending test email via button click");
+
       // Call the API endpoint to send the email
       const response = await fetch("/api/send-test-email", {
         method: "POST",
@@ -56,6 +58,7 @@ export default function AdminDashboardActions({
       });
 
       const result = await response.json();
+      console.log("[TEST EMAIL] API response:", result);
 
       if (result.success) {
         toast({
@@ -63,11 +66,17 @@ export default function AdminDashboardActions({
           description: `Email sent with ID: ${result.data?.id}`,
           variant: "success",
         });
+
+        // Also try the debug endpoint
+        console.log("[TEST EMAIL] Trying debug endpoint as well");
+        const debugResponse = await fetch("/api/debug-email");
+        const debugResult = await debugResponse.json();
+        console.log("[TEST EMAIL] Debug endpoint response:", debugResult);
       } else {
         throw new Error(result.error || "Unknown error sending email");
       }
     } catch (error: any) {
-      console.error("Error sending test email:", error);
+      console.error("[TEST EMAIL] Error sending test email:", error);
       toast({
         title: "Error",
         description: `Failed to send test email: ${error.message}`,

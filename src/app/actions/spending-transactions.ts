@@ -88,9 +88,16 @@ export async function approveSpendingTransactionAction(transactionId: string) {
 
   // 4. Send email notification to the agent
   try {
+    console.log(
+      `[Server Action] Starting email notification process for approved transaction ${transactionId}`,
+    );
+
     // Get agent email
     const { getAgentEmail } = await import("@/services/resend");
     const agentEmail = await getAgentEmail(transaction.agent_id);
+    console.log(
+      `[Server Action] Agent email lookup result: ${agentEmail || "Not found"}`,
+    );
 
     if (agentEmail) {
       // Format amount for display
@@ -107,6 +114,7 @@ export async function approveSpendingTransactionAction(transactionId: string) {
       });
 
       // Import email components and send service
+      console.log(`[Server Action] Importing email components and services`);
       const { default: ApprovedSpendingTransactionEmail } = await import(
         "@/emails/approvedSpendingTransaction"
       );
@@ -115,9 +123,13 @@ export async function approveSpendingTransactionAction(transactionId: string) {
       // Get the origin for building the dashboard URL
       const origin = headers().get("origin") || "https://pepitracker.gov";
       const dashboardUrl = `${origin}/dashboard/transactions`;
+      console.log(`[Server Action] Dashboard URL for email: ${dashboardUrl}`);
 
       // Send email to the agent
-      await sendEmail({
+      console.log(
+        `[Server Action] Attempting to send approval email to ${agentEmail}`,
+      );
+      const emailResult = await sendEmail({
         to: agentEmail,
         subject: `Spending Transaction Approved: ${formattedAmount}`,
         react: ApprovedSpendingTransactionEmail({
@@ -135,7 +147,9 @@ export async function approveSpendingTransactionAction(transactionId: string) {
       });
 
       console.log(
-        `[Server Action] Email notification sent to agent ${transaction.agent_id} for approved spending transaction`,
+        `[Server Action] Email notification result:`,
+        emailResult,
+        `for agent ${transaction.agent_id} (approved spending transaction)`,
       );
     } else {
       console.warn(
@@ -147,6 +161,7 @@ export async function approveSpendingTransactionAction(transactionId: string) {
     console.error(
       "[Server Action] Failed to send email notification for approved transaction:",
       emailError,
+      emailError?.stack || "No stack trace available",
     );
   }
 
@@ -244,9 +259,16 @@ export async function rejectSpendingTransactionAction(
 
   // 4. Send email notification to the agent
   try {
+    console.log(
+      `[Server Action] Starting email notification process for rejected transaction ${transactionId}`,
+    );
+
     // Get agent email
     const { getAgentEmail } = await import("@/services/resend");
     const agentEmail = await getAgentEmail(transaction.agent_id);
+    console.log(
+      `[Server Action] Agent email lookup result: ${agentEmail || "Not found"}`,
+    );
 
     if (agentEmail) {
       // Format amount for display
@@ -263,6 +285,7 @@ export async function rejectSpendingTransactionAction(
       });
 
       // Import email components and send service
+      console.log(`[Server Action] Importing email components and services`);
       const { default: RejectedSpendingTransactionEmail } = await import(
         "@/emails/rejectedSpendingTransaction"
       );
@@ -271,9 +294,13 @@ export async function rejectSpendingTransactionAction(
       // Get the origin for building the dashboard URL
       const origin = headers().get("origin") || "https://pepitracker.gov";
       const dashboardUrl = `${origin}/dashboard/transactions`;
+      console.log(`[Server Action] Dashboard URL for email: ${dashboardUrl}`);
 
       // Send email to the agent
-      await sendEmail({
+      console.log(
+        `[Server Action] Attempting to send rejection email to ${agentEmail}`,
+      );
+      const emailResult = await sendEmail({
         to: agentEmail,
         subject: `Spending Transaction Rejected: ${formattedAmount}`,
         react: RejectedSpendingTransactionEmail({
@@ -291,7 +318,9 @@ export async function rejectSpendingTransactionAction(
       });
 
       console.log(
-        `[Server Action] Email notification sent to agent ${transaction.agent_id} for rejected spending transaction`,
+        `[Server Action] Email notification result:`,
+        emailResult,
+        `for agent ${transaction.agent_id} (rejected spending transaction)`,
       );
     } else {
       console.warn(
@@ -303,6 +332,7 @@ export async function rejectSpendingTransactionAction(
     console.error(
       "[Server Action] Failed to send email notification for rejected transaction:",
       emailError,
+      emailError?.stack || "No stack trace available",
     );
   }
 
