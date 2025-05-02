@@ -11,6 +11,8 @@ import { CiPayment, Agent } from "@/types/schema";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Loader2,
   FileSignature,
