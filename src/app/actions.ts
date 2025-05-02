@@ -1940,27 +1940,47 @@ export async function getCiPaymentHistoryAction(
   bookId: string,
   agentId: string | null = null,
 ): Promise<{ success: boolean; data?: CiPayment[]; error?: string }> {
-  const supabase = await createClient();
-
-  // 1. Verify user authentication
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) {
-    console.error(
-      "[getCiPaymentHistoryAction] Authentication error:",
-      userError,
-    );
-    return { success: false, error: "Authentication required." };
-  }
-
-  if (!bookId) {
-    console.warn("[getCiPaymentHistoryAction] No book ID provided.");
-    return { success: false, error: "PEPI Book ID is required." };
-  }
-
   try {
+    const supabase = await createClient();
+
+    // 1. Verify user authentication - Wrap in try/catch to handle auth errors gracefully
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error(
+          "[getCiPaymentHistoryAction] Authentication error:",
+          userError,
+        );
+        return { success: false, error: "Authentication required." };
+      }
+
+      if (!user) {
+        console.error("[getCiPaymentHistoryAction] No user found in session");
+        return {
+          success: false,
+          error: "Please sign in to view payment history.",
+        };
+      }
+    } catch (authError) {
+      console.error(
+        "[getCiPaymentHistoryAction] Auth session error:",
+        authError,
+      );
+      return {
+        success: false,
+        error: "Authentication session error. Please sign in again.",
+      };
+    }
+
+    if (!bookId) {
+      console.warn("[getCiPaymentHistoryAction] No book ID provided.");
+      return { success: false, error: "PEPI Book ID is required." };
+    }
+
     // Build query - if agentId is provided, filter by agent
     let query = supabase
       .from("ci_payments")
@@ -2301,27 +2321,26 @@ export async function updateCiPaymentAction(
     error: authError,
   } = await supabase.auth.getUser();
   if (authError || !user) {
+    console.error("[updateCiPaymentAction] Authentication error:", authError);
     return { success: false, error: "Authentication required." };
   }
 
-  const { data: agentData, error: agentError } = await supabase
+  // 2. Verify user has permission to update this payment
+  const { data: agentData, error: agentCheckError } = await supabase
     .from("agents")
     .select("id, role")
     .eq("user_id", user.id)
     .single();
 
-  if (agentError || !agentData) {
+  if (agentCheckError || !agentData) {
     console.error(
-      "[updateCiPaymentAction] Error fetching agent role:",
-      agentError,
+      `[updateCiPaymentAction] Failed to find agent record for user ${user.id}:`,
+      agentCheckError,
     );
-    return { success: false, error: "Could not verify agent role." };
+    return { success: false, error: "Agent verification failed." };
   }
 
-  const userRole = agentData.role;
-  const loggedInAgentId = agentData.id;
-
-  // 2. Fetch the existing payment to verify ownership and status (if needed)
+  // 3. Fetch the existing payment to verify ownership or admin status
   const { data: existingPayment, error: fetchError } = await supabase
     .from("ci_payments")
     .select("id, paying_agent_id, status")
@@ -2330,36 +2349,31 @@ export async function updateCiPaymentAction(
 
   if (fetchError || !existingPayment) {
     console.error(
-      `[updateCiPaymentAction] Failed to find payment ${paymentId} to update:`,
+      `[updateCiPaymentAction] Failed to find payment ${paymentId}:`,
       fetchError,
     );
-    return { success: false, error: "CI Payment not found." };
+    return { success: false, error: "Payment not found." };
   }
 
-  // 3. Authorization Check
-  if (
-    userRole !== "admin" &&
-    existingPayment.paying_agent_id !== loggedInAgentId
-  ) {
+  // Check if user is admin or the payment owner
+  const isAdmin = agentData.role === "admin";
+  const isOwner = existingPayment.paying_agent_id === agentData.id;
+
+  if (!isAdmin && !isOwner) {
     console.warn(
-      `[updateCiPaymentAction] Agent ${loggedInAgentId} attempted to update payment ${paymentId} owned by ${existingPayment.paying_agent_id}.`,
+      `[updateCiPaymentAction] Agent ${agentData.id} attempted to update payment ${paymentId} owned by ${existingPayment.paying_agent_id}.`,
     );
     return {
       success: false,
-      error: "You do not have permission to edit this payment.",
+      error: "You can only update your own payments.",
     };
   }
 
-  // Optional: Add status check if edits are restricted (e.g., only pending/rejected)
-  // if (existingPayment.status === 'approved' && userRole !== 'admin') {
-  //   return { success: false, error: "Approved payments cannot be edited by agents." };
-  // }
-
-  // 4. Validate incoming data (already validated by form, but good practice)
+  // 4. Validate input data
   const validationResult = ciPaymentSchema.safeParse(formData);
   if (!validationResult.success) {
     console.error(
-      "[updateCiPaymentAction] Invalid data received:",
+      "[updateCiPaymentAction] CI Payment validation error:",
       validationResult.error.flatten(),
     );
     const errorMessages = validationResult.error.errors
@@ -2367,44 +2381,16 @@ export async function updateCiPaymentAction(
       .join(", ");
     return { success: false, error: `Invalid form data: ${errorMessages}` };
   }
+
   const validatedData = validationResult.data;
 
-  // 5. Determine Paying Agent ID for update (Admin might change it)
-  let payingAgentIdToUpdate: string;
-  if (userRole === "admin") {
-    // Admin can specify an agent or it defaults to the logged-in admin if `paying_agent_id` is missing from form data
-    payingAgentIdToUpdate = validatedData.paying_agent_id || loggedInAgentId;
-  } else {
-    // Agent cannot change the paying agent, it remains who originally submitted
-    payingAgentIdToUpdate = existingPayment.paying_agent_id;
-  }
-
-  // 6. Prepare data for update (excluding fields that shouldn't change like receipt_number, created_at)
-  const paymentDataToUpdate = {
-    date: validatedData.date,
-    paying_agent_id: payingAgentIdToUpdate, // Use determined ID
-    amount_paid: validatedData.amount_paid,
-    case_number: validatedData.case_number,
-    paid_to: validatedData.paid_to,
-    ci_signature: validatedData.ci_signature,
-    paying_agent_signature: validatedData.paying_agent_signature,
-    witness_signature: validatedData.witness_signature,
-    paying_agent_printed_name: validatedData.paying_agent_printed_name,
-    witness_printed_name: validatedData.witness_printed_name,
-    pepi_receipt_number: validatedData.pepi_receipt_number,
-    // IMPORTANT: If status needs to reset on edit (e.g., back to pending), add it here:
-    // status: 'pending',
-    // reviewed_by: null, // Clear approval fields if status resets
-    // reviewed_at: null,
-    // commander_signature: null,
-    // rejection_reason: null,
-    updated_at: new Date().toISOString(),
-  };
-
-  // 7. Update in database
+  // 5. Update the payment
   const { data: updatedPayment, error: updateError } = await supabase
     .from("ci_payments")
-    .update(paymentDataToUpdate)
+    .update({
+      ...validatedData,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", paymentId)
     .select()
     .single();
@@ -2417,7 +2403,7 @@ export async function updateCiPaymentAction(
     return { success: false, error: `Database error: ${updateError.message}` };
   }
 
-  // 8. Revalidate paths
+  // 6. Revalidate paths
   revalidatePath("/dashboard/ci-history");
   revalidatePath("/dashboard");
 
@@ -2425,354 +2411,4 @@ export async function updateCiPaymentAction(
     `[updateCiPaymentAction] CI Payment ${paymentId} updated successfully.`,
   );
   return { success: true, data: updatedPayment as CiPayment };
-}
-
-// =============================================
-// Report Actions
-// =============================================
-
-export type MonthlyPepiMemoData = {
-  bookYear: number;
-  monthName: string;
-  memoDate: string; // Formatted date string for the memo date line
-  reconciliationDate: string; // Formatted date string for the narrative
-  commanderName: string; // Now passed in
-  beginningBalance: number;
-  totalAgentIssues: number;
-  totalAgentReturns: number;
-  totalExpenditures: number;
-  totalAdditionalUnitIssue: number;
-  cashOnHand: number;
-  endingBalance: number;
-  ytdExpenditures: number;
-  // New fields to match dashboard metrics
-  initialFunding: number; // PEPI book starting amount
-  issuedToAgents: number; // Approved funds moved to agents
-  spentByAgents: number; // Approved spending by agents
-  returnedByAgents: number; // Approved funds returned by agents
-  bookBalance: number; // Remaining funds in PEPI Book (minus all spent items)
-};
-
-/**
- * Fetches and calculates data needed for the monthly PEPI reconciliation memo.
- * @param bookId - The ID of the PEPI book.
- * @param month - The month to generate the report for (1-12).
- * @param selectedCommanderName - The name of the commander selected in the UI.
- * @param selectedMemoDateISO - The date selected in the UI for the memo (ISO string).
- */
-export async function getMonthlyPepiMemoDataAction(
-  bookId: string,
-  month: number,
-  selectedCommanderName: string,
-  selectedMemoDateISO: string,
-): Promise<{ success: boolean; data?: MonthlyPepiMemoData; error?: string }> {
-  "use server";
-  const supabase = await createClient();
-
-  // 1. Verify user is an admin (still required to access the action)
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return { success: false, error: "Authentication required." };
-  }
-  const { data: agentData, error: agentError } = await supabase
-    .from("agents")
-    .select("role") // Only need role for verification
-    .eq("user_id", user.id)
-    .single();
-
-  if (agentError || !agentData) {
-    return { success: false, error: "Could not verify your agent details." };
-  }
-  if (agentData.role !== "admin") {
-    return {
-      success: false,
-      error: "Permission denied. Only admins can generate this report.",
-    };
-  }
-  // Use passed-in commander name
-  const commanderName = selectedCommanderName;
-
-  // 2. Fetch PEPI Book details
-  const { data: bookData, error: bookError } = await supabase
-    .from("pepi_books")
-    .select("year, starting_amount, created_at")
-    .eq("id", bookId)
-    .single();
-
-  if (bookError || !bookData) {
-    console.error(
-      `[getMonthlyPepiMemoDataAction] Error fetching book ${bookId}:`,
-      bookError,
-    );
-    return {
-      success: false,
-      error: `Failed to fetch PEPI Book details: ${bookError?.message}`,
-    };
-  }
-  const bookYear = bookData.year;
-  const bookStartDateISO = new Date(bookData.created_at).toISOString();
-
-  // 3. Determine date range & format selected date
-  const year = bookYear;
-  if (month < 1 || month > 12) {
-    return { success: false, error: "Invalid month selected." };
-  }
-  if (!selectedCommanderName) {
-    return { success: false, error: "Commander name is required." };
-  }
-  let memoDateObj: Date;
-  try {
-    memoDateObj = new Date(selectedMemoDateISO);
-    if (isNaN(memoDateObj.getTime())) throw new Error("Invalid date format");
-  } catch (e) {
-    return { success: false, error: "Invalid memo date provided." };
-  }
-
-  const monthStartDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
-  const monthEndDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
-  const monthStartDateISO = monthStartDate.toISOString();
-  const monthEndDateISO = monthEndDate.toISOString();
-  const monthName = monthStartDate.toLocaleString("default", {
-    month: "long",
-    timeZone: "UTC",
-  });
-
-  // Use the selected date for formatting memo/reconciliation date
-  const memoDateFormatted = memoDateObj.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const reconciliationDateFormatted = memoDateFormatted; // Use same selected date for narrative
-
-  console.log(
-    `[getMonthlyPepiMemoDataAction] Calculating for Book: ${bookId}, Month: ${monthName} ${year}, Memo Date: ${memoDateFormatted}, Commander: ${commanderName}`,
-  );
-
-  try {
-    // --- Calculation Logic ---
-
-    // Function to fetch sum of amounts based on criteria
-    const fetchSum = async (
-      table: string,
-      column: string,
-      filters: Record<string, any>,
-      dateColumn: string = "created_at",
-    ) => {
-      let query = supabase
-        .from(table)
-        .select(`${column}, ${dateColumn}`, { count: "exact", head: false });
-      for (const key in filters) {
-        if (key === "lt") query = query.lt(dateColumn, filters[key]);
-        else if (key === "gte") query = query.gte(dateColumn, filters[key]);
-        else if (key === "lte") query = query.lte(dateColumn, filters[key]);
-        else if (
-          key === "description" &&
-          typeof filters[key] === "string" &&
-          filters[key].includes("%")
-        ) {
-          query = query.like(key, filters[key]);
-        } else query = query.eq(key, filters[key]);
-      }
-      const { data, error, count } = await query;
-      if (error) {
-        console.error(
-          `Error fetching sum from ${table} for ${column} with filters ${JSON.stringify(filters)}:`,
-          error,
-        );
-        throw new Error(
-          `Database error fetching sum from ${table}: ${error.message}`,
-        );
-      }
-      return (
-        data?.reduce(
-          (acc, row: { [key: string]: any }) => acc + (row[column] || 0),
-          0,
-        ) || 0
-      );
-    };
-
-    // 4. Calculate Beginning Balance
-    let runningBalance = bookData.starting_amount || 0;
-    console.log(
-      `[getMonthlyPepiMemoDataAction] Initial Funding (starting_amount): ${runningBalance}`,
-    );
-
-    // Get all approved transactions before the month start date
-    const { data: priorTransactions, error: priorTxError } = await supabase
-      .from("transactions")
-      .select("transaction_type, amount, description, status, receipt_number")
-      .eq("pepi_book_id", bookId)
-      .eq("status", "approved")
-      .lt("created_at", monthStartDateISO);
-
-    if (priorTxError) {
-      console.error(
-        `[getMonthlyPepiMemoDataAction] Error fetching prior transactions: ${priorTxError.message}`,
-      );
-      throw new Error(
-        `Database error fetching prior transactions: ${priorTxError.message}`,
-      );
-    }
-
-    // Process each transaction to calculate beginning balance
-    for (const tx of priorTransactions || []) {
-      if (tx.transaction_type === "issuance") {
-        if (tx.description?.includes("Approved fund request")) {
-          // Agent issues decrease balance
-          runningBalance -= tx.amount;
-          console.log(
-            `[getMonthlyPepiMemoDataAction] - Prior Agent Issue: ${tx.amount}`,
-          );
-        } else {
-          // Other issuances (initial funding, add funds) increase balance
-          runningBalance += tx.amount;
-          console.log(
-            `[getMonthlyPepiMemoDataAction] + Prior Issuance: ${tx.amount}`,
-          );
-        }
-      } else if (tx.transaction_type === "spending") {
-        // Spending decreases balance
-        runningBalance -= tx.amount;
-        console.log(
-          `[getMonthlyPepiMemoDataAction] - Prior Spending: ${tx.amount}`,
-        );
-      } else if (
-        tx.transaction_type === "return" ||
-        tx.transaction_type === "agent_return"
-      ) {
-        // Returns increase balance
-        runningBalance += tx.amount;
-        console.log(
-          `[getMonthlyPepiMemoDataAction] + Prior Return: ${tx.amount}`,
-        );
-      }
-    }
-
-    const beginningBalance = runningBalance;
-    console.log(
-      `[getMonthlyPepiMemoDataAction] Final Beginning Balance Calculated: ${beginningBalance}`,
-    );
-
-    // 5. Calculate Monthly Totals
-    // Get all approved transactions within the month
-    const { data: monthlyTransactions, error: monthlyTxError } = await supabase
-      .from("transactions")
-      .select("transaction_type, amount, description, status, receipt_number")
-      .eq("pepi_book_id", bookId)
-      .eq("status", "approved")
-      .gte("created_at", monthStartDateISO)
-      .lte("created_at", monthEndDateISO);
-
-    console.log(
-      `[getMonthlyPepiMemoDataAction] Found ${monthlyTransactions?.length || 0} transactions for the month`,
-    );
-    if (monthlyTransactions && monthlyTransactions.length > 0) {
-      console.log(
-        `[getMonthlyPepiMemoDataAction] Sample transaction:`,
-        monthlyTransactions[0],
-      );
-    }
-
-    if (monthlyTxError) {
-      console.error(
-        `[getMonthlyPepiMemoDataAction] Error fetching monthly transactions: ${monthlyTxError.message}`,
-      );
-      throw new Error(
-        `Database error fetching monthly transactions: ${monthlyTxError.message}`,
-      );
-    }
-
-    // Initialize monthly totals
-    let totalAgentIssues = 0;
-    let totalAgentReturns = 0;
-    let totalExpenditures = 0;
-    let totalAdditionalUnitIssue = 0;
-
-    // Process each transaction to calculate monthly totals
-    for (const tx of monthlyTransactions || []) {
-      if (tx.transaction_type === "issuance") {
-        if (tx.description?.toLowerCase().includes("approved fund request")) {
-          // Agent issues
-          totalAgentIssues += tx.amount;
-          console.log(
-            `[getMonthlyPepiMemoDataAction] + Monthly Agent Issue: ${tx.amount}`,
-          );
-        } else if (
-          tx.description?.toLowerCase().includes("add funds") ||
-          tx.description?.toLowerCase().includes("initial funding")
-        ) {
-          // Additional unit issue
-          totalAdditionalUnitIssue += tx.amount;
-          console.log(
-            `[getMonthlyPepiMemoDataAction] + Monthly Additional Unit Issue: ${tx.amount}`,
-          );
-        }
-      } else if (tx.transaction_type === "spending") {
-        // Expenditures
-        totalExpenditures += tx.amount;
-        console.log(
-          `[getMonthlyPepiMemoDataAction] + Monthly Expenditure: ${tx.amount}`,
-        );
-      } else if (
-        tx.transaction_type === "return" ||
-        tx.transaction_type === "agent_return"
-      ) {
-        // Agent returns
-        totalAgentReturns += tx.amount;
-        console.log(
-          `[getMonthlyPepiMemoDataAction] + Monthly Agent Return: ${tx.amount}`,
-        );
-      }
-    }
-
-    console.log(
-      `[getMonthlyPepiMemoDataAction] Monthly Totals: Issues=${totalAgentIssues}, Returns=${totalAgentReturns}, Expenditures=${totalExpenditures}, AddFunds=${totalAdditionalUnitIssue}`,
-    );
-
-    // 6. Calculate Ending Balance
-    const endingBalance =
-      beginningBalance +
-      totalAdditionalUnitIssue +
-      totalAgentReturns -
-      totalAgentIssues -
-      totalExpenditures;
-    console.log(
-      `[getMonthlyPepiMemoDataAction] Ending Balance Calculated: ${endingBalance}`,
-    );
-
-    // 7. Return the calculated data
-    return {
-      success: true,
-      data: {
-        bookYear,
-        monthName,
-        memoDate: memoDateFormatted,
-        reconciliationDate: reconciliationDateFormatted,
-        commanderName,
-        beginningBalance,
-        totalAgentIssues,
-        totalAgentReturns,
-        totalExpenditures,
-        totalAdditionalUnitIssue,
-        cashOnHand: endingBalance, // Assuming cash on hand equals ending balance
-        endingBalance,
-        ytdExpenditures: totalExpenditures, // This should be calculated for YTD, not just month
-        initialFunding: bookData.starting_amount,
-        issuedToAgents: totalAgentIssues,
-        spentByAgents: totalExpenditures,
-        returnedByAgents: totalAgentReturns,
-        bookBalance: endingBalance,
-      },
-    };
-  } catch (error: any) {
-    console.error(`[getMonthlyPepiMemoDataAction] Error: ${error.message}`);
-    return {
-      success: false,
-      error: `Failed to generate report: ${error.message}`,
-    };
-  }
 }
