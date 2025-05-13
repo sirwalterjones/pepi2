@@ -19,14 +19,10 @@ const nextConfig = {
       config.optimization.minimize = true;
     }
 
-    // Fix for "Unsupported Server Component type: Module" error
-    config.module = config.module || {};
-    config.module.parser = config.module.parser || {};
-    config.module.parser.javascript = config.module.parser.javascript || {};
-    config.module.parser.javascript.exportsPresence = false;
-
     return config;
   },
+  // Disable static exports to fix "Unsupported Server Component type" errors
+  output: "standalone",
   // Set page extensions
   pageExtensions: ["tsx", "ts", "jsx", "js"],
   // Ignore build errors in the tempobook directory
