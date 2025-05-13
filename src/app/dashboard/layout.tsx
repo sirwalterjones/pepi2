@@ -1,7 +1,9 @@
 import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
 
-// Import the dashboard navbar directly from the .tsx file instead of .jsx
-import DashboardNavbar from "@/components/dashboard-navbar";
+// Import the navItems from dashboard-navbar
+import { navItems } from "@/components/dashboard-navbar";
 
 export default function DashboardLayout({
   children,
@@ -13,7 +15,7 @@ export default function DashboardLayout({
       <div className="hide-on-print bg-white border-b border-gray-200 shadow-sm">
         <div className="container mx-auto px-4 py-2 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Shield className="h-6 w-6 text-blue-600" />
+            <ShieldCheck className="h-6 w-6 text-blue-600" />
             <span className="font-bold text-lg">PEPI Tracker</span>
           </div>
           <nav>
