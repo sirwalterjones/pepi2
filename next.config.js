@@ -1,16 +1,11 @@
 /** @type {import('next').NextConfig} */
-
 const nextConfig = {
   images: {
-    domains: ["images.unsplash.com"],
+    domains: ["images.unsplash.com", "api.dicebear.com"],
   },
-  distDir: ".next",
-  // Use a different port to avoid conflicts
   experimental: {
-    serverComponentsExternalPackages: [],
-    serverActions: {
-      bodySizeLimit: "2mb",
-    },
+    serverComponentsExternalPackages: ["pdf-lib"],
+    serverActions: true,
   },
   // Production optimizations
   webpack: (config, { isServer }) => {
@@ -19,20 +14,21 @@ const nextConfig = {
       config.optimization.minimize = true;
     }
 
+    // Fix for "Unsupported Server Component type: Module" error
+    if (isServer) {
+      config.experiments = {
+        ...config.experiments,
+        layers: true,
+      };
+    }
+
     return config;
   },
-  // Removed standalone output mode to fix "Unsupported Server Component type" errors
-  // Set page extensions
-  pageExtensions: ["tsx", "ts", "jsx", "js"],
-  // Ignore build errors in the tempobook directory
+  // Ignore build errors to allow deployment
   typescript: {
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
     ignoreBuildErrors: true,
   },
   eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
 };

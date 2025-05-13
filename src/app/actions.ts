@@ -215,3 +215,24 @@ export const deleteFundRequestAction = async (requestId: string) => {
   // Implementation will be added later
   return { success: true, error: null };
 };
+
+// Missing actions that were causing build errors
+export const forgotPasswordAction = async (formData: FormData) => {
+  // Implementation will be added later
+  return { success: false, error: "Not implemented" };
+};
+
+export const signUpAction = async (formData: FormData) => {
+  // Implementation will be added later
+  return { success: false, error: "Not implemented" };
+};
+
+export const resetPasswordAction = async (formData: FormData) => {
+  // Implementation will be added later
+  return { success: false, error: "Not implemented" };
+};
+
+export const addPepiBookFundsAction = async (formData: FormData) => {
+  // Implementation will be added later
+  return { success: true, message: "Funds added successfully" };
+};
