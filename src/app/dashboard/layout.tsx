@@ -1,13 +1,7 @@
-import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 
-// Use dynamic import with no SSR to avoid hydration issues
-const DashboardNavbar = dynamic(
-  () => import("@/components/dashboard-navbar.jsx"),
-  {
-    ssr: false,
-  },
-);
+// Import the dashboard navbar directly without dynamic import
+import DashboardNavbar from "@/components/dashboard-navbar.jsx";
 
 export default function DashboardLayout({
   children,

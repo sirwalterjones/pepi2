@@ -4,7 +4,7 @@ const nextConfig = {
   images: {
     domains: ["images.unsplash.com"],
   },
-  output: "standalone",
+  output: "export",
   distDir: ".next",
   // Use a different port to avoid conflicts
   experimental: {
