@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Filter, RefreshCw, Download } from "lucide-react";
+import { RefreshCw, Download } from "lucide-react";
 
 interface AuditLogWithUser extends AuditLog {
   user?: {

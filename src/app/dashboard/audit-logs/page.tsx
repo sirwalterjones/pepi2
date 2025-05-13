@@ -1,6 +1,7 @@
 import { createClient } from "../../../../supabase/server";
 import { redirect } from "next/navigation";
 import AuditLogList from "@/components/audit/AuditLogList";
+import { FileText } from "lucide-react";
 
 export const revalidate = 0; // Prevent caching for dynamic data
 
