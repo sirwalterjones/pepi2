@@ -18,8 +18,8 @@ export default async function ResetPassword(props: {
   }
 
   return (
-    <>
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-blue-50 to-white px-3 sm:px-4 py-6 sm:py-8">
+    <div className="absolute inset-0 z-50 bg-gradient-to-b from-blue-50 to-white">
+      <div className="flex min-h-screen flex-col items-center justify-center px-3 sm:px-4 py-6 sm:py-8">
         <div className="w-full max-w-md rounded-xl border border-blue-100 bg-white p-5 sm:p-8 shadow-lg">
           <div className="mb-4 sm:mb-6 flex justify-center">
             <div className="flex h-14 sm:h-16 w-14 sm:w-16 items-center justify-center rounded-full bg-blue-100 text-blue-600">
@@ -89,6 +89,6 @@ export default async function ResetPassword(props: {
           </form>
         </div>
       </div>
-    </>
+    </div>
   );
 }
