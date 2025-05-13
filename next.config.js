@@ -5,7 +5,7 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: ["pdf-lib"],
-    serverActions: true,
+    // Remove serverActions: true as it's now available by default
   },
   // Production optimizations
   webpack: (config, { isServer }) => {
@@ -31,6 +31,8 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Add output: 'standalone' to fix module errors
+  output: "standalone",
 };
 
 module.exports = nextConfig;
