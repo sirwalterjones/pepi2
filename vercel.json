@@ -10,5 +10,6 @@
     "deploymentEnabled": {
       "main": true
     }
-  }
+  },
+  "regions": ["iad1"]
 }
