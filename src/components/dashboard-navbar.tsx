@@ -1,3 +1,5 @@
+import { Home, Shield, FileText, Users, BarChart3 } from "lucide-react";
+
 const navItems = [
   {
     name: "Dashboard",
