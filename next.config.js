@@ -19,6 +19,13 @@ const nextConfig = {
       // Enable aggressive code minification
       config.optimization.minimize = true;
     }
+
+    // Fix for "Unsupported Server Component type: Module" error
+    config.module = config.module || {};
+    config.module.parser = config.module.parser || {};
+    config.module.parser.javascript = config.module.parser.javascript || {};
+    config.module.parser.javascript.exportsPresence = false;
+
     return config;
   },
   // Set page extensions

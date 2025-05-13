@@ -50,3 +50,5 @@ const navItems = [
     showFor: ["admin"],
   },
 ];
+
+export { navItems };

@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { usePepiBooks } from "@/hooks/usePepiBooks";
-import { PepiBook } from "@/types/schema";
 import { Badge } from "@/components/ui/badge";
 import { Home, Shield, FileText, Users, BarChart3 } from "lucide-react";
 
