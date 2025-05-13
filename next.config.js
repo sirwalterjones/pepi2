@@ -9,6 +9,11 @@ const nextConfig = {
   // Use a different port to avoid conflicts
   experimental: {
     serverComponentsExternalPackages: [],
+    serverActions: {
+      bodySizeLimit: "2mb",
+    },
+    // Enable top-level await support
+    topLevelAwait: true,
   },
   // Production optimizations
   webpack: (config, { isServer }) => {
