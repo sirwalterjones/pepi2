@@ -1,11 +1,14 @@
 /** @type {import('next').NextConfig} */
+
 const nextConfig = {
   images: {
-    domains: ["images.unsplash.com", "api.dicebear.com"],
+    domains: ["images.unsplash.com"],
   },
+  output: "standalone",
+  distDir: ".next",
+  // Use a different port to avoid conflicts
   experimental: {
-    serverComponentsExternalPackages: ["pdf-lib"],
-    // Remove serverActions: true as it's now available by default
+    serverComponentsExternalPackages: [],
   },
   // Production optimizations
   webpack: (config, { isServer }) => {
@@ -13,26 +16,21 @@ const nextConfig = {
       // Enable aggressive code minification
       config.optimization.minimize = true;
     }
-
-    // Fix for "Unsupported Server Component type: Module" error
-    if (isServer) {
-      config.experiments = {
-        ...config.experiments,
-        layers: true,
-      };
-    }
-
     return config;
   },
-  // Ignore build errors to allow deployment
+  // Set page extensions
+  pageExtensions: ["tsx", "ts", "jsx", "js"],
+  // Ignore build errors in the tempobook directory
   typescript: {
+    // Dangerously allow production builds to successfully complete even if
+    // your project has type errors.
     ignoreBuildErrors: true,
   },
   eslint: {
+    // Warning: This allows production builds to successfully complete even if
+    // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
-  // Add output: 'standalone' to fix module errors
-  output: "standalone",
 };
 
 module.exports = nextConfig;

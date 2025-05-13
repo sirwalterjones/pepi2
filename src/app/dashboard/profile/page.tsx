@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
+import React, { useState } from 'react';
 // April 23, 2025 - Testing deployment flow from Cursor to Vercel
-import { createClient } from "@/../supabase/client";
-import { redirect } from "next/navigation";
-import ProfileForm from "@/components/profile/ProfileForm";
-import { Agent } from "@/types/schema";
-import { Button } from "@/components/ui/button";
+import { createClient } from '@/../supabase/client';
+import { redirect } from 'next/navigation';
+import ProfileForm from '@/components/profile/ProfileForm';
+import { Agent } from '@/types/schema';
+import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,10 +18,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { toast } from "@/components/ui/use-toast";
-import { resetActivePepiBookAction } from "@/app/actions";
-import { useRouter } from "next/navigation";
+import { Input } from '@/components/ui/input';
+import { toast } from '@/components/ui/use-toast';
+import { resetActivePepiBookAction } from '@/app/actions';
+import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
   console.log("[Profile Page] Component Rendered");
@@ -32,7 +32,7 @@ export default function ProfilePage() {
   const [isLoadingAgent, setIsLoadingAgent] = React.useState(true);
 
   const [isResetAlertOpen, setIsResetAlertOpen] = useState(false);
-  const [confirmationText, setConfirmationText] = useState("");
+  const [confirmationText, setConfirmationText] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const CONFIRMATION_PHRASE = "Delete Transactions";
 
@@ -40,30 +40,25 @@ export default function ProfilePage() {
     const fetchAgent = async () => {
       try {
         setIsLoadingAgent(true);
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          router.push("/sign-in");
+          router.push('/sign-in');
           return;
         }
         console.log("[Profile Page] Fetched User ID:", user.id);
 
         const { data, error } = await supabase
-          .from("agents")
-          .select("*")
-          .eq("user_id", user.id)
+          .from('agents')
+          .select('*')
+          .eq('user_id', user.id)
           .single();
 
         if (error || !data) {
-          console.error(
-            "Profile Page: Failed to fetch agent data for user " + user.id,
-            error,
-          );
+          console.error("Profile Page: Failed to fetch agent data for user " + user.id, error);
           toast({
-            title: "Error",
-            description: "Could not load your profile data. Please try again.",
-            variant: "destructive",
+              title: "Error",
+              description: "Could not load your profile data. Please try again.",
+              variant: "destructive",
           });
         } else {
           console.log("[Profile Page] Fetched Agent Data:", data);
@@ -71,14 +66,13 @@ export default function ProfilePage() {
         }
         setIsLoadingAgent(false);
       } catch (error) {
-        console.error("[Profile Page] Error fetching agent data:", error);
-        toast({
-          title: "Error Loading Profile",
-          description:
-            "Could not load your profile data. Please check the console or contact support.",
-          variant: "destructive",
-        });
-        setIsLoadingAgent(false);
+         console.error("[Profile Page] Error fetching agent data:", error);
+         toast({
+             title: "Error Loading Profile",
+             description: "Could not load your profile data. Please check the console or contact support.",
+             variant: "destructive",
+         });
+         setIsLoadingAgent(false);
       }
     };
 
@@ -104,7 +98,7 @@ export default function ProfilePage() {
         description: "Active PEPI Book reset successfully.",
       });
       setIsResetAlertOpen(false);
-      setConfirmationText("");
+      setConfirmationText('');
       router.refresh();
     } else {
       toast({
@@ -117,19 +111,11 @@ export default function ProfilePage() {
   };
 
   if (isLoadingAgent) {
-    return (
-      <div className="container mx-auto py-6 text-center">
-        Loading profile...
-      </div>
-    );
+      return <div className="container mx-auto py-6 text-center">Loading profile...</div>;
   }
 
   if (!agentData) {
-    return (
-      <div className="container mx-auto py-6 text-center text-red-500">
-        Failed to load profile data. Please contact support.
-      </div>
-    );
+      return <div className="container mx-auto py-6 text-center text-red-500">Failed to load profile data. Please contact support.</div>;
   }
 
   return (
@@ -139,19 +125,14 @@ export default function ProfilePage() {
       </div>
       <ProfileForm agent={agentData} />
 
-      {agentData.role === "admin" && (
+      {agentData.role === 'admin' && (
         <div className="mt-8 pt-6 border-t border-destructive/20">
-          <h2 className="text-lg font-semibold text-destructive mb-2">
-            Admin Actions
-          </h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            Danger zone: These actions are irreversible. Proceed with caution.
-          </p>
+           <h2 className="text-lg font-semibold text-destructive mb-2">Admin Actions</h2>
+           <p className="text-sm text-muted-foreground mb-4">
+             Danger zone: These actions are irreversible. Proceed with caution.
+           </p>
 
-          <AlertDialog
-            open={isResetAlertOpen}
-            onOpenChange={setIsResetAlertOpen}
-          >
+          <AlertDialog open={isResetAlertOpen} onOpenChange={setIsResetAlertOpen}>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" disabled={isResetting}>
                 {isResetting ? "Resetting..." : "Reset Active PEPI Book"}
@@ -162,16 +143,10 @@ export default function ProfilePage() {
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
                   This action cannot be undone. This will permanently delete all
-                  transactions, CI payments, and fund requests associated with
-                  the
-                  <span className="font-semibold">
-                    {" "}
-                    currently active PEPI book
-                  </span>
-                  . To confirm, please type{" "}
-                  <strong className="text-foreground">
-                    {CONFIRMATION_PHRASE}
-                  </strong>{" "}
+                  transactions, CI payments, and fund requests associated with the
+                  <span className="font-semibold"> currently active PEPI book</span>.
+                  To confirm, please type{" "}
+                  <strong className="text-foreground">{CONFIRMATION_PHRASE}</strong>{" "}
                   in the box below.
                 </AlertDialogDescription>
               </AlertDialogHeader>
@@ -184,14 +159,10 @@ export default function ProfilePage() {
                 />
               </div>
               <AlertDialogFooter>
-                <AlertDialogCancel disabled={isResetting}>
-                  Cancel
-                </AlertDialogCancel>
+                <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleResetConfirm}
-                  disabled={
-                    confirmationText !== CONFIRMATION_PHRASE || isResetting
-                  }
+                  disabled={confirmationText !== CONFIRMATION_PHRASE || isResetting}
                   className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                 >
                   {isResetting ? "Processing..." : "Confirm Reset"}
@@ -199,12 +170,11 @@ export default function ProfilePage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <p className="text-xs text-muted-foreground mt-2">
-            This will clear the transaction history for the currently active
-            book only.
-          </p>
+           <p className="text-xs text-muted-foreground mt-2">
+             This will clear the transaction history for the currently active book only.
+           </p>
         </div>
       )}
     </div>
   );
-}
+} 

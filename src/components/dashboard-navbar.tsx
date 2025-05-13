@@ -1,5 +1,3 @@
-import { Home, Shield, FileText, Users, BarChart3 } from "lucide-react";
-
 const navItems = [
   {
     name: "Dashboard",
@@ -50,5 +48,3 @@ const navItems = [
     showFor: ["admin"],
   },
 ];
-
-export { navItems };
