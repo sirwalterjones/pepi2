@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
-// Import the dashboard navbar directly without dynamic import
-import DashboardNavbar from "@/components/dashboard-navbar.jsx";
+// Import the dashboard navbar directly from the .tsx file instead of .jsx
+import DashboardNavbar from "@/components/dashboard-navbar";
 
 export default function DashboardLayout({
   children,

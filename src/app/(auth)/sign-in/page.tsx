@@ -10,6 +10,9 @@ interface LoginProps {
   searchParams: Promise<Message>;
 }
 
+// Add dynamic export to fix the error with searchParams.then
+export const dynamic = "force-dynamic";
+
 export default async function SignInPage({ searchParams }: LoginProps) {
   const message = await searchParams;
 
