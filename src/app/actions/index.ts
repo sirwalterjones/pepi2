@@ -19,7 +19,7 @@ export const resetPasswordAction = async (formData: FormData) => {
   return { success: false, error: "Not implemented" };
 };
 
-export const addPepiBookFundsAction = async (data: any) => {
+export const addPepiBookFundsAction = async (formData: FormData) => {
   // Implementation would go here
   return { success: false, error: "Not implemented" };
 };

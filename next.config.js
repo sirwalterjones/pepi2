@@ -21,8 +21,7 @@ const nextConfig = {
 
     return config;
   },
-  // Use standalone mode to fix "Unsupported Server Component type" errors
-  output: "standalone",
+  // Removed standalone output mode to fix "Unsupported Server Component type" errors
   // Set page extensions
   pageExtensions: ["tsx", "ts", "jsx", "js"],
   // Ignore build errors in the tempobook directory
