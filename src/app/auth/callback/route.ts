@@ -12,6 +12,14 @@ export async function GET(request: Request) {
   }
 
   // URL to redirect to after sign in process completes
-  const redirectTo = redirect_to || "/dashboard";
+  // Check if the redirect is to the protected/reset-password path and change it to dashboard/reset-password
+  let redirectTo = redirect_to || "/dashboard";
+  if (
+    redirectTo.includes("/protected/reset-password") ||
+    redirectTo === "/protected/reset-password"
+  ) {
+    redirectTo = "/dashboard/reset-password";
+  }
+
   return NextResponse.redirect(new URL(redirectTo, requestUrl.origin));
-} 
+}
