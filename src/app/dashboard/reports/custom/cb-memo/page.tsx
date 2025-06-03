@@ -494,14 +494,14 @@ export default function CbMemoReportPage() {
                   <tr>
                     <td>Book Balance (Safe Cash)</td>
                     <td>
-                      ${memoData.bookBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      $${memoData.bookBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
                   <tr>
                     <td>Cash with Agents</td>
                     <td>
-                      ${(memoData.cashWithAgents || memoData.agentCashBalance || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      $${(data.cashWithAgents || data.agentCashBalance || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
