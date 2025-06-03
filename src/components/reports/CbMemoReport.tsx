@@ -24,6 +24,7 @@ type CbMemoReportProps = {
     spentByAgents: number;
     returnedByAgents: number;
     bookBalance: number;
+    cashWithAgents: number;
   };
 };
 
@@ -258,6 +259,25 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
                 }}
               >
                 {formatCurrency(data.bookBalance)}
+                <span className="text-xs ml-1 text-gray-600">(Current)</span>
+              </td>
+            </tr>
+            <tr className="border border-black">
+              <td
+                className="border border-black px-2 py-1"
+                style={{ border: "1px solid black", padding: "8px" }}
+              >
+                Cash with Agents
+              </td>
+              <td
+                className="border border-black px-2 py-1 text-right"
+                style={{
+                  border: "1px solid black",
+                  padding: "8px",
+                  textAlign: "right",
+                }}
+              >
+                {formatCurrency(data.cashWithAgents)}
                 <span className="text-xs ml-1 text-gray-600">(Current)</span>
               </td>
             </tr>

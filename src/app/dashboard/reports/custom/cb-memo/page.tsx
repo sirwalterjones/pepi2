@@ -272,6 +272,7 @@ export default function CbMemoReportPage() {
           currentBalance: pepiBookBalance,
           cashOnHand: safeCashBalance,
           agentCashBalance: totalIssuedToAgents,
+          cashWithAgents: totalIssuedToAgents,
           endingBalance: pepiBookBalance,
           // Add flags to indicate which values are filtered by month vs. current totals
           isMonthlyFiltered: true,
@@ -459,21 +460,28 @@ export default function CbMemoReportPage() {
                   <tr>
                     <td>Total Spent By Agents</td>
                     <td>
-                      $${memoData.spentByAgents.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      <span class="memo-label">(${memoData.monthName})</span>
+                      ${formatMoney(data.spentByAgents)}
+                      <span class="memo-label">(${data.monthName})</span>
                     </td>
                   </tr>
                   <tr>
                     <td>Total Returned By Agents</td>
                     <td>
-                      $${memoData.returnedByAgents.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      <span class="memo-label">(${memoData.monthName})</span>
+                      ${formatMoney(data.returnedByAgents)}
+                      <span class="memo-label">(${data.monthName})</span>
                     </td>
                   </tr>
                   <tr>
                     <td>Book Balance (Safe Cash)</td>
                     <td>
-                      $${memoData.bookBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ${formatMoney(data.bookBalance)}
+                      <span class="memo-label">(Current)</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Cash with Agents</td>
+                    <td>
+                      ${formatMoney(data.cashWithAgents || data.agentCashBalance)}
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
@@ -484,7 +492,7 @@ export default function CbMemoReportPage() {
                     <td>Additional Unit Issue</td>
                     <td>
                       $${memoData.totalAdditionalUnitIssue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      <span class="memo-label">(${memoData.monthName})</span>
+                      <span class="memo-label">(${data.monthName})</span>
                     </td>
                   </tr>`
                       : ""
@@ -789,4 +797,11 @@ export default function CbMemoReportPage() {
       `}</style>
     </div>
   );
+}
+
+function formatMoney(amount: number): string {
+  return amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
