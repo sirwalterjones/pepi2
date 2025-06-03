@@ -188,6 +188,15 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
                 <span className="text-xs ml-1 text-gray-600">(Current)</span>
               </td>
             </tr>
+            <tr className="border border-black">
+              <td className="border border-black px-2 py-1">
+                Cash with Agents
+              </td>
+              <td className="border border-black px-2 py-1 text-right">
+                {formatCurrency(memoData.agentCashBalance)}
+                <span className="text-xs ml-1 text-gray-600">(Current)</span>
+              </td>
+            </tr>
             {memoData.totalAdditionalUnitIssue > 0 && (
               <tr className="border border-black">
                 <td className="border border-black px-2 py-1">
