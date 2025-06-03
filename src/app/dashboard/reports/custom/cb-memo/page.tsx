@@ -505,13 +505,6 @@ export default function CbMemoReportPage() {
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
-                  <tr>
-                    <td>Cash with Agents</td>
-                    <td>
-                      ${formatMoney(data.cashWithAgents || data.agentCashBalance || 0)}
-                      <span class="memo-label">(Current)</span>
-                    </td>
-                  </tr>
                   ${
                     memoData.totalAdditionalUnitIssue > 0
                       ? `
@@ -519,7 +512,7 @@ export default function CbMemoReportPage() {
                     <td>Additional Unit Issue</td>
                     <td>
                       $${memoData.totalAdditionalUnitIssue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      <span class="memo-label">(${data.monthName})</span>
+                      <span class="memo-label">(${memoData.monthName})</span>
                     </td>
                   </tr>`
                       : ""
