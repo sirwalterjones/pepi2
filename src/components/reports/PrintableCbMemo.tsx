@@ -24,6 +24,7 @@ type PrintableCbMemoProps = {
     returnedByAgents: number;
     bookBalance: number;
     cashWithAgents: number;
+    agentCashBalance?: number; // Add optional agentCashBalance property
   };
 };
 
@@ -222,7 +223,9 @@ const PrintableCbMemo: React.FC<PrintableCbMemoProps> = ({ data }) => {
             <tr>
               <td>Cash with Agents</td>
               <td>
-                {formatCurrency(data.cashWithAgents)}
+                {formatCurrency(
+                  data.cashWithAgents || data.agentCashBalance || 0,
+                )}
                 <span className="memo-label">(Current)</span>
               </td>
             </tr>
