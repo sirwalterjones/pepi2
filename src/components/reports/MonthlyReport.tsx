@@ -521,7 +521,7 @@ export default function MonthlyReport() {
                   <tr>
                     <td>Cash with Agents</td>
                     <td>
-                      ${formatMoney(data.agentCashBalance || 0)}
+                      ${formatMoney(stats.agentCashBalance || 0)}
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
