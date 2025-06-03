@@ -187,7 +187,7 @@ export default function CbMemoReportPage() {
 
           if (transaction.transaction_type === "issuance") {
             if (transaction.agent_id !== null) {
-              // Issuance TO an agent
+              // Issuance TO an agent - this increases cash with agents
               totalIssuedToAgents += amount;
               // Does NOT affect book balance directly
             } else if (transaction.receipt_number?.startsWith("ADD")) {
@@ -203,13 +203,23 @@ export default function CbMemoReportPage() {
               totalIssuedToAgents -= amount;
             }
           } else if (transaction.transaction_type === "return") {
-            // Returns only affect agent cash on hand
+            // Returns only affect agent cash on hand - they return money, reducing cash with agents
             if (transaction.agent_id) {
               totalIssuedToAgents -= amount;
               totalReturnedByAgents += amount;
             }
           }
         }
+      });
+
+      // Ensure totalIssuedToAgents doesn't go negative
+      totalIssuedToAgents = Math.max(0, totalIssuedToAgents);
+
+      console.log("Cash with Agents calculation:", {
+        totalIssuedToAgents,
+        totalSpentByAgents,
+        totalReturnedByAgents,
+        totalAddedToBook,
       });
 
       // Calculate current balance: initial + additions - expenditures
