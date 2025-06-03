@@ -664,6 +664,8 @@ export default function MonthlyReport() {
                 spentByAgents: stats.spendingTotal,
                 returnedByAgents: stats.totalReturned,
                 bookBalance: stats.cashOnHand,
+                agentCashBalance: stats.agentCashBalance,
+                cashWithAgents: stats.agentCashBalance || 0,
               }}
             />
           </div>
