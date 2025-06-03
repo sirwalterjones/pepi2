@@ -298,6 +298,8 @@ export default function CbMemoReportPage() {
           isMonthlyFiltered: true,
           selectedMonth: selectedMonth,
           selectedYear: activeBook.year,
+          // Ensure bookBalance is set correctly for the memo display
+          bookBalance: safeCashBalance,
         };
         setMemoData(enhancedData);
       } else {
@@ -501,7 +503,7 @@ export default function CbMemoReportPage() {
                   <tr>
                     <td>Cash with Agents</td>
                     <td>
-                      $${(data.cashWithAgents || data.agentCashBalance || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ${(memoData.cashWithAgents || memoData.agentCashBalance || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
