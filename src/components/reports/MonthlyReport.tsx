@@ -422,6 +422,7 @@ export default function MonthlyReport() {
           spentByAgents: stats.spendingTotal,
           returnedByAgents: stats.totalReturned,
           bookBalance: stats.cashOnHand,
+          cashWithAgents: stats.agentCashBalance || 0,
         };
 
         const formatMoney = (amount) => {
@@ -521,7 +522,7 @@ export default function MonthlyReport() {
                   <tr>
                     <td>Cash with Agents</td>
                     <td>
-                      ${formatMoney(stats.agentCashBalance || 0)}
+                      ${formatMoney(data.cashWithAgents)}
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
