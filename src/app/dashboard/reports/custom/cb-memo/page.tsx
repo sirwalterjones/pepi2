@@ -290,6 +290,10 @@ export default function CbMemoReportPage() {
           issuedToAgents: totalIssuedToAgents,
           spentByAgents: totalSpentByAgents,
           returnedByAgents: totalReturnedByAgents,
+          // Add monthly filtered values for display
+          monthlyIssuedToAgents: monthlyAgentIssues,
+          monthlySpentByAgents: monthlySpending,
+          monthlyReturnedByAgents: monthlyReturned,
           // Add flags to indicate which values are filtered by month vs. current totals
           isMonthlyFiltered: true,
           selectedMonth: selectedMonth,
