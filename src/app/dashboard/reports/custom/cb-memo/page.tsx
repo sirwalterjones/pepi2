@@ -480,21 +480,28 @@ export default function CbMemoReportPage() {
                   <tr>
                     <td>Total Spent By Agents</td>
                     <td>
-                      ${formatMoney(data.spentByAgents)}
-                      <span class="memo-label">(${data.monthName})</span>
+                      ${memoData.spentByAgents.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <span class="memo-label">(${memoData.monthName})</span>
                     </td>
                   </tr>
                   <tr>
                     <td>Total Returned By Agents</td>
                     <td>
-                      ${formatMoney(data.returnedByAgents)}
-                      <span class="memo-label">(${data.monthName})</span>
+                      ${memoData.returnedByAgents.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <span class="memo-label">(${memoData.monthName})</span>
                     </td>
                   </tr>
                   <tr>
                     <td>Book Balance (Safe Cash)</td>
                     <td>
-                      ${formatMoney(data.bookBalance)}
+                      ${memoData.bookBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <span class="memo-label">(Current)</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Cash with Agents</td>
+                    <td>
+                      ${(memoData.cashWithAgents || memoData.agentCashBalance || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
