@@ -426,10 +426,10 @@ export default function MonthlyReport() {
         };
 
         const formatMoney = (amount) => {
-          return amount.toLocaleString("en-US", {
+          return `${amount.toLocaleString("en-US", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
-          });
+          })}`;
         };
 
         const upperInitials = commanderName
@@ -522,7 +522,7 @@ export default function MonthlyReport() {
                   <tr>
                     <td>Cash with Agents</td>
                     <td>
-                      ${formatMoney(data.cashWithAgents || data.agentCashBalance || 0)}
+                      ${formatMoney(data.cashWithAgents || 0)}
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
