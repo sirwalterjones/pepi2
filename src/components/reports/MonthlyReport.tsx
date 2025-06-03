@@ -522,6 +522,13 @@ export default function MonthlyReport() {
                   <tr>
                     <td>Cash with Agents</td>
                     <td>
+                      ${formatMoney(data.cashWithAgents || 0)}
+                      <span class="memo-label">(Current)</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Cash with Agents</td>
+                    <td>
                       ${formatMoney(data.cashWithAgents)}
                       <span class="memo-label">(Current)</span>
                     </td>
