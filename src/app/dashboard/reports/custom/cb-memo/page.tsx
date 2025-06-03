@@ -505,13 +505,6 @@ export default function CbMemoReportPage() {
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
-                  <tr>
-                    <td>Cash with Agents</td>
-                    <td>
-                      ${formatMoney(data.cashWithAgents || data.agentCashBalance)}
-                      <span class="memo-label">(Current)</span>
-                    </td>
-                  </tr>
                   ${
                     memoData.totalAdditionalUnitIssue > 0
                       ? `
