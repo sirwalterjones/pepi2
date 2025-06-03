@@ -220,6 +220,8 @@ export default function CbMemoReportPage() {
         totalSpentByAgents,
         totalReturnedByAgents,
         totalAddedToBook,
+        pepiBookBalance,
+        safeCashBalance,
       });
 
       // Calculate current balance: initial + additions - expenditures
@@ -284,6 +286,10 @@ export default function CbMemoReportPage() {
           agentCashBalance: totalIssuedToAgents,
           cashWithAgents: totalIssuedToAgents,
           endingBalance: pepiBookBalance,
+          // Ensure these values are available for the memo display
+          issuedToAgents: totalIssuedToAgents,
+          spentByAgents: totalSpentByAgents,
+          returnedByAgents: totalReturnedByAgents,
           // Add flags to indicate which values are filtered by month vs. current totals
           isMonthlyFiltered: true,
           selectedMonth: selectedMonth,
