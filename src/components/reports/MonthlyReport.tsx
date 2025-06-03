@@ -526,13 +526,6 @@ export default function MonthlyReport() {
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
-                  <tr>
-                    <td>Cash with Agents</td>
-                    <td>
-                      ${formatMoney(data.cashWithAgents)}
-                      <span class="memo-label">(Current)</span>
-                    </td>
-                  </tr>
                   ${
                     data.totalAdditionalUnitIssue > 0
                       ? `

@@ -501,6 +501,13 @@ export default function CbMemoReportPage() {
                   <tr>
                     <td>Cash with Agents</td>
                     <td>
+                      ${formatMoney(data.cashWithAgents || data.agentCashBalance || 0)}
+                      <span class="memo-label">(Current)</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Cash with Agents</td>
+                    <td>
                       ${formatMoney(data.cashWithAgents || data.agentCashBalance)}
                       <span class="memo-label">(Current)</span>
                     </td>
