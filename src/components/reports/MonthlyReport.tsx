@@ -163,6 +163,8 @@ export default function MonthlyReport() {
     });
 
     // Allow totalIssuedToAgents to be negative if that's the actual calculated value
+    // Ensure it's never undefined
+    totalIssuedToAgents = totalIssuedToAgents || 0;
 
     // Calculate current balance: initial + additions - expenditures
     let pepiBookBalance = initialAmount + totalAddedToBook - totalSpentByAgents;
@@ -684,7 +686,7 @@ export default function MonthlyReport() {
                 spentByAgents: stats.spendingTotal,
                 returnedByAgents: stats.totalReturned,
                 bookBalance: stats.cashOnHand,
-                cashWithAgents: stats.agentCashBalance || 0,
+                cashWithAgents: stats.agentCashBalance, // Already handled in CbMemoReport
               }}
             />
           </div>

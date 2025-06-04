@@ -277,7 +277,7 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
                   textAlign: "right",
                 }}
               >
-                {formatCurrency(data.cashWithAgents)}
+                {formatCurrency(data.cashWithAgents || 0)}
                 <span className="text-xs ml-1 text-gray-600">(Current)</span>
               </td>
             </tr>
