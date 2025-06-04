@@ -162,6 +162,9 @@ export default function MonthlyReport() {
       }
     });
 
+    // Ensure totalIssuedToAgents is never negative
+    totalIssuedToAgents = Math.max(0, totalIssuedToAgents);
+
     // Calculate current balance: initial + additions - expenditures
     let pepiBookBalance = initialAmount + totalAddedToBook - totalSpentByAgents;
 
@@ -429,6 +432,7 @@ export default function MonthlyReport() {
         console.log("CB Memo Data:", {
           agentCashBalance: stats.agentCashBalance,
           cashWithAgents: data.cashWithAgents,
+          totalIssuedToAgents: totalIssuedToAgents,
           allStats: stats,
         });
 
