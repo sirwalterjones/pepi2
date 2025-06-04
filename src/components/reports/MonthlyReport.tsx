@@ -121,7 +121,7 @@ export default function MonthlyReport() {
     // Calculate statistics for ALL transactions (not filtered by month)
     // This ensures the cash balances show the current totals
     let totalIssuedToAgents = 0;
-    let totalSpentByAgents = 0;
+    let totalSpentByAgentsAll = 0;
     let totalReturnedByAgents = 0;
     let totalAddedToBook = 0;
     const initialAmount = activePepiBook?.starting_amount || 0;
@@ -143,7 +143,7 @@ export default function MonthlyReport() {
           }
         } else if (transaction.transaction_type === "spending") {
           // All spending reduces the total balance
-          totalSpentByAgents += amount;
+          totalSpentByAgentsAll += amount;
 
           // If spent by an agent, reduce their cash on hand
           if (transaction.agent_id) {
@@ -166,7 +166,7 @@ export default function MonthlyReport() {
 
     // Calculate current balance: initial + additions - expenditures
     const pepiBookBalance =
-      initialAmount + totalAddedToBook - totalSpentByAgents;
+      initialAmount + totalAddedToBook - totalSpentByAgentsAll;
 
     // Calculate safe cash: current balance - what's issued to agents
     const safeCashBalance = pepiBookBalance - totalIssuedToAgents;
