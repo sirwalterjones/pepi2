@@ -428,7 +428,7 @@ export default function MonthlyReport() {
         const formatMoney = (amount) => {
           const numAmount =
             typeof amount === "number" ? amount : parseFloat(amount) || 0;
-          return `${numAmount.toLocaleString("en-US", {
+          return `$${numAmount.toLocaleString("en-US", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })}`;
