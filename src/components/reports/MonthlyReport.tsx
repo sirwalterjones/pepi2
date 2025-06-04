@@ -422,7 +422,8 @@ export default function MonthlyReport() {
           spentByAgents: stats.spendingTotal,
           returnedByAgents: stats.totalReturned,
           bookBalance: stats.cashOnHand,
-          cashWithAgents: stats.agentCashBalance,
+          cashWithAgents:
+            activePepiBook?.agentCashOnHand || stats.agentCashBalance,
           agentCashBalance: activePepiBook?.agentCashOnHand || 0,
         };
 
@@ -540,7 +541,7 @@ export default function MonthlyReport() {
                   <tr>
                     <td>Agent Cash on Hand</td>
                     <td>
-                      ${formatMoney(activePepiBook?.agentCashOnHand || 0)}
+                      ${formatMoney(activePepiBook?.agentCashOnHand || stats.agentCashBalance)}
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
@@ -690,7 +691,8 @@ export default function MonthlyReport() {
                 spentByAgents: stats.spendingTotal,
                 returnedByAgents: stats.totalReturned,
                 bookBalance: stats.cashOnHand,
-                cashWithAgents: stats.agentCashBalance,
+                cashWithAgents:
+                  activePepiBook?.agentCashOnHand || stats.agentCashBalance,
                 agentCashBalance: activePepiBook?.agentCashOnHand || 0,
               }}
             />
