@@ -19,6 +19,7 @@ import CbMemoReport from "./CbMemoReport";
 import { Transaction } from "@/types/schema";
 import PrintableReport from "./PrintableReport";
 import { formatCurrency } from "@/lib/utils";
+import { usePepiBooks } from "@/hooks/usePepiBooks";
 
 export default function MonthlyReport() {
   const [loading, setLoading] = useState(true);
@@ -32,7 +33,7 @@ export default function MonthlyReport() {
   const [selectedYear, setSelectedYear] = useState<number>(
     new Date().getFullYear(),
   );
-  const [activePepiBook, setActivePepiBook] = useState<any>(null);
+  const { activeBook: activePepiBook } = usePepiBooks();
   const [stats, setStats] = useState({
     totalIssuance: 0,
     totalSpending: 0,
@@ -50,22 +51,13 @@ export default function MonthlyReport() {
   const [showCbMemo, setShowCbMemo] = useState(false);
   const [commanderName, setCommanderName] = useState("Adam Mayfield");
 
-  // Fetch all transactions and active PEPI book
+  // Fetch all transactions
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       const supabase = createClient();
 
       try {
-        // Get active PEPI book
-        const { data: pepiBook } = await supabase
-          .from("pepi_books")
-          .select("*")
-          .eq("is_active", true)
-          .single();
-
-        setActivePepiBook(pepiBook);
-
         // Get all transactions
         const { data, error } = await supabase
           .from("transactions")
