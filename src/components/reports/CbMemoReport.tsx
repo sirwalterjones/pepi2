@@ -282,6 +282,25 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
                 <span className="text-xs ml-1 text-gray-600">(Current)</span>
               </td>
             </tr>
+            <tr className="border border-black">
+              <td
+                className="border border-black px-2 py-1"
+                style={{ border: "1px solid black", padding: "8px" }}
+              >
+                Agent Cash on Hand
+              </td>
+              <td
+                className="border border-black px-2 py-1 text-right"
+                style={{
+                  border: "1px solid black",
+                  padding: "8px",
+                  textAlign: "right",
+                }}
+              >
+                {formatCurrency(data.agentCashBalance || 0)}
+                <span className="text-xs ml-1 text-gray-600">(Current)</span>
+              </td>
+            </tr>
             {data.totalAdditionalUnitIssue > 0 && (
               <tr className="border border-black">
                 <td className="border border-black px-2 py-1">

@@ -227,6 +227,13 @@ const PrintableCbMemo: React.FC<PrintableCbMemoProps> = ({ data }) => {
                 <span className="memo-label">(Current)</span>
               </td>
             </tr>
+            <tr>
+              <td>Agent Cash on Hand</td>
+              <td>
+                {formatCurrency(data.agentCashBalance || 0)}
+                <span className="memo-label">(Current)</span>
+              </td>
+            </tr>
             {data.totalAdditionalUnitIssue > 0 && (
               <tr>
                 <td>Additional Unit Issue</td>
