@@ -425,6 +425,13 @@ export default function MonthlyReport() {
           cashWithAgents: stats.agentCashBalance || 0,
         };
 
+        // Debug logging to check the cashWithAgents value
+        console.log("CB Memo Data:", {
+          agentCashBalance: stats.agentCashBalance,
+          cashWithAgents: data.cashWithAgents,
+          allStats: stats,
+        });
+
         const formatMoney = (amount) => {
           const numAmount =
             typeof amount === "number" ? amount : parseFloat(amount) || 0;
@@ -524,7 +531,7 @@ export default function MonthlyReport() {
                   <tr>
                     <td>Cash with Agents</td>
                     <td>
-                      ${formatMoney(data.cashWithAgents)}
+                      ${formatMoney(Math.max(0, data.cashWithAgents || 0))}
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
