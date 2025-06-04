@@ -90,6 +90,8 @@ export default function MonthlyReport() {
   useEffect(() => {
     if (!transactions.length) return;
 
+    let isMounted = true;
+
     const filtered = transactions.filter((transaction) => {
       try {
         const dateToUse =
@@ -112,6 +114,8 @@ export default function MonthlyReport() {
     console.log(
       `Filtered to ${filtered.length} transactions for ${selectedMonth + 1}/${selectedYear}`,
     );
+
+    if (!isMounted) return;
     setFilteredTransactions(filtered);
 
     // Calculate statistics for ALL transactions (not filtered by month)
@@ -120,12 +124,13 @@ export default function MonthlyReport() {
     let totalSpentByAgents = 0;
     let totalReturnedByAgents = 0;
     let totalAddedToBook = 0;
-    let initialAmount = activePepiBook?.starting_amount || 0;
+    const initialAmount = activePepiBook?.starting_amount || 0;
 
     // Process all transactions to calculate balances
     transactions.forEach((transaction) => {
       if (transaction.status === "approved") {
-        const amount = parseFloat(transaction.amount.toString());
+        const amount = parseFloat(transaction.amount?.toString() || "0");
+        if (isNaN(amount)) return;
 
         if (transaction.transaction_type === "issuance") {
           if (transaction.agent_id !== null) {
@@ -154,19 +159,17 @@ export default function MonthlyReport() {
       }
     });
 
-    // Allow totalIssuedToAgents to be negative if that's the actual calculated value
-    // Ensure it's never undefined
-    totalIssuedToAgents = totalIssuedToAgents || 0;
     console.log(
       "Cash with Agents (totalIssuedToAgents) value:",
       totalIssuedToAgents,
     );
 
     // Calculate current balance: initial + additions - expenditures
-    let pepiBookBalance = initialAmount + totalAddedToBook - totalSpentByAgents;
+    const pepiBookBalance =
+      initialAmount + totalAddedToBook - totalSpentByAgents;
 
     // Calculate safe cash: current balance - what's issued to agents
-    let safeCashBalance = pepiBookBalance - totalIssuedToAgents;
+    const safeCashBalance = pepiBookBalance - totalIssuedToAgents;
 
     // Calculate monthly filtered statistics
     let monthlyIssuance = 0;
@@ -176,7 +179,8 @@ export default function MonthlyReport() {
     // Process filtered transactions to calculate monthly stats
     filtered.forEach((transaction) => {
       if (transaction.status === "approved") {
-        const amount = parseFloat(transaction.amount.toString());
+        const amount = parseFloat(transaction.amount?.toString() || "0");
+        if (isNaN(amount)) return;
 
         if (transaction.transaction_type === "issuance") {
           monthlyIssuance += amount;
@@ -191,35 +195,62 @@ export default function MonthlyReport() {
     // Get active agents count
     const supabase = createClient();
     const fetchAgentsCount = async () => {
-      const { count: agentsCount } = await supabase
-        .from("agents")
-        .select("*", { count: "exact", head: true })
-        .eq("is_active", true);
+      try {
+        const { count: agentsCount } = await supabase
+          .from("agents")
+          .select("*", { count: "exact", head: true })
+          .eq("is_active", true);
 
-      // Calculate monthly transaction stats for display in the table
-      const monthlyTransactionCount = filtered.filter(
-        (t) => t.status === "approved",
-      ).length;
+        // Calculate monthly transaction stats for display in the table
+        const monthlyTransactionCount = filtered.filter(
+          (t) => t.status === "approved",
+        ).length;
 
-      setStats({
-        totalAgents: agentsCount || 0,
-        totalTransactions: monthlyTransactionCount,
-        // These three values are NOT filtered by month (showing current totals)
-        currentBalance: pepiBookBalance,
-        cashOnHand: safeCashBalance,
-        agentCashBalance: totalIssuedToAgents,
-        // These values ARE filtered by month
-        totalIssuance: monthlyIssuance,
-        totalSpending: monthlySpending,
-        totalReturned: monthlyReturned,
-        spendingTotal: monthlySpending,
-        activePepiBookYear: activePepiBook?.year || null,
-        // Keep the old stats properties for backward compatibility
-        safeCashBalance: safeCashBalance,
-      });
+        if (!isMounted) return;
+
+        setStats({
+          totalAgents: agentsCount || 0,
+          totalTransactions: monthlyTransactionCount,
+          // These three values are NOT filtered by month (showing current totals)
+          currentBalance: pepiBookBalance,
+          cashOnHand: safeCashBalance,
+          agentCashBalance: totalIssuedToAgents,
+          // These values ARE filtered by month
+          totalIssuance: monthlyIssuance,
+          totalSpending: monthlySpending,
+          totalReturned: monthlyReturned,
+          spendingTotal: monthlySpending,
+          activePepiBookYear: activePepiBook?.year || null,
+          // Keep the old stats properties for backward compatibility
+          safeCashBalance: safeCashBalance,
+        });
+      } catch (error) {
+        console.error("Error fetching agents count:", error);
+        if (!isMounted) return;
+
+        // Set stats with default agent count if fetch fails
+        setStats({
+          totalAgents: 0,
+          totalTransactions: filtered.filter((t) => t.status === "approved")
+            .length,
+          currentBalance: pepiBookBalance,
+          cashOnHand: safeCashBalance,
+          agentCashBalance: totalIssuedToAgents,
+          totalIssuance: monthlyIssuance,
+          totalSpending: monthlySpending,
+          totalReturned: monthlyReturned,
+          spendingTotal: monthlySpending,
+          activePepiBookYear: activePepiBook?.year || null,
+          safeCashBalance: safeCashBalance,
+        });
+      }
     };
 
     fetchAgentsCount();
+
+    return () => {
+      isMounted = false;
+    };
   }, [transactions, selectedMonth, selectedYear, activePepiBook]);
 
   // Use the formatCurrency utility function from utils.ts
@@ -435,10 +466,12 @@ export default function MonthlyReport() {
           allStats: stats,
         });
 
-        const formatMoney = (amount) => {
+        const formatMoney = (amount: number | string | undefined | null) => {
           const numAmount =
-            typeof amount === "number" ? amount : parseFloat(amount) || 0;
-          return `$${numAmount.toLocaleString("en-US", {
+            typeof amount === "number"
+              ? amount
+              : parseFloat(String(amount || 0)) || 0;
+          return `${numAmount.toLocaleString("en-US", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })}`;
