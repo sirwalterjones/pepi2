@@ -531,7 +531,7 @@ export default function MonthlyReport() {
                   <tr>
                     <td>Cash with Agents</td>
                     <td>
-                      ${formatMoney(Math.max(0, data.cashWithAgents || 0))}
+                      ${formatMoney(data.cashWithAgents || 0)}
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
