@@ -190,7 +190,7 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
             </tr>
             <tr className="border border-black">
               <td className="border border-black px-2 py-1">
-                Cash with Agents
+                Cash with Agents (Agent Cash on Hand)
               </td>
               <td className="border border-black px-2 py-1 text-right">
                 {formatCurrency(

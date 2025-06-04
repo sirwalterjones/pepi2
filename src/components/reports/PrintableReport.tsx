@@ -272,7 +272,7 @@ export default function PrintableReport({
             </tr>
             <tr className="bg-gray-50">
               <td className="border border-gray-300 p-2 font-bold">
-                Cash with Agents
+                Cash with Agents (Agent Cash on Hand)
               </td>
               <td className="border border-gray-300 p-2 text-right font-bold">
                 {formatCurrency(safeStats.agentCashBalance)}

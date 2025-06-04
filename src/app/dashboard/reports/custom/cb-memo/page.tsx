@@ -505,7 +505,7 @@ export default function CbMemoReportPage() {
                     </td>
                   </tr>
                   <tr>
-                    <td>Cash with Agents</td>
+                    <td>Cash with Agents (Agent Cash on Hand)</td>
                     <td>
                       ${(memoData.cashWithAgents !== undefined ? memoData.cashWithAgents : memoData.agentCashBalance !== undefined ? memoData.agentCashBalance : 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       <span class="memo-label">(Current)</span>
