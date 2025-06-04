@@ -300,6 +300,7 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
                   textAlign: "right",
                 }}
               >
+                {/* Force deployment - Agent Cash on Hand line */}
                 {formatCurrency(safeData.cashWithAgents)}
                 <span className="text-xs ml-1 text-gray-600">(Current)</span>
               </td>
