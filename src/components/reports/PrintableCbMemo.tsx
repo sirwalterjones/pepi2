@@ -223,9 +223,7 @@ const PrintableCbMemo: React.FC<PrintableCbMemoProps> = ({ data }) => {
             <tr>
               <td>Cash with Agents</td>
               <td>
-                {formatCurrency(
-                  data.cashWithAgents || data.agentCashBalance || 0,
-                )}
+                {formatCurrency(data.cashWithAgents)}
                 <span className="memo-label">(Current)</span>
               </td>
             </tr>

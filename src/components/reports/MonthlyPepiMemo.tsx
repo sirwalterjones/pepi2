@@ -194,10 +194,13 @@ const MonthlyPepiMemo: React.FC<MonthlyPepiMemoProps> = ({ data }) => {
               </td>
               <td className="border border-black px-2 py-1 text-right">
                 {formatCurrency(
-                  memoData.cashWithAgents ||
-                    memoData.agentCashBalance ||
-                    memoData.issuedToAgents ||
-                    0,
+                  memoData.cashWithAgents !== undefined
+                    ? memoData.cashWithAgents
+                    : memoData.agentCashBalance !== undefined
+                      ? memoData.agentCashBalance
+                      : memoData.issuedToAgents !== undefined
+                        ? memoData.issuedToAgents
+                        : 0,
                 )}
                 <span className="text-xs ml-1 text-gray-600">(Current)</span>
               </td>
