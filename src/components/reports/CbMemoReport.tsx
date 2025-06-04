@@ -24,6 +24,8 @@ type CbMemoReportProps = {
     spentByAgents: number;
     returnedByAgents: number;
     bookBalance: number;
+    cashWithAgents: number;
+    agentCashBalance: number;
   };
 };
 
@@ -32,6 +34,27 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
   if (!data) {
     return <div className="p-4">No memo data available</div>;
   }
+
+  // Ensure all numeric values are properly handled
+  const safeData = {
+    ...data,
+    beginningBalance: Number(data.beginningBalance) || 0,
+    totalAgentIssues: Number(data.totalAgentIssues) || 0,
+    totalAgentReturns: Number(data.totalAgentReturns) || 0,
+    cashOnHand: Number(data.cashOnHand) || 0,
+    totalExpenditures: Number(data.totalExpenditures) || 0,
+    totalAdditionalUnitIssue: Number(data.totalAdditionalUnitIssue) || 0,
+    endingBalance: Number(data.endingBalance) || 0,
+    ytdExpenditures: Number(data.ytdExpenditures) || 0,
+    initialFunding: Number(data.initialFunding) || 0,
+    issuedToAgents: Number(data.issuedToAgents) || 0,
+    spentByAgents: Number(data.spentByAgents) || 0,
+    returnedByAgents: Number(data.returnedByAgents) || 0,
+    bookBalance: Number(data.bookBalance) || 0,
+    cashWithAgents: Number(data.cashWithAgents) || 0,
+    agentCashBalance: Number(data.agentCashBalance) || 0,
+  };
+
   // Format the commander's initials for the footer
   const getInitials = (name: string = "") => {
     return name
@@ -40,8 +63,8 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
       .join("");
   };
 
-  const upperInitials = getInitials(data.commanderName).toUpperCase();
-  const lowerInitials = getInitials(data.commanderName).toLowerCase();
+  const upperInitials = getInitials(safeData.commanderName).toUpperCase();
+  const lowerInitials = getInitials(safeData.commanderName).toLowerCase();
 
   return (
     <div
@@ -82,7 +105,7 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
           FROM:
         </span>
         <span className="flex items-center justify-between">
-          <span>{data.commanderName}, Commander</span>
+          <span>{safeData.commanderName}, Commander</span>
         </span>
         <span
           className="font-bold"
@@ -90,7 +113,7 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
         >
           DATE:
         </span>
-        <span>{data.memoDate}</span>
+        <span>{safeData.memoDate}</span>
         <span
           className="font-bold"
           style={{ fontWeight: "bold", paddingRight: "10px" }}
@@ -98,7 +121,7 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
           RE:
         </span>
         <span>
-          PEPI for {data.monthName} {data.bookYear}
+          PEPI for {safeData.monthName} {safeData.bookYear}
         </span>
 
         {/* CMANS Text Block */}
@@ -118,29 +141,30 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
         style={{ marginLeft: "10%", marginRight: "10%" }}
       >
         <p>
-          On {data.reconciliationDate}, the CMANS PEPI account was reconciled
-          for the month of {data.monthName} {data.bookYear}.
+          On {safeData.reconciliationDate}, the CMANS PEPI account was
+          reconciled for the month of {safeData.monthName} {safeData.bookYear}.
         </p>
         <p>
-          The current overall balance is {formatCurrency(data.beginningBalance)}
-          . CMANS Agents were issued {formatCurrency(data.totalAgentIssues)}{" "}
-          during {data.monthName} {data.bookYear}. Agents returned{" "}
-          {formatCurrency(data.totalAgentReturns)} for the month of{" "}
-          {data.monthName} {data.bookYear}. Cash on hand was counted and
-          verified at {formatCurrency(data.cashOnHand)} (current balance). CMANS
-          Agents expended {formatCurrency(data.totalExpenditures)} for{" "}
-          {data.monthName} {data.bookYear}.
-          {data.totalAdditionalUnitIssue > 0 && (
+          The current overall balance is{" "}
+          {formatCurrency(safeData.beginningBalance)}. CMANS Agents were issued{" "}
+          {formatCurrency(safeData.totalAgentIssues)} during{" "}
+          {safeData.monthName} {safeData.bookYear}. Agents returned{" "}
+          {formatCurrency(safeData.totalAgentReturns)} for the month of{" "}
+          {safeData.monthName} {safeData.bookYear}. Cash on hand was counted and
+          verified at {formatCurrency(safeData.cashOnHand)} (current balance).
+          CMANS Agents expended {formatCurrency(safeData.totalExpenditures)} for{" "}
+          {safeData.monthName} {safeData.bookYear}.
+          {safeData.totalAdditionalUnitIssue > 0 && (
             <span>
               {" "}
               Additional Unit issue of PEPI was{" "}
-              {formatCurrency(data.totalAdditionalUnitIssue)}.
+              {formatCurrency(safeData.totalAdditionalUnitIssue)}.
             </span>
           )}
-          The CMANS PEPI balance at the end of {data.monthName} was{" "}
-          {formatCurrency(data.endingBalance)} (current balance). The total
-          expenditures for {data.bookYear} are{" "}
-          {formatCurrency(data.ytdExpenditures)}.
+          The CMANS PEPI balance at the end of {safeData.monthName} was{" "}
+          {formatCurrency(safeData.endingBalance)} (current balance). The total
+          expenditures for {safeData.bookYear} are{" "}
+          {formatCurrency(safeData.ytdExpenditures)}.
         </p>
       </div>
 
@@ -175,7 +199,7 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
                   textAlign: "right",
                 }}
               >
-                {formatCurrency(data.initialFunding)}
+                {formatCurrency(safeData.initialFunding)}
                 <span className="text-xs ml-1 text-gray-600">(Overall)</span>
               </td>
             </tr>
@@ -194,9 +218,9 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
                   textAlign: "right",
                 }}
               >
-                {formatCurrency(data.issuedToAgents)}
+                {formatCurrency(safeData.issuedToAgents)}
                 <span className="text-xs ml-1 text-gray-600">
-                  ({data.monthName})
+                  ({safeData.monthName})
                 </span>
               </td>
             </tr>
@@ -215,9 +239,9 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
                   textAlign: "right",
                 }}
               >
-                {formatCurrency(data.spentByAgents)}
+                {formatCurrency(safeData.spentByAgents)}
                 <span className="text-xs ml-1 text-gray-600">
-                  ({data.monthName})
+                  ({safeData.monthName})
                 </span>
               </td>
             </tr>
@@ -236,9 +260,9 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
                   textAlign: "right",
                 }}
               >
-                {formatCurrency(data.returnedByAgents)}
+                {formatCurrency(safeData.returnedByAgents)}
                 <span className="text-xs ml-1 text-gray-600">
-                  ({data.monthName})
+                  ({safeData.monthName})
                 </span>
               </td>
             </tr>
@@ -257,29 +281,16 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
                   textAlign: "right",
                 }}
               >
-                {formatCurrency(data.bookBalance)}
+                {formatCurrency(safeData.bookBalance)}
                 <span className="text-xs ml-1 text-gray-600">(Current)</span>
               </td>
             </tr>
-            {data.totalAdditionalUnitIssue > 0 && (
-              <tr className="border border-black">
-                <td className="border border-black px-2 py-1">
-                  Additional Unit Issue
-                </td>
-                <td className="border border-black px-2 py-1 text-right">
-                  {formatCurrency(data.totalAdditionalUnitIssue)}
-                  <span className="text-xs ml-1 text-gray-600">
-                    ({data.monthName})
-                  </span>
-                </td>
-              </tr>
-            )}
             <tr className="border border-black">
               <td
                 className="border border-black px-2 py-1"
                 style={{ border: "1px solid black", padding: "8px" }}
               >
-                Expenditures CY {data.bookYear}
+                Cash with Agents (Agent Cash on Hand)
               </td>
               <td
                 className="border border-black px-2 py-1 text-right"
@@ -289,7 +300,39 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
                   textAlign: "right",
                 }}
               >
-                {formatCurrency(data.ytdExpenditures)}
+                {formatCurrency(safeData.cashWithAgents)}
+                <span className="text-xs ml-1 text-gray-600">(Current)</span>
+              </td>
+            </tr>
+            {safeData.totalAdditionalUnitIssue > 0 && (
+              <tr className="border border-black">
+                <td className="border border-black px-2 py-1">
+                  Additional Unit Issue
+                </td>
+                <td className="border border-black px-2 py-1 text-right">
+                  {formatCurrency(safeData.totalAdditionalUnitIssue)}
+                  <span className="text-xs ml-1 text-gray-600">
+                    ({safeData.monthName})
+                  </span>
+                </td>
+              </tr>
+            )}
+            <tr className="border border-black">
+              <td
+                className="border border-black px-2 py-1"
+                style={{ border: "1px solid black", padding: "8px" }}
+              >
+                Expenditures CY {safeData.bookYear}
+              </td>
+              <td
+                className="border border-black px-2 py-1 text-right"
+                style={{
+                  border: "1px solid black",
+                  padding: "8px",
+                  textAlign: "right",
+                }}
+              >
+                {formatCurrency(safeData.ytdExpenditures)}
                 <span className="text-xs ml-1 text-gray-600">(Total)</span>
               </td>
             </tr>

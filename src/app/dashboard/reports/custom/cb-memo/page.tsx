@@ -187,7 +187,7 @@ export default function CbMemoReportPage() {
 
           if (transaction.transaction_type === "issuance") {
             if (transaction.agent_id !== null) {
-              // Issuance TO an agent
+              // Issuance TO an agent - this increases cash with agents
               totalIssuedToAgents += amount;
               // Does NOT affect book balance directly
             } else if (transaction.receipt_number?.startsWith("ADD")) {
@@ -203,13 +203,29 @@ export default function CbMemoReportPage() {
               totalIssuedToAgents -= amount;
             }
           } else if (transaction.transaction_type === "return") {
-            // Returns only affect agent cash on hand
+            // Returns only affect agent cash on hand - they return money, reducing cash with agents
             if (transaction.agent_id) {
               totalIssuedToAgents -= amount;
               totalReturnedByAgents += amount;
             }
           }
         }
+      });
+
+      // Allow totalIssuedToAgents to be negative if that's the actual calculated value
+      // This ensures the Cash with Agents row shows the true value
+      console.log(
+        "Cash with Agents (totalIssuedToAgents) before:",
+        totalIssuedToAgents,
+      );
+
+      console.log("Cash with Agents calculation:", {
+        totalIssuedToAgents,
+        totalSpentByAgents,
+        totalReturnedByAgents,
+        totalAddedToBook,
+        pepiBookBalance,
+        safeCashBalance,
       });
 
       // Calculate current balance: initial + additions - expenditures
@@ -272,11 +288,22 @@ export default function CbMemoReportPage() {
           currentBalance: pepiBookBalance,
           cashOnHand: safeCashBalance,
           agentCashBalance: totalIssuedToAgents,
+          cashWithAgents: totalIssuedToAgents,
           endingBalance: pepiBookBalance,
+          // Ensure these values are available for the memo display
+          issuedToAgents: totalIssuedToAgents,
+          spentByAgents: totalSpentByAgents,
+          returnedByAgents: totalReturnedByAgents,
+          // Add monthly filtered values for display
+          monthlyIssuedToAgents: monthlyAgentIssues,
+          monthlySpentByAgents: monthlySpending,
+          monthlyReturnedByAgents: monthlyReturned,
           // Add flags to indicate which values are filtered by month vs. current totals
           isMonthlyFiltered: true,
           selectedMonth: selectedMonth,
           selectedYear: activeBook.year,
+          // Ensure bookBalance is set correctly for the memo display
+          bookBalance: safeCashBalance,
         };
         setMemoData(enhancedData);
       } else {
@@ -459,14 +486,14 @@ export default function CbMemoReportPage() {
                   <tr>
                     <td>Total Spent By Agents</td>
                     <td>
-                      $${memoData.spentByAgents.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ${memoData.spentByAgents.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       <span class="memo-label">(${memoData.monthName})</span>
                     </td>
                   </tr>
                   <tr>
                     <td>Total Returned By Agents</td>
                     <td>
-                      $${memoData.returnedByAgents.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ${memoData.returnedByAgents.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       <span class="memo-label">(${memoData.monthName})</span>
                     </td>
                   </tr>
@@ -474,6 +501,13 @@ export default function CbMemoReportPage() {
                     <td>Book Balance (Safe Cash)</td>
                     <td>
                       $${memoData.bookBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <span class="memo-label">(Current)</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Cash with Agents (Agent Cash on Hand)</td>
+                    <td>
+                      ${(memoData.cashWithAgents !== undefined ? memoData.cashWithAgents : memoData.agentCashBalance !== undefined ? memoData.agentCashBalance : 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
@@ -789,4 +823,11 @@ export default function CbMemoReportPage() {
       `}</style>
     </div>
   );
+}
+
+function formatMoney(amount: number): string {
+  return amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }

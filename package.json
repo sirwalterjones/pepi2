@@ -42,7 +42,7 @@
     "react-signature-canvas": "^1.1.0-alpha.2",
     "resend": "^4.5.0",
     "stripe": "^17.6.0",
-    "tempo-devtools": "^2.0.102",
+    "tempo-devtools": "^2.0.106",
     "vaul": "^1.1.2",
     "zod": "^3.24.3"
   },
