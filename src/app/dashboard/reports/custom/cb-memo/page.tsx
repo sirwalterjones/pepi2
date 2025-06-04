@@ -212,8 +212,12 @@ export default function CbMemoReportPage() {
         }
       });
 
-      // Ensure totalIssuedToAgents doesn't go negative
-      totalIssuedToAgents = Math.max(0, totalIssuedToAgents);
+      // Allow totalIssuedToAgents to be negative if that's the actual calculated value
+      // This ensures the Cash with Agents row shows the true value
+      console.log(
+        "Cash with Agents (totalIssuedToAgents) before:",
+        totalIssuedToAgents,
+      );
 
       console.log("Cash with Agents calculation:", {
         totalIssuedToAgents,

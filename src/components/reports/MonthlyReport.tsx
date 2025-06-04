@@ -165,6 +165,10 @@ export default function MonthlyReport() {
     // Allow totalIssuedToAgents to be negative if that's the actual calculated value
     // Ensure it's never undefined
     totalIssuedToAgents = totalIssuedToAgents || 0;
+    console.log(
+      "Cash with Agents (totalIssuedToAgents) value:",
+      totalIssuedToAgents,
+    );
 
     // Calculate current balance: initial + additions - expenditures
     let pepiBookBalance = initialAmount + totalAddedToBook - totalSpentByAgents;
