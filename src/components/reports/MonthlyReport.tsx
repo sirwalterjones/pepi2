@@ -430,7 +430,7 @@ export default function MonthlyReport() {
           spentByAgents: stats.spendingTotal,
           returnedByAgents: stats.totalReturned,
           bookBalance: stats.cashOnHand,
-          cashWithAgents: stats.agentCashBalance || 0,
+          cashWithAgents: stats.agentCashBalance,
         };
 
         // Debug logging to check the cashWithAgents value
@@ -540,7 +540,7 @@ export default function MonthlyReport() {
                   <tr>
                     <td>Cash with Agents</td>
                     <td>
-                      ${formatMoney(data.cashWithAgents || 0)}
+                      ${formatMoney(data.cashWithAgents)}
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
@@ -690,7 +690,7 @@ export default function MonthlyReport() {
                 spentByAgents: stats.spendingTotal,
                 returnedByAgents: stats.totalReturned,
                 bookBalance: stats.cashOnHand,
-                cashWithAgents: stats.agentCashBalance, // Already handled in CbMemoReport
+                cashWithAgents: stats.agentCashBalance,
               }}
             />
           </div>
