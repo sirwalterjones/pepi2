@@ -541,7 +541,7 @@ export default function MonthlyReport() {
                   <tr>
                     <td>Agent Cash on Hand</td>
                     <td>
-                      ${formatMoney(activePepiBook?.agentCashOnHand || stats.agentCashBalance)}
+                      ${formatMoney(data.agentCashBalance)}
                       <span class="memo-label">(Current)</span>
                     </td>
                   </tr>
