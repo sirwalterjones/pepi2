@@ -162,8 +162,7 @@ export default function MonthlyReport() {
       }
     });
 
-    // Ensure totalIssuedToAgents is never negative
-    totalIssuedToAgents = Math.max(0, totalIssuedToAgents);
+    // Allow totalIssuedToAgents to be negative if that's the actual calculated value
 
     // Calculate current balance: initial + additions - expenditures
     let pepiBookBalance = initialAmount + totalAddedToBook - totalSpentByAgents;
