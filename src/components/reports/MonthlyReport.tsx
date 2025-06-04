@@ -45,7 +45,7 @@ export default function MonthlyReport() {
     currentBalance: 0,
     cashOnHand: 0,
     spendingTotal: 0,
-    activePepiBookYear: null,
+    activePepiBookYear: null as number | null,
   });
 
   const [showCbMemo, setShowCbMemo] = useState(false);
@@ -462,7 +462,6 @@ export default function MonthlyReport() {
         console.log("CB Memo Data:", {
           agentCashBalance: stats.agentCashBalance,
           cashWithAgents: data.cashWithAgents,
-          totalIssuedToAgents: totalIssuedToAgents,
           allStats: stats,
         });
 
