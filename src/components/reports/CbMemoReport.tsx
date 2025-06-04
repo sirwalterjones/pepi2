@@ -203,6 +203,24 @@ const CbMemoReport: React.FC<CbMemoReportProps> = ({ data }) => {
                 <span className="text-xs ml-1 text-gray-600">(Overall)</span>
               </td>
             </tr>
+            <tr className="border border-black" style={{ backgroundColor: "yellow" }}>
+              <td
+                className="border border-black px-2 py-1"
+                style={{ border: "1px solid black", padding: "8px" }}
+              >
+                🚨 TEST DEPLOYMENT 🚨
+              </td>
+              <td
+                className="border border-black px-2 py-1 text-right"
+                style={{
+                  border: "1px solid black",
+                  padding: "8px",
+                  textAlign: "right",
+                }}
+              >
+                DEPLOYMENT WORKING
+              </td>
+            </tr>
             <tr className="border border-black">
               <td
                 className="border border-black px-2 py-1"
