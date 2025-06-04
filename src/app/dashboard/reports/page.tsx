@@ -61,24 +61,6 @@ export default function ReportsPage() {
               </Link>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                CB Memo Report
-              </CardTitle>
-              <FileText className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm text-muted-foreground mb-4">
-                Generate the monthly PEPI reconciliation memo (CB Memo) for
-                commander review and filing.
-              </div>
-              <Link href="/dashboard/reports/custom/cb-memo" passHref>
-                <Button>Generate CB Memo</Button>
-              </Link>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
